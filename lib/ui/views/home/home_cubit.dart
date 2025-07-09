@@ -16,6 +16,7 @@ class HomeCubit extends Cubit<HomeState> {
   Timer? _recordingTimer;
   Duration _recordingDuration = Duration.zero;
   String? _currentRecordingPath;
+  String? _lastCompletedRecordingPath;
   int _recordingSeconds = 0;
 
   HomeCubit({required AudioService audioService, required VoiceMemoService voiceMemoService})
@@ -65,6 +66,35 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
+  // Play last recording functionality
+  Future<void> playLastRecording() async {
+    developer.log('🔊 [HomeCubit] Starting playback process...', name: 'VoiceBridge.Cubit');
+
+    if (_lastCompletedRecordingPath == null) {
+      developer.log('❌ [HomeCubit] No recording available to play', name: 'VoiceBridge.Cubit');
+      emit(const PlaybackError(errorMessage: 'No recording available to play'));
+      return;
+    }
+
+    try {
+      // Emit playback in progress state
+      emit(PlaybackInProgress(filePath: _lastCompletedRecordingPath!));
+      developer.log('📡 [HomeCubit] State changed to PlaybackInProgress', name: 'VoiceBridge.Cubit');
+
+      // Start playback via audio service
+      final String result = await _audioService.playRecording(_lastCompletedRecordingPath!);
+      developer.log('✅ [HomeCubit] Playback started: $result', name: 'VoiceBridge.Cubit');
+
+      // For now, immediately emit completed state
+      // In the future, we could listen to playback completion events
+      emit(PlaybackCompleted(filePath: _lastCompletedRecordingPath!));
+      developer.log('🎵 [HomeCubit] State changed to PlaybackCompleted', name: 'VoiceBridge.Cubit');
+    } catch (e) {
+      developer.log('❌ [HomeCubit] Error during playback: $e', name: 'VoiceBridge.Cubit', error: e);
+      emit(PlaybackError(errorMessage: e.toString()));
+    }
+  }
+
   // Stop recording functionality
   Future<void> stopRecording() async {
     developer.log('⏹️ [HomeCubit] Stopping recording process...', name: 'VoiceBridge.Cubit');
@@ -78,6 +108,9 @@ class HomeCubit extends Cubit<HomeState> {
 
       // Create voice memo record
       await _createVoiceMemo(finalPath);
+
+      // Store last completed recording path for playback
+      _lastCompletedRecordingPath = finalPath;
 
       // Emit completed state
       emit(RecordingCompleted(recordingPath: finalPath, recordingDuration: _recordingDuration));
@@ -143,7 +176,11 @@ class HomeCubit extends Cubit<HomeState> {
     _currentRecordingPath = null;
     _recordingDuration = Duration.zero;
     _recordingSeconds = 0;
+    // Note: We keep _lastCompletedRecordingPath for playback functionality
   }
+
+  // Getter to check if playback is available
+  bool get hasRecordingToPlay => _lastCompletedRecordingPath != null;
 
   @override
   Future<void> close() {

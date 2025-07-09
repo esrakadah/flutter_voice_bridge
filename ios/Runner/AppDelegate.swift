@@ -5,8 +5,10 @@ import AVFoundation
 @main
 @objc class AppDelegate: FlutterAppDelegate {
   private var audioRecorder: AVAudioRecorder?
+  private var audioPlayer: AVAudioPlayer?
   private var audioFilePath: String?
   private var isRecording = false
+  private var isPlaying = false
   private var audioSession: AVAudioSession = AVAudioSession.sharedInstance()
   
   override func application(
@@ -25,6 +27,16 @@ import AVFoundation
         self?.startRecording(result: result)
       case "stopRecording":
         self?.stopRecording(result: result)
+      case "playRecording":
+        if let arguments = call.arguments as? [String: Any],
+           let path = arguments["path"] as? String {
+          self?.playRecording(atPath: path, result: result)
+        } else {
+          NSLog("❌ [iOS] playRecording called without valid path argument")
+          result(FlutterError(code: "INVALID_ARGUMENTS",
+                             message: "Path argument is required for playRecording",
+                             details: nil))
+        }
       default:
         NSLog("❌ [iOS] Unknown method: \(call.method)")
         result(FlutterMethodNotImplemented)
@@ -166,6 +178,76 @@ import AVFoundation
     audioRecorder = nil
     result(audioURL.path)
   }
+  
+  private func playRecording(atPath path: String, result: @escaping FlutterResult) {
+    NSLog("🔊 [iOS] playRecording called with path: \(path)")
+    
+    // Stop any current playback (idempotent behavior)
+    if let currentPlayer = audioPlayer, currentPlayer.isPlaying {
+      NSLog("⏹️ [iOS] Stopping current playback before starting new one")
+      currentPlayer.stop()
+      isPlaying = false
+    }
+    
+    // Validate file existence
+    let fileManager = FileManager.default
+    guard fileManager.fileExists(atPath: path) else {
+      NSLog("❌ [iOS] File does not exist at path: \(path)")
+      result(FlutterError(code: "FILE_NOT_FOUND",
+                         message: "Audio file not found at specified path",
+                         details: path))
+      return
+    }
+    
+    // Log file details
+    do {
+      let attributes = try fileManager.attributesOfItem(atPath: path)
+      let fileSize = attributes[.size] as? NSNumber ?? 0
+      NSLog("📁 [iOS] Playing file - size: \(fileSize) bytes, path: \(path)")
+    } catch {
+      NSLog("⚠️ [iOS] Could not get file attributes: \(error)")
+    }
+    
+    // Setup audio session for playback
+    do {
+      try audioSession.setCategory(.playback, mode: .default)
+      try audioSession.setActive(true)
+      NSLog("✅ [iOS] Audio session configured for playback")
+    } catch {
+      NSLog("❌ [iOS] Failed to configure audio session: \(error)")
+      result(FlutterError(code: "AUDIO_SESSION_ERROR",
+                         message: "Failed to configure audio session for playback",
+                         details: error.localizedDescription))
+      return
+    }
+    
+    // Create and start audio player
+    do {
+      let audioURL = URL(fileURLWithPath: path)
+      audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
+      audioPlayer?.delegate = self
+      audioPlayer?.prepareToPlay()
+      
+      let success = audioPlayer?.play() ?? false
+      if success {
+        isPlaying = true
+        NSLog("✅ [iOS] Playback started successfully")
+        NSLog("📊 [iOS] Playback status - isPlaying: \(audioPlayer?.isPlaying ?? false)")
+        NSLog("📊 [iOS] Audio duration: \(audioPlayer?.duration ?? 0) seconds")
+        result("Playback started")
+      } else {
+        NSLog("❌ [iOS] Failed to start playback")
+        result(FlutterError(code: "PLAYBACK_FAILED",
+                           message: "Failed to start audio playback",
+                           details: nil))
+      }
+    } catch {
+      NSLog("💥 [iOS] Error creating audio player: \(error.localizedDescription)")
+      result(FlutterError(code: "PLAYER_ERROR",
+                         message: "Failed to create audio player: \(error.localizedDescription)",
+                         details: error.localizedDescription))
+    }
+  }
 }
 
 // MARK: - AVAudioRecorderDelegate
@@ -179,5 +261,30 @@ extension AppDelegate: AVAudioRecorderDelegate {
   
   func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
     NSLog("💥 [iOS] audioRecorderEncodeErrorDidOccur: \(error?.localizedDescription ?? "Unknown error")")
+  }
+}
+
+// MARK: - AVAudioPlayerDelegate
+extension AppDelegate: AVAudioPlayerDelegate {
+  func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+    NSLog("🏁 [iOS] audioPlayerDidFinishPlaying - success: \(flag)")
+    isPlaying = false
+    
+    // Deactivate audio session after playback
+    do {
+      try audioSession.setActive(false)
+      NSLog("✅ [iOS] Audio session deactivated after playback")
+    } catch {
+      NSLog("⚠️ [iOS] Error deactivating audio session after playback: \(error)")
+    }
+    
+    if !flag {
+      NSLog("❌ [iOS] Playback finished unsuccessfully")
+    }
+  }
+  
+  func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+    NSLog("💥 [iOS] audioPlayerDecodeErrorDidOccur: \(error?.localizedDescription ?? "Unknown error")")
+    isPlaying = false
   }
 }

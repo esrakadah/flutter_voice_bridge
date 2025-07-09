@@ -26,6 +26,16 @@ class PlatformAudioService implements AudioService {
   }
 
   @override
+  Future<String> playRecording(String filePath) async {
+    try {
+      final String result = await PlatformChannels.playRecording(filePath);
+      return result;
+    } catch (e) {
+      throw Exception('Failed to play recording: $e');
+    }
+  }
+
+  @override
   Future<bool> hasPermission() async {
     // TODO: Implement permission check through platform channels
     // This will be implemented in a future step

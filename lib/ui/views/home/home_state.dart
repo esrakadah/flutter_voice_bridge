@@ -51,3 +51,31 @@ class RecordingError extends HomeState {
   @override
   List<Object?> get props => [errorMessage];
 }
+
+// Playback States
+class PlaybackInProgress extends HomeState {
+  final String filePath;
+
+  const PlaybackInProgress({required this.filePath});
+
+  @override
+  List<Object?> get props => [filePath];
+}
+
+class PlaybackCompleted extends HomeState {
+  final String filePath;
+
+  const PlaybackCompleted({required this.filePath});
+
+  @override
+  List<Object?> get props => [filePath];
+}
+
+class PlaybackError extends HomeState {
+  final String errorMessage;
+
+  const PlaybackError({required this.errorMessage});
+
+  @override
+  List<Object?> get props => [errorMessage];
+}

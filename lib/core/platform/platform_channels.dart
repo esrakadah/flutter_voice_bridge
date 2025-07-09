@@ -61,17 +61,43 @@ class PlatformChannels {
     }
   }
 
+  static Future<String> playRecording(String filePath) async {
+    developer.log('🔊 [PlatformChannels] Starting audio playback for: $filePath', name: 'VoiceBridge.Audio');
+
+    try {
+      final String result = await _audioChannel.invokeMethod('playRecording', {'path': filePath});
+      developer.log('✅ [PlatformChannels] Playback started successfully: $result', name: 'VoiceBridge.Audio');
+      return result;
+    } on PlatformException catch (e) {
+      developer.log(
+        '❌ [PlatformChannels] Platform exception during playRecording: ${e.code} - ${e.message}',
+        name: 'VoiceBridge.Audio',
+        error: e,
+      );
+      rethrow;
+    } catch (e) {
+      developer.log(
+        '💥 [PlatformChannels] Unexpected error during playRecording: $e',
+        name: 'VoiceBridge.Audio',
+        error: e,
+      );
+      rethrow;
+    }
+  }
+
   // Native method signatures for platform implementation:
   //
   // iOS (Swift):
   // - startRecording() -> String (file path)
   // - stopRecording() -> String (file path)
+  // - playRecording(path: String) -> String (success message)
   //
   // Android (Kotlin):
   // - startRecording() -> String (file path)
   // - stopRecording() -> String (file path)
+  // - playRecording(path: String) -> String (success message)
   //
   // Both platforms should use:
-  // - iOS: AVAudioRecorder
-  // - Android: MediaRecorder
+  // - iOS: AVAudioRecorder (recording) + AVAudioPlayer (playback)
+  // - Android: MediaRecorder (recording) + MediaPlayer (playback)
 }
