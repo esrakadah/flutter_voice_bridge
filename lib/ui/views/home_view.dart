@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../di.dart';
+import '../../data/models/voice_memo.dart';
 import 'home/home_cubit.dart';
 import 'home/home_state.dart';
 
@@ -41,6 +42,9 @@ class HomeViewContent extends StatelessWidget {
                 const SizedBox(height: 24),
                 // Play button for completed recordings
                 _buildPlayButton(context, state),
+                const SizedBox(height: 32),
+                // Recordings list
+                _buildRecordingsList(context, state),
               ],
             ),
           );
@@ -176,9 +180,189 @@ class HomeViewContent extends StatelessWidget {
     );
   }
 
+  Widget _buildRecordingsList(BuildContext context, HomeState state) {
+    if (state.isLoadingRecordings) {
+      return const Column(
+        children: [
+          Text('Loading recordings...', style: TextStyle(fontSize: 16)),
+          SizedBox(height: 8),
+          CircularProgressIndicator(),
+        ],
+      );
+    }
+
+    if (state.recordingsError != null) {
+      return Column(
+        children: [
+          const Text('Error loading recordings', style: TextStyle(fontSize: 16, color: Colors.red)),
+          Text(state.recordingsError!, style: const TextStyle(fontSize: 12, color: Colors.red)),
+          const SizedBox(height: 8),
+          ElevatedButton(onPressed: () => context.read<HomeCubit>().loadRecordings(), child: const Text('Retry')),
+        ],
+      );
+    }
+
+    if (state.recordings.isEmpty) {
+      return const Column(
+        children: [
+          Icon(Icons.mic_none, size: 48, color: Colors.grey),
+          SizedBox(height: 8),
+          Text('No recordings yet', style: TextStyle(fontSize: 16, color: Colors.grey)),
+          Text('Record your first voice memo above', style: TextStyle(fontSize: 14, color: Colors.grey)),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Previous Recordings (${state.recordings.length})',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                onPressed: () => context.read<HomeCubit>().loadRecordings(),
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Refresh recordings',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 300),
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: state.recordings.length,
+            itemBuilder: (context, index) {
+              final recording = state.recordings[index];
+              return _buildRecordingTile(context, recording, state);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecordingTile(BuildContext context, VoiceMemo recording, HomeState state) {
+    final bool isPlaying = state is PlaybackInProgress && state.filePath == recording.filePath;
+
+    return Dismissible(
+      key: Key(recording.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        color: Colors.red,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 16),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      confirmDismiss: (direction) async {
+        return await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Delete Recording'),
+                content: Text('Are you sure you want to delete "${recording.title}"?'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
+            ) ??
+            false;
+      },
+      onDismissed: (direction) {
+        context.read<HomeCubit>().deleteRecording(recording.filePath);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Deleted "${recording.title}"')));
+      },
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: isPlaying ? Colors.blue : Theme.of(context).primaryColor,
+            child: isPlaying
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Icon(Icons.play_arrow, color: Colors.white),
+          ),
+          title: Text(recording.title),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_formatFileSize(recording.fileSizeBytes)),
+              Text(_formatDateTime(recording.createdAt), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
+          ),
+          trailing: IconButton(
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete Recording'),
+                  content: Text('Are you sure you want to delete "${recording.title}"?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true && context.mounted) {
+                context.read<HomeCubit>().deleteRecording(recording.filePath);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Deleted "${recording.title}"')));
+              }
+            },
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
+            tooltip: 'Delete recording',
+          ),
+          onTap: isPlaying
+              ? null
+              : () {
+                  context.read<HomeCubit>().playRecording(recording.filePath);
+                },
+        ),
+      ),
+    );
+  }
+
   String _formatDuration(Duration duration) {
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  String _formatFileSize(double bytes) {
+    if (bytes < 1024) return '${bytes.toInt()} B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays == 0) {
+      final hour = dateTime.hour.toString().padLeft(2, '0');
+      final minute = dateTime.minute.toString().padLeft(2, '0');
+      return 'Today at $hour:$minute';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+    }
   }
 }

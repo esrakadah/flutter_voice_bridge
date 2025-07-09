@@ -41,6 +41,9 @@ dependencies:
   
   # Dependency injection - Service locator for clean separation of concerns
   get_it: ^8.0.0
+  
+  # File system access - Documents directory access for recording files
+  path_provider: ^2.1.4
 
 dev_dependencies:
   flutter_test:

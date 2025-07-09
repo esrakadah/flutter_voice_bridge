@@ -27,6 +27,8 @@ class HomeCubit extends Cubit<HomeState> {
       '🏠 [HomeCubit] Initialized with audio service: ${_audioService.runtimeType}',
       name: 'VoiceBridge.Cubit',
     );
+    // Load existing recordings on initialization
+    loadRecordings();
   }
 
   // Start recording functionality
@@ -63,6 +65,63 @@ class HomeCubit extends Cubit<HomeState> {
       } else {
         emit(RecordingError(errorMessage: e.toString()));
       }
+    }
+  }
+
+  // Load recordings functionality
+  Future<void> loadRecordings() async {
+    developer.log('📂 [HomeCubit] Loading recordings list...', name: 'VoiceBridge.Cubit');
+
+    try {
+      // Emit loading state
+      emit(_copyCurrentState(isLoadingRecordings: true, recordingsError: null));
+
+      // Load recordings from service
+      final List<VoiceMemo> recordings = await _voiceMemoService.listRecordings();
+      developer.log('✅ [HomeCubit] Loaded ${recordings.length} recordings', name: 'VoiceBridge.Cubit');
+
+      // Emit current state with recordings
+      emit(_copyCurrentState(recordings: recordings, isLoadingRecordings: false, recordingsError: null));
+    } catch (e) {
+      developer.log('❌ [HomeCubit] Error loading recordings: $e', name: 'VoiceBridge.Cubit', error: e);
+      emit(_copyCurrentState(isLoadingRecordings: false, recordingsError: e.toString()));
+    }
+  }
+
+  // Delete recording functionality
+  Future<void> deleteRecording(String filePath) async {
+    developer.log('🗑️ [HomeCubit] Deleting recording: $filePath', name: 'VoiceBridge.Cubit');
+
+    try {
+      // Delete file via service
+      await _voiceMemoService.deleteRecording(filePath);
+      developer.log('✅ [HomeCubit] Recording deleted successfully', name: 'VoiceBridge.Cubit');
+
+      // Reload recordings list
+      await loadRecordings();
+    } catch (e) {
+      developer.log('❌ [HomeCubit] Error deleting recording: $e', name: 'VoiceBridge.Cubit', error: e);
+      emit(_copyCurrentState(recordingsError: 'Failed to delete recording: $e'));
+    }
+  }
+
+  // Play recording by file path
+  Future<void> playRecording(String filePath) async {
+    developer.log('🔊 [HomeCubit] Playing recording: $filePath', name: 'VoiceBridge.Cubit');
+
+    try {
+      // Emit playback in progress state
+      emit(_copyCurrentState(baseState: PlaybackInProgress(filePath: filePath)));
+
+      // Start playback via audio service
+      final String result = await _audioService.playRecording(filePath);
+      developer.log('✅ [HomeCubit] Playback started: $result', name: 'VoiceBridge.Cubit');
+
+      // Emit completed state
+      emit(_copyCurrentState(baseState: PlaybackCompleted(filePath: filePath)));
+    } catch (e) {
+      developer.log('❌ [HomeCubit] Error during playback: $e', name: 'VoiceBridge.Cubit', error: e);
+      emit(_copyCurrentState(baseState: PlaybackError(errorMessage: e.toString())));
     }
   }
 
@@ -113,11 +172,18 @@ class HomeCubit extends Cubit<HomeState> {
       _lastCompletedRecordingPath = finalPath;
 
       // Emit completed state
-      emit(RecordingCompleted(recordingPath: finalPath, recordingDuration: _recordingDuration));
+      emit(
+        _copyCurrentState(
+          baseState: RecordingCompleted(recordingPath: finalPath, recordingDuration: _recordingDuration),
+        ),
+      );
       developer.log('✅ [HomeCubit] State changed to RecordingCompleted', name: 'VoiceBridge.Cubit');
 
       // Reset state
       _resetRecordingState();
+
+      // Reload recordings list to include the new recording
+      await loadRecordings();
     } catch (e) {
       developer.log('❌ [HomeCubit] Error stopping recording: $e', name: 'VoiceBridge.Cubit', error: e);
       _stopRecordingTimer();
@@ -181,6 +247,89 @@ class HomeCubit extends Cubit<HomeState> {
 
   // Getter to check if playback is available
   bool get hasRecordingToPlay => _lastCompletedRecordingPath != null;
+
+  // Helper method to copy current state with updated recordings data
+  HomeState _copyCurrentState({
+    List<VoiceMemo>? recordings,
+    bool? isLoadingRecordings,
+    String? recordingsError,
+    HomeState? baseState,
+  }) {
+    final currentState = state;
+
+    // Use provided base state or current state type
+    if (baseState != null) {
+      // For new state types (like PlaybackInProgress), include recordings data
+      if (baseState is PlaybackInProgress) {
+        return PlaybackInProgress(
+          filePath: baseState.filePath,
+          recordings: recordings ?? currentState.recordings,
+          isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+          recordingsError: recordingsError ?? currentState.recordingsError,
+        );
+      } else if (baseState is PlaybackCompleted) {
+        return PlaybackCompleted(
+          filePath: baseState.filePath,
+          recordings: recordings ?? currentState.recordings,
+          isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+          recordingsError: recordingsError ?? currentState.recordingsError,
+        );
+      } else if (baseState is PlaybackError) {
+        return PlaybackError(
+          errorMessage: baseState.errorMessage,
+          recordings: recordings ?? currentState.recordings,
+          isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+          recordingsError: recordingsError ?? currentState.recordingsError,
+        );
+      }
+    }
+
+    // Copy existing state with updated recordings data
+    if (currentState is HomeInitial) {
+      return HomeInitial(
+        recordings: recordings ?? currentState.recordings,
+        isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+        recordingsError: recordingsError ?? currentState.recordingsError,
+      );
+    } else if (currentState is RecordingInProgress) {
+      return RecordingInProgress(
+        recordingPath: currentState.recordingPath,
+        recordingDuration: currentState.recordingDuration,
+        recordings: recordings ?? currentState.recordings,
+        isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+        recordingsError: recordingsError ?? currentState.recordingsError,
+      );
+    } else if (currentState is RecordingStarted) {
+      return RecordingStarted(
+        recordingPath: currentState.recordingPath,
+        recordings: recordings ?? currentState.recordings,
+        isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+        recordingsError: recordingsError ?? currentState.recordingsError,
+      );
+    } else if (currentState is RecordingCompleted) {
+      return RecordingCompleted(
+        recordingPath: currentState.recordingPath,
+        recordingDuration: currentState.recordingDuration,
+        recordings: recordings ?? currentState.recordings,
+        isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+        recordingsError: recordingsError ?? currentState.recordingsError,
+      );
+    } else if (currentState is RecordingError) {
+      return RecordingError(
+        errorMessage: currentState.errorMessage,
+        recordings: recordings ?? currentState.recordings,
+        isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+        recordingsError: recordingsError ?? currentState.recordingsError,
+      );
+    }
+
+    // Default fallback to HomeInitial
+    return HomeInitial(
+      recordings: recordings ?? currentState.recordings,
+      isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+      recordingsError: recordingsError ?? currentState.recordingsError,
+    );
+  }
 
   @override
   Future<void> close() {
