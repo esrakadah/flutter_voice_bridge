@@ -29,7 +29,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: Text(
           'Voice Bridge AI',
@@ -43,8 +43,8 @@ class _HomeViewContentState extends State<HomeViewContent> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+                Theme.of(context).colorScheme.primary.withAlpha(26),
+                Theme.of(context).colorScheme.secondary.withAlpha(13),
               ],
             ),
           ),
@@ -62,6 +62,11 @@ class _HomeViewContentState extends State<HomeViewContent> {
 
               // Transcription results
               if (state.transcriptionText != null) SliverToBoxAdapter(child: _buildTranscriptionCard(context, state)),
+
+              // Transcription status (in progress or error)
+              if (state.isTranscribing) SliverToBoxAdapter(child: _buildTranscriptionProgressCard(context, state)),
+              if (state.transcriptionError != null)
+                SliverToBoxAdapter(child: _buildTranscriptionErrorCard(context, state)),
 
               // Recordings list header
               SliverToBoxAdapter(child: _buildRecordingsHeader(context, state)),
@@ -96,6 +101,8 @@ class _HomeViewContentState extends State<HomeViewContent> {
 
   Widget _buildModeChip(BuildContext context, String label, AudioVisualizationMode mode) {
     final isSelected = _currentMode == mode;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return GestureDetector(
       onTap: () {
@@ -108,26 +115,17 @@ class _HomeViewContentState extends State<HomeViewContent> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           gradient: isSelected
-              ? LinearGradient(
-                  colors: [
-                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                    Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
-                  ],
-                )
+              ? LinearGradient(colors: [colorScheme.primary.withAlpha(20), colorScheme.secondary.withAlpha(10)])
               : null,
           border: Border.all(
-            color: isSelected
-                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
-                : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+            color: isSelected ? colorScheme.primary.withAlpha(100) : colorScheme.outline.withAlpha(30),
           ),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: isSelected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.onBackground.withValues(alpha: 0.7),
+          style: textTheme.bodySmall?.copyWith(
+            color: isSelected ? colorScheme.primary : colorScheme.onSurface.withAlpha(70),
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
@@ -137,6 +135,8 @@ class _HomeViewContentState extends State<HomeViewContent> {
 
   Widget _buildHeroSection(BuildContext context, HomeState state) {
     final isRecording = state is RecordingInProgress || state is RecordingStarted;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 16, 24, 20),
@@ -146,31 +146,26 @@ class _HomeViewContentState extends State<HomeViewContent> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Theme.of(context).colorScheme.primary.withOpacity(0.1),
-            Theme.of(context).colorScheme.secondary.withOpacity(0.1),
-            Theme.of(context).colorScheme.tertiary.withOpacity(0.05),
+            colorScheme.primary.withAlpha(26),
+            colorScheme.secondary.withAlpha(26),
+            colorScheme.tertiary.withAlpha(13),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+        border: Border.all(color: colorScheme.outline.withAlpha(51)),
       ),
       child: Column(
         children: [
           // App title and subtitle
           Text(
             'AI Voice Memo',
-            style: Theme.of(context).textTheme.displayMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: Theme.of(context).colorScheme.onBackground,
-            ),
+            style: textTheme.displayMedium?.copyWith(fontWeight: FontWeight.w800, color: colorScheme.onSurface),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
             'Record, transcribe, and extract insights',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.onBackground.withOpacity(0.7)),
+            style: textTheme.titleMedium?.copyWith(color: colorScheme.onSurface.withOpacity(0.7)),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
@@ -182,9 +177,9 @@ class _HomeViewContentState extends State<HomeViewContent> {
             child: AdvancedAudioVisualizer(
               isRecording: isRecording,
               height: 80,
-              primaryColor: Theme.of(context).colorScheme.primary,
-              secondaryColor: Theme.of(context).colorScheme.secondary,
-              tertiaryColor: Theme.of(context).colorScheme.tertiary,
+              primaryColor: colorScheme.primary,
+              secondaryColor: colorScheme.secondary,
+              tertiaryColor: colorScheme.tertiary,
               mode: _currentMode,
             ),
           ),
@@ -194,9 +189,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
           if (!isRecording) ...[
             Text(
               'Tap the microphone to start recording',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onBackground.withValues(alpha: 0.6)),
+              style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface.withAlpha(60)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -219,6 +212,8 @@ class _HomeViewContentState extends State<HomeViewContent> {
   }
 
   Widget _buildStatusContent(BuildContext context, HomeState state) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     if (state is RecordingInProgress) {
       return Column(
         children: [
@@ -227,26 +222,20 @@ class _HomeViewContentState extends State<HomeViewContent> {
               Container(
                 width: 12,
                 height: 12,
-                decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: colorScheme.error, shape: BoxShape.circle),
               ),
               const SizedBox(width: 12),
-              Text(
-                'Recording in progress',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-              ),
+              Text('Recording in progress', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              Icon(Icons.timer_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+              Icon(Icons.timer_outlined, size: 20, color: colorScheme.primary),
               const SizedBox(width: 8),
               Text(
                 _formatDuration(state.recordingDuration),
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.primary),
               ),
             ],
           ),
@@ -259,7 +248,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: Colors.green.withAlpha(26), borderRadius: BorderRadius.circular(8)),
             child: const Icon(Icons.check_circle, color: Colors.green, size: 24),
           ),
           const SizedBox(width: 16),
@@ -269,46 +258,9 @@ class _HomeViewContentState extends State<HomeViewContent> {
               children: [
                 Text(
                   'Recording completed',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: Colors.green),
+                  style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: Colors.green),
                 ),
-                Text(
-                  'Duration: ${_formatDuration(state.recordingDuration)}',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (state is TranscriptionInProgress) {
-      return Row(
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            padding: const EdgeInsets.all(4),
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Transcribing audio...',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                Text('This may take a few moments', style: Theme.of(context).textTheme.bodyMedium),
+                Text('Duration: ${_formatDuration(state.recordingDuration)}', style: textTheme.bodyMedium),
               ],
             ),
           ),
@@ -322,10 +274,10 @@ class _HomeViewContentState extends State<HomeViewContent> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.error.withOpacity(0.1),
+              color: Theme.of(context).colorScheme.error.withAlpha(26),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 24),
+            child: Icon(Icons.error, color: Theme.of((context)).colorScheme.error, size: 24),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -333,13 +285,10 @@ class _HomeViewContentState extends State<HomeViewContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Recording error',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                  'Recording Error',
+                  style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.error),
                 ),
-                Text(state.errorMessage, style: Theme.of(context).textTheme.bodyMedium),
+                Text(state.errorMessage, style: textTheme.bodyMedium),
               ],
             ),
           ),
@@ -351,11 +300,13 @@ class _HomeViewContentState extends State<HomeViewContent> {
   }
 
   Widget _buildTranscriptionCard(BuildContext context, HomeState state) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Card(
         elevation: 6,
-        shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+        shadowColor: colorScheme.primary.withAlpha(13),
         child: Padding(
           padding: const EdgeInsets.all(28),
           child: Column(
@@ -367,18 +318,13 @@ class _HomeViewContentState extends State<HomeViewContent> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary],
-                      ),
+                      gradient: LinearGradient(colors: [colorScheme.primary, colorScheme.secondary]),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(Icons.transcribe, color: Colors.white, size: 20),
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    'Transcription',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                  ),
+                  Text('Transcription', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                   const Spacer(),
                   _buildActionButtons(context, state.transcriptionText!),
                 ],
@@ -390,14 +336,11 @@ class _HomeViewContentState extends State<HomeViewContent> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
+                  color: colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+                  border: Border.all(color: colorScheme.outline.withAlpha(39)),
                 ),
-                child: Text(
-                  state.transcriptionText!,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6),
-                ),
+                child: Text(state.transcriptionText!, style: textTheme.bodyLarge?.copyWith(height: 1.6)),
               ),
 
               // Keywords
@@ -405,14 +348,11 @@ class _HomeViewContentState extends State<HomeViewContent> {
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    Icon(Icons.label_outline, size: 18, color: Theme.of(context).colorScheme.tertiary),
+                    Icon(Icons.label_outline, size: 18, color: colorScheme.tertiary),
                     const SizedBox(width: 8),
                     Text(
                       'Keywords',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.tertiary,
-                      ),
+                      style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.tertiary),
                     ),
                   ],
                 ),
@@ -438,14 +378,14 @@ class _HomeViewContentState extends State<HomeViewContent> {
           onPressed: () => _copyToClipboard(context, text),
           icon: const Icon(Icons.copy_outlined, size: 18),
           tooltip: 'Copy',
-          style: IconButton.styleFrom(side: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.3))),
+          style: IconButton.styleFrom(side: BorderSide(color: Theme.of(context).colorScheme.outline.withAlpha(39))),
         ),
         const SizedBox(width: 8),
         IconButton.outlined(
           onPressed: () => _shareTranscription(context, text),
           icon: const Icon(Icons.share_outlined, size: 18),
           tooltip: 'Share',
-          style: IconButton.styleFrom(side: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.3))),
+          style: IconButton.styleFrom(side: BorderSide(color: Theme.of(context).colorScheme.outline.withAlpha(39))),
         ),
       ],
     );
@@ -457,12 +397,12 @@ class _HomeViewContentState extends State<HomeViewContent> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Theme.of(context).colorScheme.tertiary.withOpacity(0.1),
-            Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+            Theme.of(context).colorScheme.tertiary.withAlpha(10),
+            Theme.of(context).colorScheme.secondary.withAlpha(5),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Theme.of(context).colorScheme.tertiary.withOpacity(0.3)),
+        border: Border.all(color: Theme.of(context).colorScheme.tertiary.withAlpha(39)),
       ),
       child: Text(
         keyword,
@@ -491,7 +431,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.primary.withAlpha(10),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -508,9 +448,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
             onPressed: () => context.read<HomeCubit>().loadRecordings(),
             icon: const Icon(Icons.refresh, size: 20),
             tooltip: 'Refresh',
-            style: IconButton.styleFrom(
-              side: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
-            ),
+            style: IconButton.styleFrom(side: BorderSide(color: Theme.of(context).colorScheme.outline.withAlpha(39))),
           ),
         ],
       ),
@@ -553,9 +491,9 @@ class _HomeViewContentState extends State<HomeViewContent> {
                   const SizedBox(height: 16),
                   Text(
                     'No recordings yet',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onBackground.withOpacity(0.7),
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -582,12 +520,14 @@ class _HomeViewContentState extends State<HomeViewContent> {
 
   Widget _buildRecordingTile(BuildContext context, VoiceMemo recording, HomeState state) {
     final isPlaying = state is PlaybackInProgress && state.filePath == recording.filePath;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
       child: Card(
         elevation: 3,
-        shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+        shadowColor: colorScheme.primary.withAlpha(8),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -602,11 +542,8 @@ class _HomeViewContentState extends State<HomeViewContent> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: isPlaying
-                            ? [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary]
-                            : [
-                                Theme.of(context).colorScheme.outline.withOpacity(0.5),
-                                Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                              ],
+                            ? [colorScheme.primary, colorScheme.secondary]
+                            : [colorScheme.outline.withAlpha(51), colorScheme.outline.withAlpha(39)],
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -630,14 +567,14 @@ class _HomeViewContentState extends State<HomeViewContent> {
                             Expanded(
                               child: Text(
                                 recording.title,
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                               ),
                             ),
                             if (recording.isTranscribed)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.1),
+                                  color: Colors.green.withAlpha(26),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
@@ -647,9 +584,10 @@ class _HomeViewContentState extends State<HomeViewContent> {
                                     const SizedBox(width: 4),
                                     Text(
                                       'Transcribed',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall?.copyWith(color: Colors.green, fontWeight: FontWeight.w500),
+                                      style: textTheme.bodySmall?.copyWith(
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -659,14 +597,11 @@ class _HomeViewContentState extends State<HomeViewContent> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Text(
-                              _formatFileSize(recording.fileSizeBytes),
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
+                            Text(_formatFileSize(recording.fileSizeBytes), style: textTheme.bodySmall),
                             const SizedBox(width: 8),
-                            Text('•', style: Theme.of(context).textTheme.bodySmall),
+                            Text('•', style: textTheme.bodySmall),
                             const SizedBox(width: 8),
-                            Text(_formatDateTime(recording.createdAt), style: Theme.of(context).textTheme.bodySmall),
+                            Text(_formatDateTime(recording.createdAt), style: textTheme.bodySmall),
                           ],
                         ),
                       ],
@@ -674,11 +609,9 @@ class _HomeViewContentState extends State<HomeViewContent> {
                   ),
                   IconButton.outlined(
                     onPressed: () => _showDeleteDialog(context, recording),
-                    icon: Icon(Icons.delete_outline, size: 18, color: Theme.of(context).colorScheme.error),
+                    icon: Icon(Icons.delete_outline, size: 18, color: colorScheme.error),
                     tooltip: 'Delete',
-                    style: IconButton.styleFrom(
-                      side: BorderSide(color: Theme.of(context).colorScheme.error.withOpacity(0.3)),
-                    ),
+                    style: IconButton.styleFrom(side: BorderSide(color: colorScheme.error.withAlpha(178))),
                   ),
                 ],
               ),
@@ -692,7 +625,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
                       onPressed: isPlaying ? null : () => context.read<HomeCubit>().playRecording(recording.filePath),
                       icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
                       label: Text(isPlaying ? 'Playing...' : 'Play'),
-                      style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
+                      style: FilledButton.styleFrom(backgroundColor: colorScheme.primary),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -722,16 +655,16 @@ class _HomeViewContentState extends State<HomeViewContent> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
+                    color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+                    border: Border.all(color: colorScheme.outline.withAlpha(39)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         recording.transcription!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+                        style: textTheme.bodyMedium?.copyWith(height: 1.4),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -746,13 +679,13 @@ class _HomeViewContentState extends State<HomeViewContent> {
                                 (keyword) => Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.tertiary.withOpacity(0.1),
+                                    color: colorScheme.tertiary.withAlpha(10),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     keyword,
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.tertiary,
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.tertiary,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -784,28 +717,27 @@ class _HomeViewContentState extends State<HomeViewContent> {
               end: Alignment.bottomRight,
               colors: isRecording
                   ? [
-                      Theme.of(context).colorScheme.error,
-                      Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
-                      Theme.of(context).colorScheme.error.withValues(alpha: 0.9),
+                      Theme.of(context).colorScheme.error.withAlpha(80),
+                      Theme.of(context).colorScheme.error.withAlpha(90),
                     ]
                   : [
                       Theme.of(context).colorScheme.primary,
                       Theme.of(context).colorScheme.secondary,
-                      Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.8),
+                      Theme.of(context).colorScheme.tertiary.withAlpha(80),
                     ],
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
                 color: (isRecording ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary)
-                    .withValues(alpha: 0.4),
+                    .withAlpha(40),
                 blurRadius: 12,
                 spreadRadius: 2,
                 offset: const Offset(0, 6),
               ),
               BoxShadow(
                 color: (isRecording ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary)
-                    .withValues(alpha: 0.2),
+                    .withAlpha(20),
                 blurRadius: 24,
                 spreadRadius: 4,
                 offset: const Offset(0, 12),
@@ -923,5 +855,101 @@ class _HomeViewContentState extends State<HomeViewContent> {
     } else {
       return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     }
+  }
+
+  Widget _buildTranscriptionProgressCard(BuildContext context, HomeState state) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: Card(
+        elevation: 6,
+        shadowColor: colorScheme.primary.withAlpha(13),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Transcribing Audio...', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Converting speech to text using AI',
+                      style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withOpacity(0.7)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTranscriptionErrorCard(BuildContext context, HomeState state) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: Card(
+        elevation: 6,
+        shadowColor: colorScheme.error.withAlpha(13),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: colorScheme.error.withAlpha(26),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.error_outline, color: colorScheme.error, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('Transcription Failed', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colorScheme.error.withAlpha(13),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colorScheme.error.withAlpha(39)),
+                ),
+                child: Text(
+                  state.transcriptionError ?? 'Unknown error occurred',
+                  style: textTheme.bodyMedium?.copyWith(color: colorScheme.error),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'This might be due to audio format compatibility or missing native libraries. Check the debug logs for more details.',
+                style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurface.withOpacity(0.6)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

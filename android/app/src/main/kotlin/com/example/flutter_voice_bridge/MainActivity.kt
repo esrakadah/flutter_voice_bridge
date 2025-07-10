@@ -96,7 +96,7 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
             throw Exception("Recording already in progress")
         }
 
-        // Create audio file path
+        // Create audio file path (using WAV format for Whisper compatibility)
         val audioDir = File(filesDir, "audio")
         if (!audioDir.exists()) {
             audioDir.mkdirs()
@@ -105,7 +105,7 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
         val fileName = "voice_memo_${System.currentTimeMillis()}.m4a"
         audioFilePath = File(audioDir, fileName).absolutePath
 
-        // Initialize MediaRecorder
+        // Initialize MediaRecorder (WAV format for Whisper compatibility)
         mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(this)
         } else {
@@ -115,14 +115,17 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
 
         mediaRecorder?.apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
-            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)     // Use M4A format (will be converted by AudioConverterService)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)        // AAC encoder for good quality
+            setAudioSamplingRate(16000)  // 16kHz optimal for speech recognition
+            setAudioChannels(1)          // Mono for speech
             setOutputFile(audioFilePath)
             
             try {
                 prepare()
                 start()
                 isRecording = true
+                Log.d(TAG, "✅ [Android] Recording started (will be converted to WAV for Whisper)")
             } catch (e: IOException) {
                 throw Exception("Failed to start recording: ${e.message}")
             }

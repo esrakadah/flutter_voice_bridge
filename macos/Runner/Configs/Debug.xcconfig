@@ -1,2 +1,5 @@
 #include "../../Flutter/Flutter-Debug.xcconfig"
 #include "Warnings.xcconfig"
+
+// Set macOS deployment target to support all dependencies
+MACOSX_DEPLOYMENT_TARGET = 10.15

@@ -2,13 +2,15 @@
 // This will use MLKit, Whisper via FFI, or other AI transcription services
 
 import 'dart:developer' as developer;
-import 'whisper_ffi_service.dart';
+import 'dart:async';
+
+import 'package:flutter_voice_bridge/core/transcription/whisper_ffi_service.dart';
 
 abstract class TranscriptionService {
+  Future<void> initialize([String? modelPath]);
   Future<String> transcribeAudio(String audioFilePath);
   Future<List<String>> extractKeywords(String text);
   Future<bool> isInitialized();
-  Future<void> initialize();
   Future<void> dispose();
 }
 
@@ -33,9 +35,7 @@ class WhisperTranscriptionService implements TranscriptionService {
       // Initialize FFI service
       await _whisperFFI.initialize();
 
-      // Initialize model (this will be done lazily for now to avoid blocking startup)
-      // await _whisperFFI.initializeModel(_modelPath!);
-
+      // Model is loaded lazily on first transcription
       developer.log('✅ [Transcription] Service initialized successfully', name: _logName);
     } catch (e) {
       developer.log('❌ [Transcription] Initialization failed: $e', name: _logName, error: e);
@@ -58,8 +58,11 @@ class WhisperTranscriptionService implements TranscriptionService {
         await _whisperFFI.initializeModel(_modelPath!);
       }
 
-      // Perform transcription
-      final transcription = await _whisperFFI.transcribeAudio(audioFilePath);
+      // Perform transcription directly on the audio file
+      // iOS and macOS now record in WAV format compatible with Whisper
+      // Android M4A files will need conversion in a future update
+      developer.log('▶️ [Transcription] Performing transcription on: $audioFilePath', name: _logName);
+      final String transcription = await _whisperFFI.transcribeAudio(audioFilePath);
 
       developer.log('✅ [Transcription] Transcription completed: ${transcription.length} characters', name: _logName);
 
@@ -247,6 +250,3 @@ class MockTranscriptionService implements TranscriptionService {
     _isInitialized = false;
   }
 }
-
-// Legacy class name for backward compatibility
-typedef TranscriptionServiceImpl = WhisperTranscriptionService;

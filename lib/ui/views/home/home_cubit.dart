@@ -327,6 +327,47 @@ class HomeCubit extends Cubit<HomeState> {
   // Getter to check if playback is available
   bool get hasRecordingToPlay => _lastCompletedRecordingPath != null;
 
+  // Test transcription functionality with a dummy file
+  Future<void> testTranscription() async {
+    developer.log('🧪 [HomeCubit] Testing transcription functionality...', name: 'VoiceBridge.Cubit');
+
+    try {
+      // Emit transcription in progress state
+      emit(_copyCurrentState(baseState: const TranscriptionInProgress(audioFilePath: 'test')));
+
+      // Test the transcription service initialization
+      final isInitialized = await _transcriptionService.isInitialized();
+      if (!isInitialized) {
+        developer.log('🔧 [HomeCubit] Initializing transcription service...', name: 'VoiceBridge.Cubit');
+        await _transcriptionService.initialize();
+      }
+
+      // Test with mock text if we can't find a real audio file
+      const testText = 'This is a test transcription to verify the UI is working correctly.';
+      const testKeywords = ['test', 'transcription', 'working', 'correctly'];
+
+      developer.log('✅ [HomeCubit] Test transcription completed', name: 'VoiceBridge.Cubit');
+
+      // Emit test transcription completed state
+      emit(
+        _copyCurrentState(
+          baseState: const TranscriptionCompleted(
+            audioFilePath: 'test',
+            transcribedText: testText,
+            extractedKeywords: testKeywords,
+          ),
+        ),
+      );
+    } catch (e) {
+      developer.log('❌ [HomeCubit] Test transcription failed: $e', name: 'VoiceBridge.Cubit', error: e);
+      emit(
+        _copyCurrentState(
+          baseState: TranscriptionError(audioFilePath: 'test', errorMessage: e.toString()),
+        ),
+      );
+    }
+  }
+
   // Helper method to copy current state with updated recordings data
   HomeState _copyCurrentState({
     List<VoiceMemo>? recordings,

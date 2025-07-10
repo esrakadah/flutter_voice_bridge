@@ -92,19 +92,29 @@ import AVFoundation
       try audioSession.setActive(true)
       NSLog("✅ [iOS] Audio session configured successfully")
       
-      // Setup recording settings
+      // Setup recording settings (WAV format for Whisper compatibility)
       let settings = [
-        AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-        AVSampleRateKey: 44100,
-        AVNumberOfChannelsKey: 1,
-        AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        AVFormatIDKey: Int(kAudioFormatLinearPCM),
+        AVSampleRateKey: 16000.0,  // 16kHz is optimal for speech recognition
+        AVNumberOfChannelsKey: 1,   // Mono for speech
+        AVLinearPCMBitDepthKey: 16, // 16-bit depth
+        AVLinearPCMIsFloatKey: false,
+        AVLinearPCMIsBigEndianKey: false
       ]
       NSLog("🔧 [iOS] Audio settings configured: \(settings)")
       
-      // Generate file path
+      // Generate file path (using WAV format for Whisper compatibility)
       let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-      let timestamp = Int(Date().timeIntervalSince1970)
-      let audioFilename = documentsPath.appendingPathComponent("voice_memo_\(timestamp).m4a")
+      let audioDir = documentsPath.appendingPathComponent("audio")
+      
+      // Create audio directory if it doesn't exist
+      if !FileManager.default.fileExists(atPath: audioDir.path) {
+        try FileManager.default.createDirectory(at: audioDir, withIntermediateDirectories: true, attributes: nil)
+        NSLog("✅ [iOS] Audio directory created")
+      }
+      
+      let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
+      let audioFilename = audioDir.appendingPathComponent("voice_memo_\(timestamp).wav")
       
       NSLog("📁 [iOS] Generated file path: \(audioFilename.path)")
       NSLog("📁 [iOS] Documents directory: \(documentsPath.path)")

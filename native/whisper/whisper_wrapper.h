@@ -1,6 +1,8 @@
 #ifndef WHISPER_WRAPPER_H
 #define WHISPER_WRAPPER_H
 
+#include "whisper.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

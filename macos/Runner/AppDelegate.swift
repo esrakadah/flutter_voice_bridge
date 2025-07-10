@@ -91,18 +91,20 @@ class AppDelegate: FlutterAppDelegate {
                 print("✅ [macOS] Audio directory already exists")
             }
             
-            // Create audio file path
-            let fileName = "voice_memo_\(Int64(Date().timeIntervalSince1970 * 1000)).m4a"
+            // Create audio file path (using WAV format for Whisper compatibility)
+            let fileName = "voice_memo_\(Int64(Date().timeIntervalSince1970 * 1000)).wav"
             let audioFileURL = audioDir.appendingPathComponent(fileName)
             audioFilePath = audioFileURL.path
             print("🎤 [macOS] Audio file path: \(audioFilePath ?? "nil")")
             
-            // Set recording settings
+            // Set recording settings (WAV format for Whisper compatibility)
             let settings: [String: Any] = [
-                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-                AVSampleRateKey: 44100.0,
-                AVNumberOfChannelsKey: 1,
-                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+                AVFormatIDKey: Int(kAudioFormatLinearPCM),
+                AVSampleRateKey: 16000.0,  // 16kHz is optimal for speech recognition
+                AVNumberOfChannelsKey: 1,   // Mono for speech
+                AVLinearPCMBitDepthKey: 16, // 16-bit depth
+                AVLinearPCMIsFloatKey: false,
+                AVLinearPCMIsBigEndianKey: false
             ]
             print("🎤 [macOS] Recording settings: \(settings)")
             
