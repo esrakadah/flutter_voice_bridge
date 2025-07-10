@@ -80,7 +80,9 @@ class WhisperTranscriptionService implements TranscriptionService {
     try {
       developer.log('🔍 [Transcription] Extracting keywords from text: ${text.length} characters', name: _logName);
 
+      // Handle null or empty text
       if (text.trim().isEmpty) {
+        developer.log('⚠️ [Transcription] Empty text provided for keyword extraction', name: _logName);
         return [];
       }
 
@@ -89,6 +91,7 @@ class WhisperTranscriptionService implements TranscriptionService {
           .toLowerCase()
           .replaceAll(RegExp(r'[^\w\s]'), '') // Remove punctuation
           .split(RegExp(r'\s+')) // Split by whitespace
+          .where((word) => word.isNotEmpty) // Filter empty words
           .where((word) => word.length > 3) // Filter short words
           .where((word) => !_stopWords.contains(word)) // Filter stop words
           .toSet() // Remove duplicates
@@ -105,7 +108,7 @@ class WhisperTranscriptionService implements TranscriptionService {
       return keywords;
     } catch (e) {
       developer.log('❌ [Transcription] Keyword extraction failed: $e', name: _logName, error: e);
-      return [];
+      return []; // Return empty list instead of throwing
     }
   }
 

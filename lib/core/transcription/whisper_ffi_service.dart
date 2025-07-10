@@ -108,11 +108,24 @@ class WhisperFFIService {
     try {
       developer.log('🎵 [WhisperFFI] Transcribing audio: $audioFilePath', name: _logName);
 
+      // Validate input parameters
+      if (audioFilePath.isEmpty) {
+        throw ArgumentError('Audio file path cannot be empty');
+      }
+
       // Check if audio file exists
       final audioFile = File(audioFilePath);
       if (!await audioFile.exists()) {
         throw FileSystemException('Audio file not found', audioFilePath);
       }
+
+      // Check file size (0 bytes indicates a problem)
+      final fileSize = await audioFile.length();
+      if (fileSize == 0) {
+        throw Exception('Audio file is empty (0 bytes)');
+      }
+
+      developer.log('📊 [WhisperFFI] Audio file size: $fileSize bytes', name: _logName);
 
       // Convert path to native string
       final audioPathPtr = audioFilePath.toNativeUtf8();
@@ -120,14 +133,28 @@ class WhisperFFIService {
 
       try {
         // Call native transcription function
+        developer.log('🔄 [WhisperFFI] Calling native transcribe function...', name: _logName);
         resultPtr = _whisperTranscribe(_whisperContext!, audioPathPtr);
 
         if (resultPtr == nullptr) {
-          throw Exception('Transcription failed - null result');
+          throw Exception(
+            'Transcription failed - native function returned null result. '
+            'This could indicate:\n'
+            '• Audio format not supported by Whisper\n'
+            '• Insufficient memory\n'
+            '• Model initialization issue\n'
+            '• Silent audio with no speech',
+          );
         }
 
         // Convert result to Dart string
         final transcription = resultPtr.toDartString();
+
+        // Validate the transcription result
+        if (transcription.isEmpty) {
+          developer.log('⚠️ [WhisperFFI] Transcription returned empty string', name: _logName);
+          return ''; // Return empty string instead of throwing
+        }
 
         developer.log('✅ [WhisperFFI] Transcription completed: ${transcription.length} characters', name: _logName);
         developer.log(
@@ -135,7 +162,7 @@ class WhisperFFIService {
           name: _logName,
         );
 
-        return transcription;
+        return transcription.trim(); // Trim whitespace
       } finally {
         // Free native strings
         malloc.free(audioPathPtr);

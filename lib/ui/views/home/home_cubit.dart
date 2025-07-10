@@ -113,11 +113,22 @@ class HomeCubit extends Cubit<HomeState> {
       emit(_copyCurrentState(isLoadingRecordings: true, recordingsError: null));
 
       // Load recordings from service
+      developer.log('🔄 [HomeCubit] Calling voiceMemoService.listRecordings...', name: 'VoiceBridge.Cubit');
       final List<VoiceMemo> recordings = await _voiceMemoService.listRecordings();
       developer.log('✅ [HomeCubit] Loaded ${recordings.length} recordings', name: 'VoiceBridge.Cubit');
 
+      // Log each recording for debugging
+      for (int i = 0; i < recordings.length; i++) {
+        final recording = recordings[i];
+        developer.log(
+          '📼 [HomeCubit] Recording $i: ${recording.title} (${recording.filePath})',
+          name: 'VoiceBridge.Cubit',
+        );
+      }
+
       // Emit current state with recordings
       emit(_copyCurrentState(recordings: recordings, isLoadingRecordings: false, recordingsError: null));
+      developer.log('📡 [HomeCubit] State updated with ${recordings.length} recordings', name: 'VoiceBridge.Cubit');
     } catch (e) {
       developer.log('❌ [HomeCubit] Error loading recordings: $e', name: 'VoiceBridge.Cubit', error: e);
       emit(_copyCurrentState(isLoadingRecordings: false, recordingsError: e.toString()));
@@ -225,8 +236,17 @@ class HomeCubit extends Cubit<HomeState> {
       // Reload recordings list to include the new recording
       await loadRecordings();
 
-      // Start transcription of the recorded audio
-      await transcribeRecording(finalPath);
+      // Start transcription of the recorded audio (optional - don't fail recording if this fails)
+      try {
+        developer.log('🤖 [HomeCubit] Starting automatic transcription...', name: 'VoiceBridge.Cubit');
+        await transcribeRecording(finalPath);
+      } catch (e) {
+        developer.log(
+          '⚠️ [HomeCubit] Automatic transcription failed, but recording saved successfully: $e',
+          name: 'VoiceBridge.Cubit',
+        );
+        // Don't rethrow - recording is saved, transcription can be retried manually
+      }
     } catch (e) {
       developer.log('❌ [HomeCubit] Error stopping recording: $e', name: 'VoiceBridge.Cubit', error: e);
       _stopRecordingTimer();
@@ -239,6 +259,11 @@ class HomeCubit extends Cubit<HomeState> {
     developer.log('🤖 [HomeCubit] Starting transcription for: $audioFilePath', name: 'VoiceBridge.Cubit');
 
     try {
+      // Validate input
+      if (audioFilePath.isEmpty) {
+        throw ArgumentError('Audio file path cannot be empty');
+      }
+
       // Emit transcription in progress state
       emit(_copyCurrentState(baseState: TranscriptionInProgress(audioFilePath: audioFilePath)));
       developer.log('📡 [HomeCubit] State changed to TranscriptionInProgress', name: 'VoiceBridge.Cubit');
@@ -257,17 +282,35 @@ class HomeCubit extends Cubit<HomeState> {
         developer.log('✅ [HomeCubit] Transcription service already initialized', name: 'VoiceBridge.Cubit');
       }
 
-      // Perform transcription
+      // Perform transcription with null safety
       developer.log('🎵 [HomeCubit] Starting audio transcription...', name: 'VoiceBridge.Cubit');
       final transcribedText = await _transcriptionService.transcribeAudio(audioFilePath);
+
+      // Validate transcription result
+      if (transcribedText.isEmpty) {
+        developer.log('⚠️ [HomeCubit] Transcription returned empty text', name: 'VoiceBridge.Cubit');
+        throw Exception(
+          'Transcription returned empty result. This might be due to:\n'
+          '• Silent audio or no speech detected\n'
+          '• Audio format compatibility issues\n'
+          '• Whisper model initialization problems',
+        );
+      }
+
       developer.log(
         '✅ [HomeCubit] Transcription completed: ${transcribedText.length} characters',
         name: 'VoiceBridge.Cubit',
       );
 
-      // Extract keywords
-      final keywords = await _transcriptionService.extractKeywords(transcribedText);
-      developer.log('🔍 [HomeCubit] Keywords extracted: ${keywords.join(', ')}', name: 'VoiceBridge.Cubit');
+      // Extract keywords with null safety
+      List<String> keywords = [];
+      try {
+        keywords = await _transcriptionService.extractKeywords(transcribedText);
+        developer.log('🔍 [HomeCubit] Keywords extracted: ${keywords.join(', ')}', name: 'VoiceBridge.Cubit');
+      } catch (e) {
+        developer.log('⚠️ [HomeCubit] Keyword extraction failed: $e', name: 'VoiceBridge.Cubit');
+        // Continue with empty keywords list instead of failing the whole transcription
+      }
 
       // Emit transcription completed state
       emit(
@@ -281,16 +324,22 @@ class HomeCubit extends Cubit<HomeState> {
       );
       developer.log('📡 [HomeCubit] State changed to TranscriptionCompleted', name: 'VoiceBridge.Cubit');
 
-      // Log the results for debugging (no UI yet)
+      // Log the results for debugging
       developer.log('📝 [HomeCubit] TRANSCRIPTION RESULT:', name: 'VoiceBridge.Transcription');
       developer.log('📁 [HomeCubit] File: $audioFilePath', name: 'VoiceBridge.Transcription');
       developer.log('📝 [HomeCubit] Text: $transcribedText', name: 'VoiceBridge.Transcription');
       developer.log('🏷️ [HomeCubit] Keywords: ${keywords.join(', ')}', name: 'VoiceBridge.Transcription');
     } catch (e) {
       developer.log('❌ [HomeCubit] Error during transcription: $e', name: 'VoiceBridge.Cubit', error: e);
+      developer.log('❌ [HomeCubit] Error type: ${e.runtimeType}', name: 'VoiceBridge.Cubit');
+      developer.log('❌ [HomeCubit] Stack trace: ${StackTrace.current}', name: 'VoiceBridge.Cubit');
+
       emit(
         _copyCurrentState(
-          baseState: TranscriptionError(audioFilePath: audioFilePath, errorMessage: e.toString()),
+          baseState: TranscriptionError(
+            audioFilePath: audioFilePath,
+            errorMessage: 'Transcription failed: ${e.toString()}',
+          ),
         ),
       );
     }
@@ -322,6 +371,8 @@ class HomeCubit extends Cubit<HomeState> {
 
   Future<void> _createVoiceMemo(String filePath) async {
     try {
+      developer.log('📝 [HomeCubit] Creating voice memo for file: $filePath', name: 'VoiceBridge.Cubit');
+
       final VoiceMemo voiceMemo = VoiceMemo(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         filePath: filePath,
@@ -334,12 +385,12 @@ class HomeCubit extends Cubit<HomeState> {
         status: VoiceMemoStatus.completed,
       );
 
+      developer.log('💾 [HomeCubit] Calling voiceMemoService.saveVoiceMemo...', name: 'VoiceBridge.Cubit');
       await _voiceMemoService.saveVoiceMemo(voiceMemo);
+      developer.log('✅ [HomeCubit] Voice memo saved successfully', name: 'VoiceBridge.Cubit');
     } catch (e) {
       // Log error but don't fail the recording completion
-      // In production, this would use a proper logging service
-      // ignore: avoid_print
-      print('Error saving voice memo: $e');
+      developer.log('❌ [HomeCubit] Error saving voice memo: $e', name: 'VoiceBridge.Cubit', error: e);
     }
   }
 

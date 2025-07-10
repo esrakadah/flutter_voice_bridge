@@ -310,6 +310,13 @@ class _HomeViewContentState extends State<HomeViewContent> {
   Widget _buildTranscriptionCard(BuildContext context, HomeState state) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+
+    // Ensure we have valid transcription text before building the card
+    final transcriptionText = state.transcriptionText;
+    if (transcriptionText == null || transcriptionText.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
       child: Card(
@@ -334,7 +341,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
                   const SizedBox(width: 12),
                   Text('Transcription', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                   const Spacer(),
-                  _buildActionButtons(context, state.transcriptionText!),
+                  _buildActionButtons(context, transcriptionText),
                 ],
               ),
               const SizedBox(height: 20),
@@ -348,7 +355,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: colorScheme.outline.withAlpha(39)),
                 ),
-                child: Text(state.transcriptionText!, style: textTheme.bodyLarge?.copyWith(height: 1.6)),
+                child: Text(transcriptionText, style: textTheme.bodyLarge?.copyWith(height: 1.6)),
               ),
 
               // Keywords
@@ -379,6 +386,11 @@ class _HomeViewContentState extends State<HomeViewContent> {
   }
 
   Widget _buildActionButtons(BuildContext context, String text) {
+    // Add null safety check
+    if (text.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -648,7 +660,9 @@ class _HomeViewContentState extends State<HomeViewContent> {
                   else
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () => context.read<HomeCubit>().transcribeRecording(recording.filePath),
+                        onPressed: recording.filePath.isNotEmpty
+                            ? () => context.read<HomeCubit>().transcribeRecording(recording.filePath)
+                            : null,
                         icon: const Icon(Icons.transcribe),
                         label: const Text('Transcribe'),
                       ),
@@ -870,7 +884,44 @@ class _HomeViewContentState extends State<HomeViewContent> {
     final state = context.read<HomeCubit>().state;
     if (state.recordings.isNotEmpty) {
       final latestRecording = state.recordings.first;
-      context.read<HomeCubit>().transcribeRecording(latestRecording.filePath);
+      // Add null safety check for file path
+      if (latestRecording.filePath.isNotEmpty) {
+        context.read<HomeCubit>().transcribeRecording(latestRecording.filePath);
+      } else {
+        // Show error if no valid file path
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.error, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Text('No valid recording file found to transcribe'),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } else {
+      // Show error if no recordings available
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white, size: 20),
+              SizedBox(width: 12),
+              Text('No recordings available to transcribe'),
+            ],
+          ),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
     }
   }
 

@@ -8,7 +8,8 @@ set -e
 echo "🔧 [Build] Copying native libraries to app bundle..."
 
 # Paths
-PROJECT_ROOT="$SRCROOT"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="${SRCROOT:-$(dirname "$SCRIPT_DIR")}"
 RUNNER_DIR="$PROJECT_ROOT/macos/Runner"
 NATIVE_DIR="$PROJECT_ROOT/native/whisper/whisper.cpp/build"
 TARGET_BUILD_DIR="${TARGET_BUILD_DIR:-$PROJECT_ROOT/build/macos/Build/Products/Debug}"
@@ -46,6 +47,15 @@ cp "$DYLIB_SOURCE" "$FRAMEWORKS_DIR/"
 cp "$DYLIB_SOURCE" "$MACOS_DIR/"
 chmod 755 "$FRAMEWORKS_DIR/libwhisper_ffi.dylib"
 chmod 755 "$MACOS_DIR/libwhisper_ffi.dylib"
+
+# Fix rpath in the copied library to point to app bundle Frameworks
+echo "🔧 [Build] Fixing rpath for app bundle..."
+install_name_tool -delete_rpath "$NATIVE_DIR/src" "$FRAMEWORKS_DIR/libwhisper_ffi.dylib" 2>/dev/null || true
+install_name_tool -delete_rpath "$NATIVE_DIR/ggml/src" "$FRAMEWORKS_DIR/libwhisper_ffi.dylib" 2>/dev/null || true
+install_name_tool -delete_rpath "$NATIVE_DIR/ggml/src/ggml-blas" "$FRAMEWORKS_DIR/libwhisper_ffi.dylib" 2>/dev/null || true
+install_name_tool -delete_rpath "$NATIVE_DIR/ggml/src/ggml-metal" "$FRAMEWORKS_DIR/libwhisper_ffi.dylib" 2>/dev/null || true
+install_name_tool -add_rpath "@executable_path/../Frameworks" "$FRAMEWORKS_DIR/libwhisper_ffi.dylib" 2>/dev/null || true
+echo "✅ [Build] rpath fixed for app bundle"
 
 # Copy Whisper dependencies
 echo "📦 [Build] Copying Whisper dependencies..."

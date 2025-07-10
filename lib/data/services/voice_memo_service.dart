@@ -35,7 +35,19 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
   @override
   Future<String> saveVoiceMemo(VoiceMemo voiceMemo) async {
     // TODO: Implement database saving (currently just file-based)
-    developer.log('📄 [VoiceMemoService] Memo saved (file-based): ${voiceMemo.title}', name: 'VoiceBridge.Service');
+    developer.log('📄 [VoiceMemoService] Saving memo: ${voiceMemo.title}', name: 'VoiceBridge.Service');
+    developer.log('📁 [VoiceMemoService] File path: ${voiceMemo.filePath}', name: 'VoiceBridge.Service');
+    developer.log('🆔 [VoiceMemoService] ID: ${voiceMemo.id}', name: 'VoiceBridge.Service');
+    developer.log('📅 [VoiceMemoService] Created at: ${voiceMemo.createdAt}', name: 'VoiceBridge.Service');
+
+    // Verify the file actually exists
+    final File file = File(voiceMemo.filePath);
+    if (await file.exists()) {
+      developer.log('✅ [VoiceMemoService] File exists, memo saved successfully', name: 'VoiceBridge.Service');
+    } else {
+      developer.log('❌ [VoiceMemoService] WARNING: File does not exist!', name: 'VoiceBridge.Service');
+    }
+
     return voiceMemo.id;
   }
 
@@ -75,14 +87,17 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
         return [];
       }
 
-      // List all .m4a files in the audio directory
+      // List all audio files (.m4a and .wav) in the audio directory
       final List<FileSystemEntity> entities = audioDir.listSync();
       final List<File> audioFiles = entities
-          .where((entity) => entity is File && entity.path.endsWith('.m4a'))
+          .where((entity) => entity is File && (entity.path.endsWith('.m4a') || entity.path.endsWith('.wav')))
           .cast<File>()
           .toList();
 
-      developer.log('🎵 [VoiceMemoService] Found ${audioFiles.length} .m4a files', name: 'VoiceBridge.Service');
+      developer.log(
+        '🎵 [VoiceMemoService] Found ${audioFiles.length} audio files (.m4a/.wav)',
+        name: 'VoiceBridge.Service',
+      );
 
       // Convert files to VoiceMemo objects
       final List<VoiceMemo> recordings = [];
@@ -134,11 +149,13 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
     final FileStat stat = await file.stat();
     final String fileName = file.path.split('/').last;
 
-    // Extract timestamp from filename (voice_memo_1234567890123.m4a)
+    // Extract timestamp from filename (voice_memo_1234567890123.m4a or .wav)
     DateTime createdAt = stat.modified;
     if (fileName.contains('voice_memo_')) {
       try {
-        final String timestampStr = fileName.replaceAll('voice_memo_', '').replaceAll('.m4a', '');
+        String timestampStr = fileName.replaceAll('voice_memo_', '');
+        // Remove file extension (.m4a or .wav)
+        timestampStr = timestampStr.replaceAll('.m4a', '').replaceAll('.wav', '');
         final int timestamp = int.parse(timestampStr);
         // The timestamp in filename is already in milliseconds
         createdAt = DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -156,7 +173,7 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
     final String title = _generateFriendlyTitle(createdAt);
 
     return VoiceMemo(
-      id: fileName.replaceAll('.m4a', ''),
+      id: fileName.replaceAll('.m4a', '').replaceAll('.wav', ''),
       filePath: file.path,
       title: title,
       keywords: const [],
