@@ -9,7 +9,7 @@ This project follows **Clean Architecture** principles and demonstrates **real-w
 ## ✨ Features
 
 - **✅ Cross-Platform Audio Recording**: High-quality audio capture on iOS, macOS, and Android with optimized formats.
-- **✅ Local Audio Playback**: Play recorded memos directly within the app across all platforms.
+- **✅ Local Audio Playbook**: Play recorded memos directly within the app across all platforms.
 - **✅ Offline Speech-to-Text**: **WORKING** on-device transcription using `Whisper.cpp` via Dart FFI. No internet connection required.
 - **✅ Real-time Audio Visualization**: Custom waveform, spectrum, and particle visualizations during recording.
 - **✅ Keyword Extraction**: Automatic keyword detection from transcribed text with intelligent filtering.
@@ -35,7 +35,36 @@ For detailed feature implementation status and checklist, see [**Feature Status 
 
 ## 🚀 Getting Started
 
-Follow these steps to get the project up and running on your local machine.
+⚠️ **Important**: This project requires Whisper AI model files (~141MB) that are **excluded from the repository** due to GitHub's 100MB file size limit. You must download them separately during setup.
+
+### 📋 Complete Setup Guide
+
+**→ See [SETUP.md](SETUP.md) for complete installation instructions including:**
+- Model file download and placement
+- Platform-specific dependencies
+- Build scripts and troubleshooting
+- Alternative model options
+
+### Quick Setup Summary
+
+```bash
+# 1. Clone repository
+git clone https://github.com/your-username/flutter_voice_bridge.git
+cd flutter_voice_bridge
+
+# 2. Download required Whisper model (141MB)
+mkdir -p assets/models android/app/src/main/assets/models ios/Runner/Models macos/Runner/Models
+curl -L "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin" -o assets/models/ggml-base.en.bin
+cp assets/models/ggml-base.en.bin android/app/src/main/assets/models/
+cp assets/models/ggml-base.en.bin ios/Runner/Models/
+cp assets/models/ggml-base.en.bin macos/Runner/Models/
+
+# 3. Install dependencies
+flutter pub get
+
+# 4. Run the app
+flutter run
+```
 
 ### 1. Prerequisites
 
@@ -61,18 +90,18 @@ flutter pub get
 
 This project includes a **working** native `Whisper.cpp` library for offline transcription. The FFI integration is already configured and functional.
 
-**✅ Status**: Native libraries and models are already included in the repository for immediate use.
+**Current Status**: Model files are **not included** in git due to size limits - you must download them using the instructions in [SETUP.md](SETUP.md).
 
 ```bash
-# No additional setup required - libraries are pre-compiled and included
-# The app will automatically extract and use the Whisper model on first run
+# Model files must be downloaded separately (see SETUP.md)
+# Native libraries are already configured and ready to use
 ```
 
 **What's Included**:
-1. ✅ Pre-compiled `whisper.cpp` libraries for iOS/macOS 
-2. ✅ English language model (`ggml-base.en.bin` - 147MB)
-3. ✅ FFI wrapper with proper memory management
-4. ✅ Platform-specific integration ready to use
+1. ✅ FFI wrapper with proper memory management
+2. ✅ Platform-specific integration ready to use
+3. ✅ Build scripts for native libraries
+4. ⚠️ Model files must be downloaded separately
 
 **Current Support**:
 - **iOS/macOS**: ✅ Full transcription support (WAV format)
@@ -82,7 +111,7 @@ For implementation details, see [**Feature Status (`FEATURE_STATUS.md`)**](./FEA
 
 ### 4. Running the App
 
-The app is ready to run immediately with full transcription capabilities on iOS/macOS.
+**After downloading model files** (see [SETUP.md](SETUP.md)), the app is ready to run with full transcription capabilities on iOS/macOS.
 
 ```bash
 # Run on iOS/macOS for full transcription features
@@ -93,7 +122,7 @@ flutter run -d macos
 flutter run -d android
 ```
 
-**🎉 First Launch**: The app will automatically extract the Whisper model to device storage (~147MB) and you can immediately start recording and transcribing voice memos!
+**🎉 First Launch**: Once model files are in place, you can immediately start recording and transcribing voice memos!
 
 ## 🔧 Troubleshooting
 
@@ -120,10 +149,10 @@ The app handles runtime audio recording permissions automatically:
 
 ### Whisper Model Management
 
-**Automatic Model Handling**:
-- ✅ Model is automatically extracted from app assets
-- ✅ No manual download or setup required
-- ✅ 147MB English model included and working
+**Manual Model Setup Required**:
+- ⚠️ Model files are not included in repository (too large for GitHub)
+- 📋 Follow [SETUP.md](SETUP.md) for download instructions
+- ✅ 147MB English model provides excellent quality
 - ✅ Metal GPU acceleration enabled
 
 ### Performance Optimization
@@ -136,6 +165,11 @@ The app handles runtime audio recording permissions automatically:
 ## 🤝 Contributing
 
 Contributions are welcome! If you have suggestions for improvements, please open an issue or submit a pull request.
+
+**Model File Policy**: 
+- Never commit model files (.bin files are gitignored)
+- Document any model changes in [SETUP.md](SETUP.md)
+- Include download instructions for any new dependencies
 
 ---
 
