@@ -1,7 +1,10 @@
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 import 'package:path/path.dart' as path;
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:developer' as developer;
 
 // Native Whisper.cpp function signatures
@@ -153,16 +156,39 @@ class WhisperFFIService {
   /// Check if model is loaded
   bool get isModelLoaded => _whisperContext != null;
 
-  /// Get suggested model file paths for different platforms
-  static String getDefaultModelPath() {
-    if (Platform.isIOS) {
-      return path.join('ios', 'Runner', 'Models', 'ggml-base.en.bin');
-    } else if (Platform.isAndroid) {
-      return path.join('android', 'app', 'src', 'main', 'assets', 'models', 'ggml-base.en.bin');
-    } else if (Platform.isMacOS) {
-      return path.join('macos', 'Runner', 'Models', 'ggml-base.en.bin');
-    } else {
-      return path.join('assets', 'models', 'ggml-base.en.bin');
+  /// Get model file path by extracting from Flutter assets to temporary location
+  static Future<String> getDefaultModelPath() async {
+    try {
+      developer.log('📁 [WhisperFFI] Extracting model from assets...', name: _logName);
+
+      // Load the model file from assets
+      final ByteData assetData = await rootBundle.load('assets/models/ggml-base.en.bin');
+
+      // Get temporary directory
+      final Directory tempDir = await getTemporaryDirectory();
+      final String modelTempPath = path.join(tempDir.path, 'ggml-base.en.bin');
+
+      // Write asset data to temporary file
+      final File tempModelFile = File(modelTempPath);
+      await tempModelFile.writeAsBytes(assetData.buffer.asUint8List());
+
+      developer.log('✅ [WhisperFFI] Model extracted to: $modelTempPath', name: _logName);
+      developer.log('📊 [WhisperFFI] Model file size: ${assetData.lengthInBytes} bytes', name: _logName);
+
+      return modelTempPath;
+    } catch (e) {
+      developer.log('❌ [WhisperFFI] Failed to extract model from assets: $e', name: _logName, error: e);
+
+      // Fallback to old paths for development/testing
+      if (Platform.isIOS) {
+        return path.join('ios', 'Runner', 'Models', 'ggml-base.en.bin');
+      } else if (Platform.isAndroid) {
+        return path.join('android', 'app', 'src', 'main', 'assets', 'models', 'ggml-base.en.bin');
+      } else if (Platform.isMacOS) {
+        return path.join('macos', 'Runner', 'Models', 'ggml-base.en.bin');
+      } else {
+        return path.join('assets', 'models', 'ggml-base.en.bin');
+      }
     }
   }
 
@@ -187,13 +213,13 @@ class WhisperFFIService {
     try {
       if (Platform.isIOS || Platform.isMacOS) {
         // On iOS/macOS, load the framework or dylib
-        _whisperLib = DynamicLibrary.open('libwhisper.dylib');
+        _whisperLib = DynamicLibrary.open('libwhisper_ffi.dylib');
       } else if (Platform.isAndroid || Platform.isLinux) {
         // On Android/Linux, load the shared library
-        _whisperLib = DynamicLibrary.open('libwhisper.so');
+        _whisperLib = DynamicLibrary.open('libwhisper_ffi.so');
       } else if (Platform.isWindows) {
         // On Windows, load the DLL
-        _whisperLib = DynamicLibrary.open('whisper.dll');
+        _whisperLib = DynamicLibrary.open('whisper_ffi.dll');
       } else {
         throw UnsupportedError('Platform ${Platform.operatingSystem} is not supported');
       }
@@ -204,10 +230,10 @@ class WhisperFFIService {
 
       // Provide helpful error message
       final libName = Platform.isWindows
-          ? 'whisper.dll'
+          ? 'whisper_ffi.dll'
           : (Platform.isIOS || Platform.isMacOS)
-          ? 'libwhisper.dylib'
-          : 'libwhisper.so';
+          ? 'libwhisper_ffi.dylib'
+          : 'libwhisper_ffi.so';
 
       throw Exception(
         'Failed to load Whisper native library ($libName). '
@@ -219,20 +245,24 @@ class WhisperFFIService {
 
   void _bindFunctions() {
     try {
-      // Bind whisper_init function
-      _whisperInit = _whisperLib.lookup<NativeFunction<WhisperInitNative>>('whisper_init').asFunction<WhisperInit>();
+      // Bind whisper_ffi_init function
+      _whisperInit = _whisperLib
+          .lookup<NativeFunction<WhisperInitNative>>('whisper_ffi_init')
+          .asFunction<WhisperInit>();
 
-      // Bind whisper_transcribe function
+      // Bind whisper_ffi_transcribe function
       _whisperTranscribe = _whisperLib
-          .lookup<NativeFunction<WhisperTranscribeNative>>('whisper_transcribe')
+          .lookup<NativeFunction<WhisperTranscribeNative>>('whisper_ffi_transcribe')
           .asFunction<WhisperTranscribe>();
 
-      // Bind whisper_free function
-      _whisperFree = _whisperLib.lookup<NativeFunction<WhisperFreeNative>>('whisper_free').asFunction<WhisperFree>();
+      // Bind whisper_ffi_free function
+      _whisperFree = _whisperLib
+          .lookup<NativeFunction<WhisperFreeNative>>('whisper_ffi_free')
+          .asFunction<WhisperFree>();
 
-      // Bind whisper_free_string function
+      // Bind whisper_ffi_free_string function
       _whisperFreeString = _whisperLib
-          .lookup<NativeFunction<WhisperFreeStringNative>>('whisper_free_string')
+          .lookup<NativeFunction<WhisperFreeStringNative>>('whisper_ffi_free_string')
           .asFunction<WhisperFreeString>();
 
       developer.log('✅ [WhisperFFI] Native functions bound successfully', name: _logName);
@@ -242,7 +272,7 @@ class WhisperFFIService {
       throw Exception(
         'Failed to bind Whisper native functions. '
         'Make sure the library exports the required functions: '
-        'whisper_init, whisper_transcribe, whisper_free, whisper_free_string. '
+        'whisper_ffi_init, whisper_ffi_transcribe, whisper_ffi_free, whisper_ffi_free_string. '
         'Original error: $e',
       );
     }

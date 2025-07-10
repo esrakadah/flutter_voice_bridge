@@ -5,6 +5,7 @@ import '../../data/models/voice_memo.dart';
 import 'home/home_cubit.dart';
 import 'home/home_state.dart';
 import 'package:flutter/services.dart';
+import '../components/audio_visualizer.dart';
 
 class HomeView extends StatelessWidget {
   const HomeView({super.key});
@@ -21,46 +22,711 @@ class HomeViewContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: const Text('Voice Bridge AI'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        elevation: 2,
+        title: Text(
+          'Voice Bridge AI',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+              ],
+            ),
+          ),
+        ),
       ),
       body: BlocBuilder<HomeCubit, HomeState>(
         builder: (context, state) {
-          return SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: <Widget>[
-                  const Icon(Icons.mic, size: 100, color: Colors.deepPurple),
-                  const SizedBox(height: 24),
-                  const Text('AI-Powered Voice Memo App', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  const Text('Workshop: Bridging the Gap', style: TextStyle(fontSize: 16, color: Colors.grey)),
-                  const SizedBox(height: 32),
-                  // State-based UI updates
-                  _buildStateContent(context, state),
-                  const SizedBox(height: 24),
-                  // Play button for completed recordings
-                  _buildPlayButton(context, state),
-                  const SizedBox(height: 32),
-                  // Recordings list
-                  _buildRecordingsList(context, state),
-                  // Add bottom padding for better scrolling
-                  const SizedBox(height: 100),
-                ],
-              ),
-            ),
+          return CustomScrollView(
+            slivers: [
+              // Hero section with recording interface
+              SliverToBoxAdapter(child: _buildHeroSection(context, state)),
+
+              // Current recording status
+              SliverToBoxAdapter(child: _buildRecordingStatusCard(context, state)),
+
+              // Transcription results
+              if (state.transcriptionText != null) SliverToBoxAdapter(child: _buildTranscriptionCard(context, state)),
+
+              // Recordings list header
+              SliverToBoxAdapter(child: _buildRecordingsHeader(context, state)),
+
+              // Recordings list
+              _buildRecordingsList(context, state),
+
+              // Bottom padding
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
           );
         },
       ),
-      floatingActionButton: BlocBuilder<HomeCubit, HomeState>(
-        builder: (context, state) {
-          final bool isRecording = state is RecordingInProgress || state is RecordingStarted;
+      floatingActionButton: _buildFloatingActionButton(context),
+    );
+  }
 
-          return FloatingActionButton(
+  Widget _buildHeroSection(BuildContext context, HomeState state) {
+    final isRecording = state is RecordingInProgress || state is RecordingStarted;
+
+    return Container(
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+            Theme.of(context).colorScheme.tertiary.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          // App title and subtitle
+          Text(
+            'AI Voice Memo',
+            style: Theme.of(context).textTheme.displayMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: Theme.of(context).colorScheme.onBackground,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Record, transcribe, and extract insights',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.onBackground.withOpacity(0.7)),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+
+          // Audio visualizer
+          Container(
+            height: 80,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: AnimatedAudioVisualizer(
+              isAnimating: isRecording,
+              barCount: 25,
+              barColor: isRecording
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.outline.withOpacity(0.3),
+              maxHeight: 60,
+              barWidth: 3,
+              barSpacing: 3,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Ready state message
+          if (!isRecording)
+            Text(
+              'Tap the microphone to start recording',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6)),
+              textAlign: TextAlign.center,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordingStatusCard(BuildContext context, HomeState state) {
+    if (state is HomeInitial) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Card(
+        child: Padding(padding: const EdgeInsets.all(20), child: _buildStatusContent(context, state)),
+      ),
+    );
+  }
+
+  Widget _buildStatusContent(BuildContext context, HomeState state) {
+    if (state is RecordingInProgress) {
+      return Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Recording in progress',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Icon(Icons.timer_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                _formatDuration(state.recordingDuration),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    if (state is RecordingCompleted) {
+      return Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.check_circle, color: Colors.green, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Recording completed',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: Colors.green),
+                ),
+                Text(
+                  'Duration: ${_formatDuration(state.recordingDuration)}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (state is TranscriptionInProgress) {
+      return Row(
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            padding: const EdgeInsets.all(4),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Transcribing audio...',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                Text('This may take a few moments', style: Theme.of(context).textTheme.bodyMedium),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (state is RecordingError) {
+      return Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.error.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Recording error',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+                Text(state.errorMessage, style: Theme.of(context).textTheme.bodyMedium),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildTranscriptionCard(BuildContext context, HomeState state) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary],
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.transcribe, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Transcription',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const Spacer(),
+                  _buildActionButtons(context, state.transcriptionText!),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Transcription text
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+                ),
+                child: Text(
+                  state.transcriptionText!,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6),
+                ),
+              ),
+
+              // Keywords
+              if (state.keywords.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Icon(Icons.label_outline, size: 18, color: Theme.of(context).colorScheme.tertiary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Keywords',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.tertiary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: state.keywords.map((keyword) => _buildKeywordChip(context, keyword)).toList(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(BuildContext context, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton.outlined(
+          onPressed: () => _copyToClipboard(context, text),
+          icon: const Icon(Icons.copy_outlined, size: 18),
+          tooltip: 'Copy',
+          style: IconButton.styleFrom(side: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.3))),
+        ),
+        const SizedBox(width: 8),
+        IconButton.outlined(
+          onPressed: () => _shareTranscription(context, text),
+          icon: const Icon(Icons.share_outlined, size: 18),
+          tooltip: 'Share',
+          style: IconButton.styleFrom(side: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.3))),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKeywordChip(BuildContext context, String keyword) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.tertiary.withOpacity(0.1),
+            Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Theme.of(context).colorScheme.tertiary.withOpacity(0.3)),
+      ),
+      child: Text(
+        keyword,
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.tertiary),
+      ),
+    );
+  }
+
+  Widget _buildRecordingsHeader(BuildContext context, HomeState state) {
+    if (state.recordings.isEmpty && !state.isLoadingRecordings) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 32, 20, 16),
+      child: Row(
+        children: [
+          Text(
+            'Previous Recordings',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          if (state.recordings.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${state.recordings.length}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+          const Spacer(),
+          IconButton.outlined(
+            onPressed: () => context.read<HomeCubit>().loadRecordings(),
+            icon: const Icon(Icons.refresh, size: 20),
+            tooltip: 'Refresh',
+            style: IconButton.styleFrom(
+              side: BorderSide(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordingsList(BuildContext context, HomeState state) {
+    if (state.isLoadingRecordings) {
+      return SliverToBoxAdapter(
+        child: Container(
+          margin: const EdgeInsets.all(20),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Loading recordings...', style: Theme.of(context).textTheme.titleMedium),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (state.recordings.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Container(
+          margin: const EdgeInsets.all(20),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                children: [
+                  Icon(Icons.mic_none_outlined, size: 48, color: Theme.of(context).colorScheme.outline),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No recordings yet',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onBackground.withOpacity(0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Start recording to see your voice memos here',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SliverList.builder(
+      itemCount: state.recordings.length,
+      itemBuilder: (context, index) {
+        final recording = state.recordings[index];
+        return _buildRecordingTile(context, recording, state);
+      },
+    );
+  }
+
+  Widget _buildRecordingTile(BuildContext context, VoiceMemo recording, HomeState state) {
+    final isPlaying = state is PlaybackInProgress && state.filePath == recording.filePath;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header row
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isPlaying
+                            ? [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary]
+                            : [
+                                Theme.of(context).colorScheme.outline.withOpacity(0.5),
+                                Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                              ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: isPlaying
+                        ? const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            ),
+                          )
+                        : const Icon(Icons.play_arrow, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                recording.title,
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            if (recording.isTranscribed)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.transcribe, color: Colors.green, size: 12),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Transcribed',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall?.copyWith(color: Colors.green, fontWeight: FontWeight.w500),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              _formatFileSize(recording.fileSizeBytes),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(width: 8),
+                            Text('•', style: Theme.of(context).textTheme.bodySmall),
+                            const SizedBox(width: 8),
+                            Text(_formatDateTime(recording.createdAt), style: Theme.of(context).textTheme.bodySmall),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton.outlined(
+                    onPressed: () => _showDeleteDialog(context, recording),
+                    icon: Icon(Icons.delete_outline, size: 18, color: Theme.of(context).colorScheme.error),
+                    tooltip: 'Delete',
+                    style: IconButton.styleFrom(
+                      side: BorderSide(color: Theme.of(context).colorScheme.error.withOpacity(0.3)),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Action buttons
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: isPlaying ? null : () => context.read<HomeCubit>().playRecording(recording.filePath),
+                      icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+                      label: Text(isPlaying ? 'Playing...' : 'Play'),
+                      style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  if (recording.isTranscribed && recording.transcription != null)
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _copyToClipboard(context, recording.transcription!),
+                        icon: const Icon(Icons.copy),
+                        label: const Text('Copy'),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => context.read<HomeCubit>().transcribeRecording(recording.filePath),
+                        icon: const Icon(Icons.transcribe),
+                        label: const Text('Transcribe'),
+                      ),
+                    ),
+                ],
+              ),
+
+              // Transcription preview
+              if (recording.isTranscribed && recording.transcription != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recording.transcription!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (recording.keywords.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: recording.keywords
+                              .take(3)
+                              .map(
+                                (keyword) => Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.tertiary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    keyword,
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context).colorScheme.tertiary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingActionButton(BuildContext context) {
+    return BlocBuilder<HomeCubit, HomeState>(
+      builder: (context, state) {
+        final isRecording = state is RecordingInProgress || state is RecordingStarted;
+
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isRecording
+                  ? [Theme.of(context).colorScheme.error, Theme.of(context).colorScheme.error.withOpacity(0.8)]
+                  : [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: (isRecording ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary)
+                    .withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: FloatingActionButton.large(
             onPressed: () {
               if (isRecording) {
                 context.read<HomeCubit>().stopRecording();
@@ -68,611 +734,82 @@ class HomeViewContent extends StatelessWidget {
                 context.read<HomeCubit>().startRecording();
               }
             },
-            tooltip: isRecording ? 'Stop Recording' : 'Start Recording',
-            backgroundColor: isRecording ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
-            child: Icon(
-              isRecording ? Icons.stop : Icons.mic,
-              color: isRecording ? Theme.of(context).colorScheme.onError : Theme.of(context).colorScheme.onPrimary,
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildStateContent(BuildContext context, HomeState state) {
-    if (state is RecordingInProgress) {
-      return Column(
-        children: [
-          const Text('Recording in progress...', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 8),
-          Text('Duration: ${_formatDuration(state.recordingDuration)}', style: const TextStyle(fontSize: 16)),
-        ],
-      );
-    } else if (state is RecordingStarted) {
-      return const Text('Recording started!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500));
-    } else if (state is RecordingCompleted) {
-      return Column(
-        children: [
-          const Text(
-            'Recording completed!',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.green),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Icon(isRecording ? Icons.stop_rounded : Icons.mic_rounded, size: 32, color: Colors.white),
           ),
-          const SizedBox(height: 8),
-          Text('Duration: ${_formatDuration(state.recordingDuration)}', style: const TextStyle(fontSize: 16)),
-        ],
-      );
-    } else if (state is TranscriptionInProgress) {
-      return Column(
-        children: [
-          const Text(
-            'Recording completed!',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.green),
-          ),
-          const SizedBox(height: 16),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-              SizedBox(width: 12),
-              Text(
-                'Transcribing audio...',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.blue),
-              ),
-            ],
-          ),
-        ],
-      );
-    } else if (state is TranscriptionCompleted) {
-      return Column(
-        children: [
-          const Text(
-            'Recording completed!',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.green),
-          ),
-          const SizedBox(height: 8),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Transcription completed!',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.green),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildTranscriptionDisplay(context, state.transcribedText, state.extractedKeywords),
-        ],
-      );
-    } else if (state is TranscriptionError) {
-      return Column(
-        children: [
-          const Text(
-            'Recording completed!',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.green),
-          ),
-          const SizedBox(height: 16),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error, color: Colors.orange, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Transcription failed',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.orange),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            state.errorMessage,
-            style: const TextStyle(fontSize: 14, color: Colors.orange),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      );
-    } else if (state is PlaybackInProgress) {
-      return Column(
-        children: [
-          const Text(
-            'Playing audio...',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.blue),
-          ),
-          const SizedBox(height: 8),
-          const CircularProgressIndicator(),
-          // Show transcription if available
-          if (state.transcriptionText != null) ...[
-            const SizedBox(height: 16),
-            _buildTranscriptionDisplay(context, state.transcriptionText!, state.keywords),
-          ],
-        ],
-      );
-    } else if (state is PlaybackCompleted) {
-      return Column(
-        children: [
-          const Text(
-            'Playback completed!',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.blue),
-          ),
-          // Show transcription if available
-          if (state.transcriptionText != null) ...[
-            const SizedBox(height: 16),
-            _buildTranscriptionDisplay(context, state.transcriptionText!, state.keywords),
-          ],
-        ],
-      );
-    } else if (state is PlaybackError) {
-      return Column(
-        children: [
-          const Text(
-            'Playback error!',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.red),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            state.errorMessage,
-            style: const TextStyle(fontSize: 14, color: Colors.red),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      );
-    } else if (state is RecordingError) {
-      return Column(
-        children: [
-          const Text(
-            'Recording error!',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.red),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            state.errorMessage,
-            style: const TextStyle(fontSize: 14, color: Colors.red),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      );
-    } else {
-      // Show transcription if available in any other state
-      if (state.transcriptionText != null) {
-        return Column(
-          children: [
-            const Text('Ready to record', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 16),
-            _buildTranscriptionDisplay(context, state.transcriptionText!, state.keywords),
-          ],
         );
-      }
-      return const Text('Ready to record', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500));
-    }
-  }
-
-  Widget _buildTranscriptionDisplay(BuildContext context, String transcriptionText, List<String> keywords) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.transcribe, color: Colors.deepPurple, size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'Transcription',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.deepPurple),
-              ),
-              const Spacer(),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.copy, size: 18),
-                    onPressed: () => _copyToClipboard(context, transcriptionText),
-                    tooltip: 'Copy transcription',
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.share, size: 18),
-                    onPressed: () => _shareTranscription(context, transcriptionText),
-                    tooltip: 'Share transcription',
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(transcriptionText, style: const TextStyle(fontSize: 14, height: 1.4)),
-          if (keywords.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            const Row(
-              children: [
-                Icon(Icons.label, color: Colors.deepOrange, size: 16),
-                SizedBox(width: 6),
-                Text(
-                  'Keywords',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.deepOrange),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(spacing: 6, runSpacing: 6, children: keywords.map((keyword) => _buildKeywordChip(keyword)).toList()),
-          ],
-        ],
-      ),
+      },
     );
   }
 
-  Widget _buildKeywordChip(String keyword) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.deepOrange[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.deepOrange[200]!),
-      ),
-      child: Text(
-        keyword,
-        style: TextStyle(fontSize: 12, color: Colors.deepOrange[700], fontWeight: FontWeight.w500),
-      ),
-    );
-  }
-
+  // Helper methods
   void _copyToClipboard(BuildContext context, String text) {
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Transcription copied to clipboard'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            const Text('Copied to clipboard'),
+          ],
+        ),
+        backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
 
   void _shareTranscription(BuildContext context, String text) {
-    // We'll need to add share_plus package for this functionality
-    // For now, just show a placeholder message
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Share feature coming soon!'),
-        duration: Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  Widget _buildPlayButton(BuildContext context, HomeState state) {
-    final cubit = context.read<HomeCubit>();
-    final bool hasRecording = cubit.hasRecordingToPlay;
-    final bool isRecording = state is RecordingInProgress || state is RecordingStarted;
-    final bool isPlaying = state is PlaybackInProgress;
-
-    // Don't show play button if recording or no recording available
-    if (isRecording || !hasRecording) {
-      return const SizedBox.shrink();
-    }
-
-    return FloatingActionButton.extended(
-      onPressed: isPlaying
-          ? null
-          : () async {
-              try {
-                await cubit.playLastRecording();
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playback error: $e')));
-                }
-              }
-            },
-      icon: isPlaying
-          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-          : const Icon(Icons.play_arrow),
-      label: Text(isPlaying ? 'Playing...' : 'Play Recording'),
-      backgroundColor: isPlaying
-          ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.6)
-          : Theme.of(context).colorScheme.secondary,
-    );
-  }
-
-  Widget _buildRecordingsList(BuildContext context, HomeState state) {
-    if (state.isLoadingRecordings) {
-      return const Column(
-        children: [
-          Text('Loading recordings...', style: TextStyle(fontSize: 16)),
-          SizedBox(height: 8),
-          CircularProgressIndicator(),
-        ],
-      );
-    }
-
-    if (state.recordingsError != null) {
-      return Column(
-        children: [
-          const Text('Error loading recordings', style: TextStyle(fontSize: 16, color: Colors.red)),
-          Text(state.recordingsError!, style: const TextStyle(fontSize: 12, color: Colors.red)),
-          const SizedBox(height: 8),
-          ElevatedButton(onPressed: () => context.read<HomeCubit>().loadRecordings(), child: const Text('Retry')),
-        ],
-      );
-    }
-
-    if (state.recordings.isEmpty) {
-      return const Column(
-        children: [
-          Icon(Icons.mic_none, size: 48, color: Colors.grey),
-          SizedBox(height: 8),
-          Text('No recordings yet', style: TextStyle(fontSize: 16, color: Colors.grey)),
-          Text('Record your first voice memo above', style: TextStyle(fontSize: 14, color: Colors.grey)),
-        ],
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Previous Recordings (${state.recordings.length})',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              IconButton(
-                onPressed: () => context.read<HomeCubit>().loadRecordings(),
-                icon: const Icon(Icons.refresh),
-                tooltip: 'Refresh recordings',
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 300),
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: state.recordings.length,
-            itemBuilder: (context, index) {
-              final recording = state.recordings[index];
-              return _buildRecordingTile(context, recording, state);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRecordingTile(BuildContext context, VoiceMemo recording, HomeState state) {
-    final bool isPlaying = state is PlaybackInProgress && state.filePath == recording.filePath;
-
-    return Dismissible(
-      key: Key(recording.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        color: Colors.red,
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 16),
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
-      confirmDismiss: (direction) async {
-        return await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Delete Recording'),
-                content: Text('Are you sure you want to delete "${recording.title}"?'),
-                actions: [
-                  TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: const Text('Delete', style: TextStyle(color: Colors.red)),
-                  ),
-                ],
-              ),
-            ) ??
-            false;
-      },
-      onDismissed: (direction) {
-        context.read<HomeCubit>().deleteRecording(recording.filePath);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Deleted "${recording.title}"')));
-      },
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        child: ExpansionTile(
-          leading: CircleAvatar(
-            backgroundColor: isPlaying ? Colors.blue : Theme.of(context).primaryColor,
-            child: isPlaying
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                  )
-                : const Icon(Icons.play_arrow, color: Colors.white),
-          ),
-          title: Row(
-            children: [
-              Expanded(child: Text(recording.title)),
-              if (recording.isTranscribed)
-                const Padding(
-                  padding: EdgeInsets.only(left: 8),
-                  child: Icon(Icons.transcribe, color: Colors.green, size: 18),
-                ),
-            ],
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(_formatFileSize(recording.fileSizeBytes)),
-              Text(_formatDateTime(recording.createdAt), style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              if (recording.isTranscribed && recording.transcription != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  _truncateText(recording.transcription!, 60),
-                  style: const TextStyle(fontSize: 12, color: Colors.blue, fontStyle: FontStyle.italic),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ] else if (!recording.isTranscribed) ...[
-                const SizedBox(height: 4),
-                const Text('No transcription available', style: TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
-            ],
-          ),
-          trailing: IconButton(
-            onPressed: () => _showDeleteRecordingDialog(context, recording),
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
-            tooltip: 'Delete recording',
-          ),
-          onExpansionChanged: (expanded) {
-            if (!expanded && !isPlaying) {
-              // Only play when collapsed to expanded, not when collapsing
-            }
-          },
+      SnackBar(
+        content: const Row(
           children: [
-            if (recording.isTranscribed && recording.transcription != null)
-              Padding(padding: const EdgeInsets.all(16), child: _buildRecordingTranscriptionDisplay(context, recording))
-            else
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    const Text('This recording has not been transcribed yet.', style: TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 8),
-                    ElevatedButton.icon(
-                      onPressed: () => context.read<HomeCubit>().transcribeRecording(recording.filePath),
-                      icon: const Icon(Icons.transcribe, size: 18),
-                      label: const Text('Transcribe Now'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: isPlaying ? null : () => context.read<HomeCubit>().playRecording(recording.filePath),
-                    icon: isPlaying
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.play_arrow),
-                    label: Text(isPlaying ? 'Playing...' : 'Play'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-                  ),
-                  if (recording.isTranscribed && recording.transcription != null)
-                    ElevatedButton.icon(
-                      onPressed: () => _copyToClipboard(context, recording.transcription!),
-                      icon: const Icon(Icons.copy),
-                      label: const Text('Copy'),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                    ),
-                ],
-              ),
-            ),
+            Icon(Icons.info, color: Colors.white, size: 20),
+            SizedBox(width: 12),
+            Text('Share feature coming soon!'),
           ],
         ),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
 
-  Widget _buildRecordingTranscriptionDisplay(BuildContext context, VoiceMemo recording) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.transcribe, color: Colors.blue, size: 16),
-              SizedBox(width: 6),
-              Text(
-                'Transcription',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(recording.transcription!, style: const TextStyle(fontSize: 13, height: 1.3)),
-          if (recording.keywords.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            const Row(
-              children: [
-                Icon(Icons.label, color: Colors.orange, size: 14),
-                SizedBox(width: 4),
-                Text(
-                  'Keywords',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: recording.keywords.map((keyword) => _buildSmallKeywordChip(keyword)).toList(),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSmallKeywordChip(String keyword) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.orange[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.orange[200]!),
-      ),
-      child: Text(
-        keyword,
-        style: TextStyle(fontSize: 10, color: Colors.orange[700], fontWeight: FontWeight.w500),
-      ),
-    );
-  }
-
-  String _truncateText(String text, int maxLength) {
-    if (text.length <= maxLength) return text;
-    return '${text.substring(0, maxLength)}...';
-  }
-
-  Future<void> _showDeleteRecordingDialog(BuildContext context, VoiceMemo recording) async {
+  Future<void> _showDeleteDialog(BuildContext context, VoiceMemo recording) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Delete Recording'),
         content: Text('Are you sure you want to delete "${recording.title}"?'),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          TextButton(
+          FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('Delete'),
           ),
         ],
       ),
     );
+
     if (confirmed == true && context.mounted) {
       context.read<HomeCubit>().deleteRecording(recording.filePath);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Deleted "${recording.title}"')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Deleted "${recording.title}"'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
     }
   }
 
@@ -690,16 +827,13 @@ class HomeViewContent extends StatelessWidget {
 
   String _formatDateTime(DateTime dateTime) {
     final now = DateTime.now();
-    final difference = now.difference(dateTime);
+    final today = DateTime(now.year, now.month, now.day);
+    final recordingDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
 
-    if (difference.inDays == 0) {
-      final hour = dateTime.hour.toString().padLeft(2, '0');
-      final minute = dateTime.minute.toString().padLeft(2, '0');
-      return 'Today at $hour:$minute';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
+    if (recordingDate == today) {
+      return 'Today ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } else if (recordingDate == today.subtract(const Duration(days: 1))) {
+      return 'Yesterday ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
     } else {
       return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     }

@@ -110,9 +110,9 @@ compile_macos() {
     
     make -j$(sysctl -n hw.ncpu)
     
-    # Copy the dynamic library
-    cp libwhisper.dylib "$PROJECT_ROOT/ios/Runner/"
-    cp libwhisper.dylib "$PROJECT_ROOT/macos/Runner/"
+    # Copy the dynamic library (our FFI wrapper library)
+    cp libwhisper_ffi.dylib "$PROJECT_ROOT/ios/Runner/"
+    cp libwhisper_ffi.dylib "$PROJECT_ROOT/macos/Runner/"
     
     log_success "macOS compilation complete"
 }
@@ -131,8 +131,8 @@ compile_linux() {
     
     make -j$(nproc)
     
-    # Copy the shared library
-    cp libwhisper.so "$PROJECT_ROOT/linux/"
+    # Copy the shared library (our FFI wrapper library)
+    cp libwhisper_ffi.so "$PROJECT_ROOT/linux/"
     
     log_success "Linux compilation complete"
 }
@@ -152,8 +152,8 @@ compile_windows() {
     
     cmake --build . --config Release
     
-    # Copy the DLL
-    cp Release/whisper.dll "$PROJECT_ROOT/windows/"
+    # Copy the DLL (our FFI wrapper library)
+    cp Release/whisper_ffi.dll "$PROJECT_ROOT/windows/"
     
     log_success "Windows compilation complete"
 }
@@ -187,7 +187,18 @@ download_model() {
 create_c_wrapper() {
     log_info "Creating C wrapper for FFI..."
     
-    cat > "$WHISPER_DIR/whisper_wrapper.h" << 'EOF'
+    # The wrapper files need to go in the whisper.cpp source directory for compilation
+    WHISPER_SRC_DIR="$WHISPER_DIR/whisper.cpp"
+    
+    # Copy our updated wrapper files instead of creating inline content
+    if [ -f "$PROJECT_ROOT/native/whisper/whisper_wrapper.h" ] && [ -f "$PROJECT_ROOT/native/whisper/whisper_wrapper.cpp" ]; then
+        log_info "Using existing wrapper files..."
+        cp "$PROJECT_ROOT/native/whisper/whisper_wrapper.h" "$WHISPER_SRC_DIR/"
+        cp "$PROJECT_ROOT/native/whisper/whisper_wrapper.cpp" "$WHISPER_SRC_DIR/"
+    else
+        log_warning "Wrapper files not found, creating default ones..."
+        # Fallback: create basic wrapper with updated function names
+        cat > "$WHISPER_SRC_DIR/whisper_wrapper.h" << 'EOF'
 #ifndef WHISPER_WRAPPER_H
 #define WHISPER_WRAPPER_H
 
@@ -199,16 +210,16 @@ extern "C" {
 typedef struct whisper_context whisper_context;
 
 // Initialize Whisper with model file
-whisper_context* whisper_init(const char* model_path);
+whisper_context* whisper_ffi_init(const char* model_path);
 
 // Transcribe audio file
-char* whisper_transcribe(whisper_context* ctx, const char* audio_path);
+char* whisper_ffi_transcribe(whisper_context* ctx, const char* audio_path);
 
 // Free Whisper context
-void whisper_free(whisper_context* ctx);
+void whisper_ffi_free(whisper_context* ctx);
 
 // Free string returned by whisper_transcribe
-void whisper_free_string(char* str);
+void whisper_ffi_free_string(char* str);
 
 #ifdef __cplusplus
 }
@@ -217,39 +228,38 @@ void whisper_free_string(char* str);
 #endif // WHISPER_WRAPPER_H
 EOF
 
-    cat > "$WHISPER_DIR/whisper_wrapper.cpp" << 'EOF'
+        cat > "$WHISPER_SRC_DIR/whisper_wrapper.cpp" << 'EOF'
 #include "whisper_wrapper.h"
 #include "whisper.h"
 #include <cstring>
 #include <vector>
 #include <iostream>
+#include <cstdlib>
 
 extern "C" {
 
-whisper_context* whisper_init(const char* model_path) {
+whisper_context* whisper_ffi_init(const char* model_path) {
     try {
-        struct whisper_context* ctx = whisper_init_from_file(model_path);
+        // Use the modern API with default parameters
+        struct whisper_context_params cparams = whisper_context_default_params();
+        struct whisper_context* ctx = whisper_init_from_file_with_params(model_path, cparams);
         return ctx;
     } catch (...) {
         return nullptr;
     }
 }
 
-char* whisper_transcribe(whisper_context* ctx, const char* audio_path) {
+char* whisper_ffi_transcribe(whisper_context* ctx, const char* audio_path) {
     if (!ctx || !audio_path) return nullptr;
     
     try {
-        // This is a simplified implementation
-        // In a real implementation, you would:
-        // 1. Load the audio file
-        // 2. Convert to required format (16kHz, mono, float32)
-        // 3. Run whisper_full() with the audio data
-        // 4. Extract and return the transcribed text
-        
-        // For now, return a placeholder
-        const char* result = "Whisper FFI integration working! (placeholder transcription)";
-        char* copy = (char*)malloc(strlen(result) + 1);
-        strcpy(copy, result);
+        // For now, return a placeholder to test the FFI integration
+        const char* result = "Whisper FFI integration working! Real audio transcription requires audio loading implementation.";
+        size_t len = strlen(result);
+        char* copy = (char*)malloc(len + 1);
+        if (copy) {
+            strcpy(copy, result);
+        }
         return copy;
         
     } catch (...) {
@@ -257,13 +267,13 @@ char* whisper_transcribe(whisper_context* ctx, const char* audio_path) {
     }
 }
 
-void whisper_free(whisper_context* ctx) {
+void whisper_ffi_free(whisper_context* ctx) {
     if (ctx) {
         whisper_free(ctx);
     }
 }
 
-void whisper_free_string(char* str) {
+void whisper_ffi_free_string(char* str) {
     if (str) {
         free(str);
     }
@@ -271,7 +281,8 @@ void whisper_free_string(char* str) {
 
 }
 EOF
-
+    fi
+    
     log_success "C wrapper created"
 }
 

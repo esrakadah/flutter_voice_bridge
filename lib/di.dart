@@ -1,4 +1,5 @@
 import 'package:get_it/get_it.dart';
+import 'dart:io';
 import 'core/audio/audio_service.dart';
 import 'core/audio/platform_audio_service.dart';
 import 'core/transcription/transcription_service.dart';
@@ -18,9 +19,17 @@ class DependencyInjection {
     // Register data services
     getIt.registerLazySingleton<VoiceMemoService>(() => VoiceMemoServiceImpl());
 
-    // Register transcription service (using Mock for development)
-    // For production, switch to WhisperTranscriptionService() when native library is available
-    getIt.registerLazySingleton<TranscriptionService>(() => MockTranscriptionService());
+    // Register transcription service with platform detection
+    // Use Whisper FFI on macOS/iOS (where we have native libraries)
+    // Use Mock on Android/other platforms until native library is compiled
+    getIt.registerLazySingleton<TranscriptionService>(() {
+      if (Platform.isMacOS || Platform.isIOS) {
+        return WhisperTranscriptionService();
+      } else {
+        // Android and other platforms use mock for now
+        return MockTranscriptionService();
+      }
+    });
 
     // Register Cubits
     getIt.registerFactory<HomeCubit>(

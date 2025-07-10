@@ -26,6 +26,8 @@
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to the microphone to record voice memos for transcription.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

@@ -66,8 +66,17 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
       final Directory documentsDir = await getApplicationDocumentsDirectory();
       developer.log('📁 [VoiceMemoService] Documents directory: ${documentsDir.path}', name: 'VoiceBridge.Service');
 
-      // List all .m4a files
-      final List<FileSystemEntity> entities = documentsDir.listSync();
+      // Check audio subdirectory (where recordings are actually saved)
+      final Directory audioDir = Directory('${documentsDir.path}/audio');
+      developer.log('📁 [VoiceMemoService] Audio directory: ${audioDir.path}', name: 'VoiceBridge.Service');
+
+      if (!await audioDir.exists()) {
+        developer.log('📁 [VoiceMemoService] Audio directory does not exist yet', name: 'VoiceBridge.Service');
+        return [];
+      }
+
+      // List all .m4a files in the audio directory
+      final List<FileSystemEntity> entities = audioDir.listSync();
       final List<File> audioFiles = entities
           .where((entity) => entity is File && entity.path.endsWith('.m4a'))
           .cast<File>()
@@ -81,6 +90,7 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
         try {
           final VoiceMemo memo = await _createVoiceMemoFromFile(file);
           recordings.add(memo);
+          developer.log('✅ [VoiceMemoService] Processed: ${file.path}', name: 'VoiceBridge.Service');
         } catch (e) {
           developer.log('⚠️ [VoiceMemoService] Error processing file ${file.path}: $e', name: 'VoiceBridge.Service');
         }
@@ -124,15 +134,20 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
     final FileStat stat = await file.stat();
     final String fileName = file.path.split('/').last;
 
-    // Extract timestamp from filename (voice_memo_1234567890.m4a)
+    // Extract timestamp from filename (voice_memo_1234567890123.m4a)
     DateTime createdAt = stat.modified;
     if (fileName.contains('voice_memo_')) {
       try {
         final String timestampStr = fileName.replaceAll('voice_memo_', '').replaceAll('.m4a', '');
         final int timestamp = int.parse(timestampStr);
-        createdAt = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+        // The timestamp in filename is already in milliseconds
+        createdAt = DateTime.fromMillisecondsSinceEpoch(timestamp);
       } catch (e) {
         // Use file modification time if timestamp parsing fails
+        developer.log(
+          '⚠️ [VoiceMemoService] Failed to parse timestamp from $fileName: $e',
+          name: 'VoiceBridge.Service',
+        );
         createdAt = stat.modified;
       }
     }

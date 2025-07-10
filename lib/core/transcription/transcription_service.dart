@@ -26,8 +26,8 @@ class WhisperTranscriptionService implements TranscriptionService {
     try {
       developer.log('🔧 [Transcription] Initializing Whisper transcription service...', name: _logName);
 
-      // Use provided model path or default
-      _modelPath = modelPath ?? WhisperFFIService.getDefaultModelPath();
+      // Use provided model path or extract from assets
+      _modelPath = modelPath ?? await WhisperFFIService.getDefaultModelPath();
       developer.log('📂 [Transcription] Using model path: $_modelPath', name: _logName);
 
       // Initialize FFI service
