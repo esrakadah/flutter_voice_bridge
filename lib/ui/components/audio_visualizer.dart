@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
-// Workshop-quality audio visualizer with advanced custom rendering and shader-like effects
+// Enhanced workshop-quality audio visualizer with independent animation controls
 class AdvancedAudioVisualizer extends StatefulWidget {
   final bool isRecording;
   final double height;
@@ -10,6 +10,8 @@ class AdvancedAudioVisualizer extends StatefulWidget {
   final Color secondaryColor;
   final Color tertiaryColor;
   final AudioVisualizationMode mode;
+  final VoidCallback? onAnimationToggle;
+  final bool showControls;
 
   const AdvancedAudioVisualizer({
     super.key,
@@ -19,6 +21,8 @@ class AdvancedAudioVisualizer extends StatefulWidget {
     required this.secondaryColor,
     required this.tertiaryColor,
     this.mode = AudioVisualizationMode.waveform,
+    this.onAnimationToggle,
+    this.showControls = true,
   });
 
   @override
@@ -36,13 +40,13 @@ class _AdvancedAudioVisualizerState extends State<AdvancedAudioVisualizer> with 
   late Animation<double> _pulseAnimation;
   late Animation<double> _phaseAnimation;
 
+  bool _isAnimationPlaying = true; // Independent of recording status
+
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
-    if (widget.isRecording) {
-      _startAnimations();
-    }
+    _startAnimations(); // Always start animations by default
   }
 
   void _initializeAnimations() {
@@ -67,6 +71,7 @@ class _AdvancedAudioVisualizerState extends State<AdvancedAudioVisualizer> with 
   }
 
   void _startAnimations() {
+    if (!_isAnimationPlaying) return;
     _primaryController.repeat();
     _secondaryController.repeat();
     _pulseController.repeat(reverse: true);
@@ -78,24 +83,25 @@ class _AdvancedAudioVisualizerState extends State<AdvancedAudioVisualizer> with 
     _secondaryController.stop();
     _pulseController.stop();
     _phaseController.stop();
+  }
 
-    // Animate to static state
-    _primaryController.animateTo(0.0);
-    _secondaryController.animateTo(0.0);
-    _pulseController.animateTo(0.0);
-    _phaseController.animateTo(0.0);
+  void _toggleAnimations() {
+    setState(() {
+      _isAnimationPlaying = !_isAnimationPlaying;
+      if (_isAnimationPlaying) {
+        _startAnimations();
+      } else {
+        _stopAnimations();
+      }
+    });
+    widget.onAnimationToggle?.call();
   }
 
   @override
   void didUpdateWidget(AdvancedAudioVisualizer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isRecording != oldWidget.isRecording) {
-      if (widget.isRecording) {
-        _startAnimations();
-      } else {
-        _stopAnimations();
-      }
-    }
+    // Animations are now independent of recording status
+    // They continue based on _isAnimationPlaying state
   }
 
   @override
@@ -118,27 +124,70 @@ class _AdvancedAudioVisualizerState extends State<AdvancedAudioVisualizer> with 
             borderRadius: BorderRadius.circular(16),
             boxShadow: widget.isRecording
                 ? [BoxShadow(color: widget.primaryColor.withValues(alpha: 0.3), blurRadius: 20, spreadRadius: 2)]
+                : _isAnimationPlaying
+                ? [BoxShadow(color: widget.primaryColor.withValues(alpha: 0.1), blurRadius: 10, spreadRadius: 1)]
                 : null,
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: CustomPaint(
-              painter: AdvancedAudioPainter(
-                primaryPhase: _primaryAnimation.value,
-                secondaryPhase: _secondaryAnimation.value,
-                amplitude: _pulseAnimation.value,
-                globalPhase: _phaseAnimation.value,
-                primaryColor: widget.primaryColor,
-                secondaryColor: widget.secondaryColor,
-                tertiaryColor: widget.tertiaryColor,
-                isRecording: widget.isRecording,
-                mode: widget.mode,
+          child: Stack(
+            children: [
+              // Main visualizer
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: CustomPaint(
+                  painter: AdvancedAudioPainter(
+                    primaryPhase: _primaryAnimation.value,
+                    secondaryPhase: _secondaryAnimation.value,
+                    amplitude: _pulseAnimation.value,
+                    globalPhase: _phaseAnimation.value,
+                    primaryColor: widget.primaryColor,
+                    secondaryColor: widget.secondaryColor,
+                    tertiaryColor: widget.tertiaryColor,
+                    isRecording: widget.isRecording,
+                    isAnimating: _isAnimationPlaying,
+                    mode: widget.mode,
+                  ),
+                  size: Size.infinite,
+                ),
               ),
-              size: Size.infinite,
-            ),
+
+              // Animation control buttons
+              if (widget.showControls) Positioned(right: 12, top: 12, child: _buildAnimationControls()),
+            ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAnimationControls() {
+    return Container(
+      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildControlButton(
+            icon: _isAnimationPlaying ? Icons.pause : Icons.play_arrow,
+            onTap: _toggleAnimations,
+            tooltip: _isAnimationPlaying ? 'Pause Animation' : 'Play Animation',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControlButton({required IconData icon, required VoidCallback onTap, required String tooltip}) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
+          child: Icon(icon, size: 16, color: Colors.white.withValues(alpha: 0.9)),
+        ),
+      ),
     );
   }
 }
@@ -156,6 +205,7 @@ class AdvancedAudioPainter extends CustomPainter {
   final Color secondaryColor;
   final Color tertiaryColor;
   final bool isRecording;
+  final bool isAnimating;
   final AudioVisualizationMode mode;
 
   AdvancedAudioPainter({
@@ -167,6 +217,7 @@ class AdvancedAudioPainter extends CustomPainter {
     required this.secondaryColor,
     required this.tertiaryColor,
     required this.isRecording,
+    required this.isAnimating,
     required this.mode,
   });
 
@@ -192,22 +243,23 @@ class AdvancedAudioPainter extends CustomPainter {
   }
 
   void _paintWaveform(Canvas canvas, Size size) {
-    final width = size.width;
-    final height = size.height;
-    final centerY = height / 2;
-
-    if (!isRecording) {
+    if (!isAnimating) {
       _paintStaticWave(canvas, size);
       return;
     }
 
-    // Create multiple wave layers for depth
-    _paintWaveLayer(canvas, size, 0.7, primaryColor.withValues(alpha: 0.8), 1.0);
-    _paintWaveLayer(canvas, size, 0.5, secondaryColor.withValues(alpha: 0.6), 1.5);
-    _paintWaveLayer(canvas, size, 0.3, tertiaryColor.withValues(alpha: 0.4), 2.0);
+    // Enhanced intensity when recording vs just animating
+    final intensityMultiplier = isRecording ? 1.5 : 0.8;
 
-    // Add glow effect
-    _paintGlowEffect(canvas, size);
+    // Create multiple wave layers for depth
+    _paintWaveLayer(canvas, size, 0.7 * intensityMultiplier, primaryColor.withValues(alpha: 0.8), 1.0);
+    _paintWaveLayer(canvas, size, 0.5 * intensityMultiplier, secondaryColor.withValues(alpha: 0.6), 1.5);
+    _paintWaveLayer(canvas, size, 0.3 * intensityMultiplier, tertiaryColor.withValues(alpha: 0.4), 2.0);
+
+    // Add glow effect when recording
+    if (isRecording) {
+      _paintGlowEffect(canvas, size);
+    }
   }
 
   void _paintWaveLayer(Canvas canvas, Size size, double amplitudeMultiplier, Color color, double frequencyMultiplier) {
@@ -299,15 +351,19 @@ class AdvancedAudioPainter extends CustomPainter {
 
       // Simulate frequency spectrum with varying heights
       final baseHeight = math.sin(normalizedIndex * math.pi) * 0.7;
-      final animatedHeight = isRecording
-          ? baseHeight * amplitude * (0.5 + math.sin((primaryPhase * 3) + (normalizedIndex * 6)) * 0.5)
+      final intensityMultiplier = isRecording ? 1.0 : 0.6;
+      final animatedHeight = isAnimating
+          ? baseHeight *
+                amplitude *
+                intensityMultiplier *
+                (0.5 + math.sin((primaryPhase * 3) + (normalizedIndex * 6)) * 0.5)
           : baseHeight * 0.1;
 
       final barHeight = animatedHeight * height * 0.8;
       final color = Color.lerp(primaryColor, tertiaryColor, normalizedIndex)!;
 
       final paint = Paint()
-        ..color = color.withValues(alpha: isRecording ? 0.8 : 0.3)
+        ..color = color.withValues(alpha: isAnimating ? (isRecording ? 0.8 : 0.6) : 0.3)
         ..style = PaintingStyle.fill;
 
       final rect = RRect.fromRectAndRadius(
@@ -328,19 +384,24 @@ class AdvancedAudioPainter extends CustomPainter {
       final normalizedIndex = i / (particleCount - 1);
       final angle = normalizedIndex * 2 * math.pi;
 
-      final radius = isRecording ? (amplitude * 60) + (math.sin((primaryPhase * 2) + (angle * 3)) * 20) : 10;
+      final intensityMultiplier = isRecording ? 1.0 : 0.7;
+      final baseRadius = isAnimating
+          ? (amplitude * 60 * intensityMultiplier) + (math.sin((primaryPhase * 2) + (angle * 3)) * 20)
+          : 10;
 
-      final x = (width / 2) + (math.cos(angle + globalPhase) * radius);
-      final y = (height / 2) + (math.sin(angle + globalPhase) * radius * 0.6);
+      final x = (width / 2) + (math.cos(angle + globalPhase) * baseRadius);
+      final y = (height / 2) + (math.sin(angle + globalPhase) * baseRadius * 0.6);
 
-      final size = isRecording ? 2.0 + (math.sin((secondaryPhase * 3) + (angle * 5)) * 1.5) : 1.0;
+      final particleSize = isAnimating
+          ? 2.0 + (math.sin((secondaryPhase * 3) + (angle * 5)) * 1.5) * intensityMultiplier
+          : 1.0;
 
       final color = Color.lerp(primaryColor, secondaryColor, normalizedIndex)!;
       final paint = Paint()
-        ..color = color.withValues(alpha: isRecording ? 0.7 : 0.2)
+        ..color = color.withValues(alpha: isAnimating ? (isRecording ? 0.7 : 0.5) : 0.2)
         ..style = PaintingStyle.fill;
 
-      canvas.drawCircle(Offset(x, y), size, paint);
+      canvas.drawCircle(Offset(x, y), particleSize, paint);
     }
   }
 
@@ -357,7 +418,10 @@ class AdvancedAudioPainter extends CustomPainter {
       final path = Path();
       for (int i = 0; i < points; i++) {
         final angle = (i / points) * 2 * math.pi;
-        final waveOffset = isRecording ? math.sin((primaryPhase * 2) + (angle * 4) + (ring * 0.5)) * amplitude * 15 : 0;
+        final intensityMultiplier = isRecording ? 1.0 : 0.6;
+        final waveOffset = isAnimating
+            ? math.sin((primaryPhase * 2) + (angle * 4) + (ring * 0.5)) * amplitude * 15 * intensityMultiplier
+            : 0;
 
         final radius = ringRadius + waveOffset;
         final x = center.dx + (math.cos(angle + globalPhase * 0.3) * radius);
@@ -373,7 +437,7 @@ class AdvancedAudioPainter extends CustomPainter {
 
       final color = Color.lerp(primaryColor, tertiaryColor, ring / 4)!;
       final paint = Paint()
-        ..color = color.withValues(alpha: isRecording ? 0.3 - (ring * 0.05) : 0.1)
+        ..color = color.withValues(alpha: isAnimating ? (isRecording ? 0.3 - (ring * 0.05) : 0.2 - (ring * 0.03)) : 0.1)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.0;
 

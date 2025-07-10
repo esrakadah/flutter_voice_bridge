@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../di.dart';
 import '../../data/models/voice_memo.dart';
+import '../../core/theme/theme_provider.dart';
 import 'home/home_cubit.dart';
 import 'home/home_state.dart';
 import 'package:flutter/services.dart';
@@ -37,6 +38,13 @@ class _HomeViewContentState extends State<HomeViewContent> {
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          // Theme toggle button
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: ThemeToggleButton(themeCubit: context.read<ThemeCubit>(), size: 36),
+          ),
+        ],
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -139,8 +147,8 @@ class _HomeViewContentState extends State<HomeViewContent> {
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-      padding: const EdgeInsets.all(40),
+      margin: const EdgeInsets.fromLTRB(32, 16, 32, 20),
+      padding: const EdgeInsets.all(48),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -165,7 +173,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
           const SizedBox(height: 8),
           Text(
             'Record, transcribe, and extract insights',
-            style: textTheme.titleMedium?.copyWith(color: colorScheme.onSurface.withOpacity(0.7)),
+            style: textTheme.titleMedium?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.7)),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
@@ -204,7 +212,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
     if (state is HomeInitial) return const SizedBox.shrink();
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
       child: Card(
         child: Padding(padding: const EdgeInsets.all(20), child: _buildStatusContent(context, state)),
       ),
@@ -303,7 +311,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
       child: Card(
         elevation: 6,
         shadowColor: colorScheme.primary.withAlpha(13),
@@ -419,7 +427,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
     }
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 32, 20, 16),
+      margin: const EdgeInsets.fromLTRB(32, 32, 32, 16),
       child: Row(
         children: [
           Text(
@@ -459,7 +467,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
     if (state.isLoadingRecordings) {
       return SliverToBoxAdapter(
         child: Container(
-          margin: const EdgeInsets.all(20),
+          margin: const EdgeInsets.all(32),
           child: Card(
             child: Padding(
               padding: const EdgeInsets.all(32),
@@ -481,7 +489,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
     if (state.recordings.isEmpty) {
       return SliverToBoxAdapter(
         child: Container(
-          margin: const EdgeInsets.all(20),
+          margin: const EdgeInsets.all(32),
           child: Card(
             child: Padding(
               padding: const EdgeInsets.all(32),
@@ -524,7 +532,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 32, vertical: 6),
       child: Card(
         elevation: 3,
         shadowColor: colorScheme.primary.withAlpha(8),
@@ -857,12 +865,21 @@ class _HomeViewContentState extends State<HomeViewContent> {
     }
   }
 
+  void _retryTranscription(BuildContext context) {
+    // Get the most recent recording file path for retry
+    final state = context.read<HomeCubit>().state;
+    if (state.recordings.isNotEmpty) {
+      final latestRecording = state.recordings.first;
+      context.read<HomeCubit>().transcribeRecording(latestRecording.filePath);
+    }
+  }
+
   Widget _buildTranscriptionProgressCard(BuildContext context, HomeState state) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
       child: Card(
         elevation: 6,
         shadowColor: colorScheme.primary.withAlpha(13),
@@ -887,7 +904,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
                     const SizedBox(height: 4),
                     Text(
                       'Converting speech to text using AI',
-                      style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withOpacity(0.7)),
+                      style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.7)),
                     ),
                   ],
                 ),
@@ -904,7 +921,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
     final textTheme = Theme.of(context).textTheme;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
       child: Card(
         elevation: 6,
         shadowColor: colorScheme.error.withAlpha(13),
@@ -944,7 +961,25 @@ class _HomeViewContentState extends State<HomeViewContent> {
               const SizedBox(height: 16),
               Text(
                 'This might be due to audio format compatibility or missing native libraries. Check the debug logs for more details.',
-                style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurface.withOpacity(0.6)),
+                style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.6)),
+              ),
+              const SizedBox(height: 20),
+              // Retry button
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => _retryTranscription(context),
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Retry Transcription'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

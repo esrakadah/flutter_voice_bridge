@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'core/theme/theme_provider.dart';
 import 'ui/views/home_view.dart';
+import 'di.dart';
 // import 'package:google_fonts/google_fonts.dart'; // Temporarily disabled due to network restrictions
 
 class App extends StatelessWidget {
@@ -7,13 +10,20 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Voice Bridge',
-      theme: AppTheme.getLightTheme(),
-      darkTheme: AppTheme.getDarkTheme(),
-      themeMode: ThemeMode.system,
-      home: const HomeView(),
-      debugShowCheckedModeBanner: false,
+    return BlocProvider<ThemeCubit>(
+      create: (_) => getIt<ThemeCubit>(),
+      child: BlocBuilder<ThemeCubit, ThemeState>(
+        builder: (context, themeState) {
+          return MaterialApp(
+            title: 'Flutter Voice Bridge',
+            theme: AppTheme.getLightTheme(),
+            darkTheme: AppTheme.getDarkTheme(),
+            themeMode: themeState.themeMode,
+            home: const HomeView(),
+            debugShowCheckedModeBanner: false,
+          );
+        },
+      ),
     );
   }
 }

@@ -5,14 +5,11 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - record_macos (1.0.0):
-    - FlutterMacOS
 
 DEPENDENCIES:
   - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
-  - record_macos (from `Flutter/ephemeral/.symlinks/plugins/record_macos/macos`)
 
 EXTERNAL SOURCES:
   file_picker:
@@ -21,14 +18,11 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral
   path_provider_foundation:
     :path: Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin
-  record_macos:
-    :path: Flutter/ephemeral/.symlinks/plugins/record_macos/macos
 
 SPEC CHECKSUMS:
   file_picker: e716a70a9fe5fd9e09ebc922d7541464289443af
   FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
-  record_macos: 3ead198d39fad25d10163780132a96b6fd162a1c
 
 PODFILE CHECKSUM: fb2b58b3edac8b5e958e56cdb9be784eee329837
 

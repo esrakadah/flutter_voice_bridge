@@ -66,14 +66,20 @@ class HomeCubit extends Cubit<HomeState> {
 
     try {
       // Check permissions first
+      developer.log('🔐 [HomeCubit] Checking audio permissions...', name: 'VoiceBridge.Cubit');
       final bool hasPermission = await _audioService.hasPermission();
+      developer.log('🔐 [HomeCubit] Has permission: $hasPermission', name: 'VoiceBridge.Cubit');
+
       if (!hasPermission) {
+        developer.log('🔐 [HomeCubit] Requesting audio permission...', name: 'VoiceBridge.Cubit');
         await _audioService.requestPermission();
       }
 
       // Start recording
+      developer.log('🎤 [HomeCubit] Calling audio service startRecording...', name: 'VoiceBridge.Cubit');
       final String recordingPath = await _audioService.startRecording();
       _currentRecordingPath = recordingPath;
+      developer.log('✅ [HomeCubit] Recording started at path: $recordingPath', name: 'VoiceBridge.Cubit');
 
       // Emit started state
       emit(RecordingStarted(recordingPath: recordingPath));
@@ -85,6 +91,7 @@ class HomeCubit extends Cubit<HomeState> {
       developer.log('⏺️ [HomeCubit] State changed to RecordingInProgress, timer started', name: 'VoiceBridge.Cubit');
     } catch (e) {
       developer.log('❌ [HomeCubit] Error starting recording: $e', name: 'VoiceBridge.Cubit', error: e);
+      developer.log('❌ [HomeCubit] Error type: ${e.runtimeType}', name: 'VoiceBridge.Cubit');
 
       // Check for specific permission errors
       String errorMessage = e.toString().toLowerCase();
@@ -186,15 +193,19 @@ class HomeCubit extends Cubit<HomeState> {
   // Stop recording functionality
   Future<void> stopRecording() async {
     developer.log('⏹️ [HomeCubit] Stopping recording process...', name: 'VoiceBridge.Cubit');
+    developer.log('⏹️ [HomeCubit] Current recording path: $_currentRecordingPath', name: 'VoiceBridge.Cubit');
 
     try {
       // Stop recording
+      developer.log('🛑 [HomeCubit] Calling audio service stopRecording...', name: 'VoiceBridge.Cubit');
       final String finalPath = await _audioService.stopRecording();
+      developer.log('✅ [HomeCubit] Recording stopped at path: $finalPath', name: 'VoiceBridge.Cubit');
 
       // Stop timer
       _stopRecordingTimer();
 
       // Create voice memo record
+      developer.log('💾 [HomeCubit] Creating voice memo record...', name: 'VoiceBridge.Cubit');
       await _createVoiceMemo(finalPath);
 
       // Store last completed recording path for playback
@@ -232,7 +243,22 @@ class HomeCubit extends Cubit<HomeState> {
       emit(_copyCurrentState(baseState: TranscriptionInProgress(audioFilePath: audioFilePath)));
       developer.log('📡 [HomeCubit] State changed to TranscriptionInProgress', name: 'VoiceBridge.Cubit');
 
+      // Ensure transcription service is initialized before proceeding
+      developer.log('🔍 [HomeCubit] Checking if transcription service is initialized...', name: 'VoiceBridge.Cubit');
+      final isInitialized = await _transcriptionService.isInitialized();
+      if (!isInitialized) {
+        developer.log(
+          '🔧 [HomeCubit] Transcription service not initialized, initializing now...',
+          name: 'VoiceBridge.Cubit',
+        );
+        await _transcriptionService.initialize();
+        developer.log('✅ [HomeCubit] Transcription service initialized successfully', name: 'VoiceBridge.Cubit');
+      } else {
+        developer.log('✅ [HomeCubit] Transcription service already initialized', name: 'VoiceBridge.Cubit');
+      }
+
       // Perform transcription
+      developer.log('🎵 [HomeCubit] Starting audio transcription...', name: 'VoiceBridge.Cubit');
       final transcribedText = await _transcriptionService.transcribeAudio(audioFilePath);
       developer.log(
         '✅ [HomeCubit] Transcription completed: ${transcribedText.length} characters',

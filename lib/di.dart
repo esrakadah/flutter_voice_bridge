@@ -3,6 +3,7 @@ import 'dart:io';
 import 'core/audio/audio_service.dart';
 import 'core/audio/platform_audio_service.dart';
 import 'core/transcription/transcription_service.dart';
+import 'core/theme/theme_provider.dart';
 import 'data/services/voice_memo_service.dart';
 import 'ui/views/home/home_cubit.dart';
 
@@ -30,6 +31,9 @@ class DependencyInjection {
         return MockTranscriptionService();
       }
     });
+
+    // Register theme cubit as singleton to persist theme across app
+    getIt.registerLazySingleton<ThemeCubit>(() => ThemeCubit());
 
     // Register Cubits
     getIt.registerFactory<HomeCubit>(

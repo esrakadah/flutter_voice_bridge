@@ -51,7 +51,6 @@ dependencies:
   
   # Path manipulation for native library loading
   path: ^1.9.0
-  record: ^6.0.0
   flutter_logs: ^2.1.9
   http: ^1.2.1
   permission_handler: ^11.3.1
