@@ -16,8 +16,15 @@ class HomeView extends StatelessWidget {
   }
 }
 
-class HomeViewContent extends StatelessWidget {
+class HomeViewContent extends StatefulWidget {
   const HomeViewContent({super.key});
+
+  @override
+  State<HomeViewContent> createState() => _HomeViewContentState();
+}
+
+class _HomeViewContentState extends State<HomeViewContent> {
+  AudioVisualizationMode _currentMode = AudioVisualizationMode.waveform;
 
   @override
   Widget build(BuildContext context) {
@@ -72,12 +79,68 @@ class HomeViewContent extends StatelessWidget {
     );
   }
 
+  Widget _buildVisualizationModeChips(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildModeChip(context, 'Waveform', AudioVisualizationMode.waveform),
+        const SizedBox(width: 8),
+        _buildModeChip(context, 'Spectrum', AudioVisualizationMode.spectrum),
+        const SizedBox(width: 8),
+        _buildModeChip(context, 'Particles', AudioVisualizationMode.particles),
+        const SizedBox(width: 8),
+        _buildModeChip(context, 'Radial', AudioVisualizationMode.radial),
+      ],
+    );
+  }
+
+  Widget _buildModeChip(BuildContext context, String label, AudioVisualizationMode mode) {
+    final isSelected = _currentMode == mode;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _currentMode = mode;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                    Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                  ],
+                )
+              : null,
+          border: Border.all(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
+                : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.onBackground.withValues(alpha: 0.7),
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeroSection(BuildContext context, HomeState state) {
     final isRecording = state is RecordingInProgress || state is RecordingStarted;
 
     return Container(
-      margin: const EdgeInsets.all(20),
-      padding: const EdgeInsets.all(32),
+      margin: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+      padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -112,32 +175,33 @@ class HomeViewContent extends StatelessWidget {
           ),
           const SizedBox(height: 32),
 
-          // Audio visualizer
+          // Advanced Audio visualizer
           Container(
-            height: 80,
+            height: 100,
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: AnimatedAudioVisualizer(
-              isAnimating: isRecording,
-              barCount: 25,
-              barColor: isRecording
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.outline.withOpacity(0.3),
-              maxHeight: 60,
-              barWidth: 3,
-              barSpacing: 3,
+            child: AdvancedAudioVisualizer(
+              isRecording: isRecording,
+              height: 80,
+              primaryColor: Theme.of(context).colorScheme.primary,
+              secondaryColor: Theme.of(context).colorScheme.secondary,
+              tertiaryColor: Theme.of(context).colorScheme.tertiary,
+              mode: _currentMode,
             ),
           ),
           const SizedBox(height: 24),
 
-          // Ready state message
-          if (!isRecording)
+          // Ready state message and mode switcher
+          if (!isRecording) ...[
             Text(
               'Tap the microphone to start recording',
               style: Theme.of(
                 context,
-              ).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6)),
+              ).textTheme.bodyLarge?.copyWith(color: Theme.of(context).colorScheme.onBackground.withValues(alpha: 0.6)),
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 16),
+            _buildVisualizationModeChips(context),
+          ],
         ],
       ),
     );
@@ -288,10 +352,12 @@ class HomeViewContent extends StatelessWidget {
 
   Widget _buildTranscriptionCard(BuildContext context, HomeState state) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Card(
+        elevation: 6,
+        shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -518,8 +584,10 @@ class HomeViewContent extends StatelessWidget {
     final isPlaying = state is PlaybackInProgress && state.filePath == recording.filePath;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
       child: Card(
+        elevation: 3,
+        shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -712,17 +780,35 @@ class HomeViewContent extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
               colors: isRecording
-                  ? [Theme.of(context).colorScheme.error, Theme.of(context).colorScheme.error.withOpacity(0.8)]
-                  : [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary],
+                  ? [
+                      Theme.of(context).colorScheme.error,
+                      Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+                      Theme.of(context).colorScheme.error.withValues(alpha: 0.9),
+                    ]
+                  : [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.secondary,
+                      Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.8),
+                    ],
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
                 color: (isRecording ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary)
-                    .withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
+                    .withValues(alpha: 0.4),
+                blurRadius: 12,
+                spreadRadius: 2,
+                offset: const Offset(0, 6),
+              ),
+              BoxShadow(
+                color: (isRecording ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary)
+                    .withValues(alpha: 0.2),
+                blurRadius: 24,
+                spreadRadius: 4,
+                offset: const Offset(0, 12),
               ),
             ],
           ),
