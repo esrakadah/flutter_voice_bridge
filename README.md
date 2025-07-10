@@ -9,7 +9,7 @@ This project follows **Clean Architecture** principles and demonstrates **real-w
 ## ✨ Features
 
 - **✅ Cross-Platform Audio Recording**: High-quality audio capture on iOS, macOS, and Android with optimized formats.
-- **✅ Local Audio Playbook**: Play recorded memos directly within the app across all platforms.
+- **✅ Local Audio Playback**: Play recorded memos directly within the app across all platforms.
 - **✅ Offline Speech-to-Text**: **WORKING** on-device transcription using `Whisper.cpp` via Dart FFI. No internet connection required.
 - **✅ Real-time Audio Visualization**: Custom waveform, spectrum, and particle visualizations during recording.
 - **✅ Keyword Extraction**: Automatic keyword detection from transcribed text with intelligent filtering.
