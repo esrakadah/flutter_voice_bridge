@@ -27,3 +27,69 @@ doc/api/
 
 .flutter-plugins
 .flutter-plugins-dependencies
+
+# ===== WHISPER AI MODEL FILES =====
+# These files are too large for GitHub (>100MB limit)
+# Download instructions in SETUP.md
+*.bin
+assets/models/
+android/app/src/main/assets/models/
+ios/Runner/Models/
+macos/Runner/Models/
+
+# ===== NATIVE BUILD ARTIFACTS =====
+# Whisper.cpp build artifacts and downloads
+native/whisper/whisper.cpp/
+*.dylib
+*.so
+*.dll
+
+# ===== PLATFORM BUILD DIRECTORIES =====
+# iOS build artifacts
+ios/build/
+ios/Pods/
+ios/.symlinks/
+*.hmap
+*.ipa
+
+# Android build artifacts
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/key.properties
+*.jks
+
+# macOS build artifacts
+macos/build/
+macos/Pods/
+macos/.symlinks/
+
+# Linux build artifacts
+linux/build/
+
+# Windows build artifacts
+windows/build/
+
+# ===== DEVELOPMENT TOOLS =====
+# Xcode
+xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VS Code
+.vscode/
+
+# ===== LOGS AND TEMP FILES =====
+*.log
+.DS_Store
+Thumbs.db
+*~
+.tmp/
+.temp/
