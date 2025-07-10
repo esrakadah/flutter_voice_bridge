@@ -9,14 +9,44 @@ abstract class HomeState extends Equatable {
   final bool isLoadingRecordings;
   final String? recordingsError;
 
-  const HomeState({this.recordings = const [], this.isLoadingRecordings = false, this.recordingsError});
+  // Transcription-related state
+  final String? transcriptionText;
+  final bool isTranscribing;
+  final String? transcriptionError;
+  final List<String> keywords;
+
+  const HomeState({
+    this.recordings = const [],
+    this.isLoadingRecordings = false,
+    this.recordingsError,
+    this.transcriptionText,
+    this.isTranscribing = false,
+    this.transcriptionError,
+    this.keywords = const [],
+  });
 
   @override
-  List<Object?> get props => [recordings, isLoadingRecordings, recordingsError];
+  List<Object?> get props => [
+    recordings,
+    isLoadingRecordings,
+    recordingsError,
+    transcriptionText,
+    isTranscribing,
+    transcriptionError,
+    keywords,
+  ];
 }
 
 class HomeInitial extends HomeState {
-  const HomeInitial({super.recordings, super.isLoadingRecordings, super.recordingsError});
+  const HomeInitial({
+    super.recordings,
+    super.isLoadingRecordings,
+    super.recordingsError,
+    super.transcriptionText,
+    super.isTranscribing,
+    super.transcriptionError,
+    super.keywords,
+  });
 }
 
 class RecordingInProgress extends HomeState {
@@ -29,6 +59,10 @@ class RecordingInProgress extends HomeState {
     super.recordings,
     super.isLoadingRecordings,
     super.recordingsError,
+    super.transcriptionText,
+    super.isTranscribing,
+    super.transcriptionError,
+    super.keywords,
   });
 
   @override
@@ -43,6 +77,10 @@ class RecordingStarted extends HomeState {
     super.recordings,
     super.isLoadingRecordings,
     super.recordingsError,
+    super.transcriptionText,
+    super.isTranscribing,
+    super.transcriptionError,
+    super.keywords,
   });
 
   @override
@@ -59,6 +97,10 @@ class RecordingCompleted extends HomeState {
     super.recordings,
     super.isLoadingRecordings,
     super.recordingsError,
+    super.transcriptionText,
+    super.isTranscribing,
+    super.transcriptionError,
+    super.keywords,
   });
 
   @override
@@ -73,6 +115,10 @@ class RecordingError extends HomeState {
     super.recordings,
     super.isLoadingRecordings,
     super.recordingsError,
+    super.transcriptionText,
+    super.isTranscribing,
+    super.transcriptionError,
+    super.keywords,
   });
 
   @override
@@ -88,6 +134,10 @@ class PlaybackInProgress extends HomeState {
     super.recordings,
     super.isLoadingRecordings,
     super.recordingsError,
+    super.transcriptionText,
+    super.isTranscribing,
+    super.transcriptionError,
+    super.keywords,
   });
 
   @override
@@ -97,7 +147,16 @@ class PlaybackInProgress extends HomeState {
 class PlaybackCompleted extends HomeState {
   final String filePath;
 
-  const PlaybackCompleted({required this.filePath, super.recordings, super.isLoadingRecordings, super.recordingsError});
+  const PlaybackCompleted({
+    required this.filePath,
+    super.recordings,
+    super.isLoadingRecordings,
+    super.recordingsError,
+    super.transcriptionText,
+    super.isTranscribing,
+    super.transcriptionError,
+    super.keywords,
+  });
 
   @override
   List<Object?> get props => [...super.props, filePath];
@@ -106,8 +165,78 @@ class PlaybackCompleted extends HomeState {
 class PlaybackError extends HomeState {
   final String errorMessage;
 
-  const PlaybackError({required this.errorMessage, super.recordings, super.isLoadingRecordings, super.recordingsError});
+  const PlaybackError({
+    required this.errorMessage,
+    super.recordings,
+    super.isLoadingRecordings,
+    super.recordingsError,
+    super.transcriptionText,
+    super.isTranscribing,
+    super.transcriptionError,
+    super.keywords,
+  });
 
   @override
   List<Object?> get props => [...super.props, errorMessage];
+}
+
+// Transcription States
+class TranscriptionInProgress extends HomeState {
+  final String audioFilePath;
+
+  const TranscriptionInProgress({
+    required this.audioFilePath,
+    super.recordings,
+    super.isLoadingRecordings,
+    super.recordingsError,
+    super.transcriptionText,
+    super.isTranscribing = true,
+    super.transcriptionError,
+    super.keywords,
+  });
+
+  @override
+  List<Object?> get props => [...super.props, audioFilePath];
+}
+
+class TranscriptionCompleted extends HomeState {
+  final String audioFilePath;
+  final String transcribedText;
+  final List<String> extractedKeywords;
+
+  const TranscriptionCompleted({
+    required this.audioFilePath,
+    required this.transcribedText,
+    required this.extractedKeywords,
+    super.recordings,
+    super.isLoadingRecordings,
+    super.recordingsError,
+    String? transcriptionText,
+    super.isTranscribing = false,
+    super.transcriptionError,
+    List<String>? keywords,
+  }) : super(transcriptionText: transcriptionText ?? transcribedText, keywords: keywords ?? extractedKeywords);
+
+  @override
+  List<Object?> get props => [...super.props, audioFilePath, transcribedText, extractedKeywords];
+}
+
+class TranscriptionError extends HomeState {
+  final String audioFilePath;
+  final String errorMessage;
+
+  const TranscriptionError({
+    required this.audioFilePath,
+    required this.errorMessage,
+    super.recordings,
+    super.isLoadingRecordings,
+    super.recordingsError,
+    super.transcriptionText,
+    super.isTranscribing = false,
+    String? transcriptionError,
+    super.keywords,
+  }) : super(transcriptionError: transcriptionError ?? errorMessage);
+
+  @override
+  List<Object?> get props => [...super.props, audioFilePath, errorMessage];
 }

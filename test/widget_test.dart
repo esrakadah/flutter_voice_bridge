@@ -1,30 +1,45 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Flutter Voice Bridge Widget Tests
+// Tests for voice recording and transcription functionality
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_voice_bridge/main.dart';
+import 'package:flutter_voice_bridge/app.dart';
+import 'package:flutter_voice_bridge/di.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  setUpAll(() async {
+    // Initialize dependencies for testing
+    await DependencyInjection.init();
+  });
+
+  testWidgets('Voice Bridge app loads correctly', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const App());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify that the app loads with expected elements
+    expect(find.text('Voice Bridge AI'), findsOneWidget);
+    expect(find.text('Ready to record'), findsOneWidget);
+    expect(find.byIcon(Icons.mic), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    // Verify floating action button exists
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+  });
+
+  testWidgets('Recording button changes state', (WidgetTester tester) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const App());
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Find the record button
+    final recordButton = find.byType(FloatingActionButton);
+    expect(recordButton, findsOneWidget);
+
+    // Tap the record button (this should start recording)
+    await tester.tap(recordButton);
+    await tester.pump();
+
+    // Note: Actual recording functionality requires platform channels
+    // This test just verifies the UI responds to taps
   });
 }

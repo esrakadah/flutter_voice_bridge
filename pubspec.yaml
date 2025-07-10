@@ -44,6 +44,12 @@ dependencies:
   
   # File system access - Documents directory access for recording files
   path_provider: ^2.1.4
+  
+  # FFI for native library integration (Whisper.cpp)
+  ffi: ^2.1.2
+  
+  # Path manipulation for native library loading
+  path: ^1.9.0
 
 dev_dependencies:
   flutter_test:

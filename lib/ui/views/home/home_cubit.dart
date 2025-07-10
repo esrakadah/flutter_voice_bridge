@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:developer' as developer;
 import '../../../core/audio/audio_service.dart';
+import '../../../core/transcription/transcription_service.dart';
 import '../../../data/services/voice_memo_service.dart';
 import '../../../data/models/voice_memo.dart';
 import 'home_state.dart';
@@ -12,6 +13,7 @@ import 'home_state.dart';
 class HomeCubit extends Cubit<HomeState> {
   final AudioService _audioService;
   final VoiceMemoService _voiceMemoService;
+  final TranscriptionService _transcriptionService;
 
   Timer? _recordingTimer;
   Duration _recordingDuration = Duration.zero;
@@ -19,16 +21,43 @@ class HomeCubit extends Cubit<HomeState> {
   String? _lastCompletedRecordingPath;
   int _recordingSeconds = 0;
 
-  HomeCubit({required AudioService audioService, required VoiceMemoService voiceMemoService})
-    : _audioService = audioService,
-      _voiceMemoService = voiceMemoService,
-      super(const HomeInitial()) {
+  HomeCubit({
+    required AudioService audioService,
+    required VoiceMemoService voiceMemoService,
+    required TranscriptionService transcriptionService,
+  }) : _audioService = audioService,
+       _voiceMemoService = voiceMemoService,
+       _transcriptionService = transcriptionService,
+       super(const HomeInitial()) {
     developer.log(
       '🏠 [HomeCubit] Initialized with audio service: ${_audioService.runtimeType}',
       name: 'VoiceBridge.Cubit',
     );
+    developer.log(
+      '🤖 [HomeCubit] Initialized with transcription service: ${_transcriptionService.runtimeType}',
+      name: 'VoiceBridge.Cubit',
+    );
+
+    // Initialize transcription service
+    _initializeTranscriptionService();
+
     // Load existing recordings on initialization
     loadRecordings();
+  }
+
+  // Initialize transcription service
+  Future<void> _initializeTranscriptionService() async {
+    try {
+      developer.log('🔧 [HomeCubit] Initializing transcription service...', name: 'VoiceBridge.Cubit');
+      await _transcriptionService.initialize();
+      developer.log('✅ [HomeCubit] Transcription service initialized', name: 'VoiceBridge.Cubit');
+    } catch (e) {
+      developer.log(
+        '❌ [HomeCubit] Failed to initialize transcription service: $e',
+        name: 'VoiceBridge.Cubit',
+        error: e,
+      );
+    }
   }
 
   // Start recording functionality
@@ -184,10 +213,60 @@ class HomeCubit extends Cubit<HomeState> {
 
       // Reload recordings list to include the new recording
       await loadRecordings();
+
+      // Start transcription of the recorded audio
+      await transcribeRecording(finalPath);
     } catch (e) {
       developer.log('❌ [HomeCubit] Error stopping recording: $e', name: 'VoiceBridge.Cubit', error: e);
       _stopRecordingTimer();
       emit(RecordingError(errorMessage: e.toString()));
+    }
+  }
+
+  // Transcribe recording functionality
+  Future<void> transcribeRecording(String audioFilePath) async {
+    developer.log('🤖 [HomeCubit] Starting transcription for: $audioFilePath', name: 'VoiceBridge.Cubit');
+
+    try {
+      // Emit transcription in progress state
+      emit(_copyCurrentState(baseState: TranscriptionInProgress(audioFilePath: audioFilePath)));
+      developer.log('📡 [HomeCubit] State changed to TranscriptionInProgress', name: 'VoiceBridge.Cubit');
+
+      // Perform transcription
+      final transcribedText = await _transcriptionService.transcribeAudio(audioFilePath);
+      developer.log(
+        '✅ [HomeCubit] Transcription completed: ${transcribedText.length} characters',
+        name: 'VoiceBridge.Cubit',
+      );
+
+      // Extract keywords
+      final keywords = await _transcriptionService.extractKeywords(transcribedText);
+      developer.log('🔍 [HomeCubit] Keywords extracted: ${keywords.join(', ')}', name: 'VoiceBridge.Cubit');
+
+      // Emit transcription completed state
+      emit(
+        _copyCurrentState(
+          baseState: TranscriptionCompleted(
+            audioFilePath: audioFilePath,
+            transcribedText: transcribedText,
+            extractedKeywords: keywords,
+          ),
+        ),
+      );
+      developer.log('📡 [HomeCubit] State changed to TranscriptionCompleted', name: 'VoiceBridge.Cubit');
+
+      // Log the results for debugging (no UI yet)
+      developer.log('📝 [HomeCubit] TRANSCRIPTION RESULT:', name: 'VoiceBridge.Transcription');
+      developer.log('📁 [HomeCubit] File: $audioFilePath', name: 'VoiceBridge.Transcription');
+      developer.log('📝 [HomeCubit] Text: $transcribedText', name: 'VoiceBridge.Transcription');
+      developer.log('🏷️ [HomeCubit] Keywords: ${keywords.join(', ')}', name: 'VoiceBridge.Transcription');
+    } catch (e) {
+      developer.log('❌ [HomeCubit] Error during transcription: $e', name: 'VoiceBridge.Cubit', error: e);
+      emit(
+        _copyCurrentState(
+          baseState: TranscriptionError(audioFilePath: audioFilePath, errorMessage: e.toString()),
+        ),
+      );
     }
   }
 
@@ -254,6 +333,10 @@ class HomeCubit extends Cubit<HomeState> {
     bool? isLoadingRecordings,
     String? recordingsError,
     HomeState? baseState,
+    String? transcriptionText,
+    bool? isTranscribing,
+    String? transcriptionError,
+    List<String>? keywords,
   }) {
     final currentState = state;
 
@@ -266,6 +349,10 @@ class HomeCubit extends Cubit<HomeState> {
           recordings: recordings ?? currentState.recordings,
           isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
           recordingsError: recordingsError ?? currentState.recordingsError,
+          transcriptionText: transcriptionText ?? currentState.transcriptionText,
+          isTranscribing: isTranscribing ?? currentState.isTranscribing,
+          transcriptionError: transcriptionError ?? currentState.transcriptionError,
+          keywords: keywords ?? currentState.keywords,
         );
       } else if (baseState is PlaybackCompleted) {
         return PlaybackCompleted(
@@ -273,6 +360,10 @@ class HomeCubit extends Cubit<HomeState> {
           recordings: recordings ?? currentState.recordings,
           isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
           recordingsError: recordingsError ?? currentState.recordingsError,
+          transcriptionText: transcriptionText ?? currentState.transcriptionText,
+          isTranscribing: isTranscribing ?? currentState.isTranscribing,
+          transcriptionError: transcriptionError ?? currentState.transcriptionError,
+          keywords: keywords ?? currentState.keywords,
         );
       } else if (baseState is PlaybackError) {
         return PlaybackError(
@@ -280,6 +371,46 @@ class HomeCubit extends Cubit<HomeState> {
           recordings: recordings ?? currentState.recordings,
           isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
           recordingsError: recordingsError ?? currentState.recordingsError,
+          transcriptionText: transcriptionText ?? currentState.transcriptionText,
+          isTranscribing: isTranscribing ?? currentState.isTranscribing,
+          transcriptionError: transcriptionError ?? currentState.transcriptionError,
+          keywords: keywords ?? currentState.keywords,
+        );
+      } else if (baseState is TranscriptionInProgress) {
+        return TranscriptionInProgress(
+          audioFilePath: baseState.audioFilePath,
+          recordings: recordings ?? currentState.recordings,
+          isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+          recordingsError: recordingsError ?? currentState.recordingsError,
+          transcriptionText: transcriptionText ?? currentState.transcriptionText,
+          isTranscribing: isTranscribing ?? baseState.isTranscribing,
+          transcriptionError: transcriptionError ?? currentState.transcriptionError,
+          keywords: keywords ?? currentState.keywords,
+        );
+      } else if (baseState is TranscriptionCompleted) {
+        return TranscriptionCompleted(
+          audioFilePath: baseState.audioFilePath,
+          transcribedText: baseState.transcribedText,
+          extractedKeywords: baseState.extractedKeywords,
+          recordings: recordings ?? currentState.recordings,
+          isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+          recordingsError: recordingsError ?? currentState.recordingsError,
+          transcriptionText: transcriptionText ?? baseState.transcribedText,
+          isTranscribing: isTranscribing ?? baseState.isTranscribing,
+          transcriptionError: transcriptionError ?? currentState.transcriptionError,
+          keywords: keywords ?? baseState.extractedKeywords,
+        );
+      } else if (baseState is TranscriptionError) {
+        return TranscriptionError(
+          audioFilePath: baseState.audioFilePath,
+          errorMessage: baseState.errorMessage,
+          recordings: recordings ?? currentState.recordings,
+          isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+          recordingsError: recordingsError ?? currentState.recordingsError,
+          transcriptionText: transcriptionText ?? currentState.transcriptionText,
+          isTranscribing: isTranscribing ?? baseState.isTranscribing,
+          transcriptionError: transcriptionError ?? baseState.errorMessage,
+          keywords: keywords ?? currentState.keywords,
         );
       }
     }
@@ -290,6 +421,10 @@ class HomeCubit extends Cubit<HomeState> {
         recordings: recordings ?? currentState.recordings,
         isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
         recordingsError: recordingsError ?? currentState.recordingsError,
+        transcriptionText: transcriptionText ?? currentState.transcriptionText,
+        isTranscribing: isTranscribing ?? currentState.isTranscribing,
+        transcriptionError: transcriptionError ?? currentState.transcriptionError,
+        keywords: keywords ?? currentState.keywords,
       );
     } else if (currentState is RecordingInProgress) {
       return RecordingInProgress(
@@ -298,6 +433,10 @@ class HomeCubit extends Cubit<HomeState> {
         recordings: recordings ?? currentState.recordings,
         isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
         recordingsError: recordingsError ?? currentState.recordingsError,
+        transcriptionText: transcriptionText ?? currentState.transcriptionText,
+        isTranscribing: isTranscribing ?? currentState.isTranscribing,
+        transcriptionError: transcriptionError ?? currentState.transcriptionError,
+        keywords: keywords ?? currentState.keywords,
       );
     } else if (currentState is RecordingStarted) {
       return RecordingStarted(
@@ -305,6 +444,10 @@ class HomeCubit extends Cubit<HomeState> {
         recordings: recordings ?? currentState.recordings,
         isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
         recordingsError: recordingsError ?? currentState.recordingsError,
+        transcriptionText: transcriptionText ?? currentState.transcriptionText,
+        isTranscribing: isTranscribing ?? currentState.isTranscribing,
+        transcriptionError: transcriptionError ?? currentState.transcriptionError,
+        keywords: keywords ?? currentState.keywords,
       );
     } else if (currentState is RecordingCompleted) {
       return RecordingCompleted(
@@ -313,6 +456,10 @@ class HomeCubit extends Cubit<HomeState> {
         recordings: recordings ?? currentState.recordings,
         isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
         recordingsError: recordingsError ?? currentState.recordingsError,
+        transcriptionText: transcriptionText ?? currentState.transcriptionText,
+        isTranscribing: isTranscribing ?? currentState.isTranscribing,
+        transcriptionError: transcriptionError ?? currentState.transcriptionError,
+        keywords: keywords ?? currentState.keywords,
       );
     } else if (currentState is RecordingError) {
       return RecordingError(
@@ -320,6 +467,10 @@ class HomeCubit extends Cubit<HomeState> {
         recordings: recordings ?? currentState.recordings,
         isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
         recordingsError: recordingsError ?? currentState.recordingsError,
+        transcriptionText: transcriptionText ?? currentState.transcriptionText,
+        isTranscribing: isTranscribing ?? currentState.isTranscribing,
+        transcriptionError: transcriptionError ?? currentState.transcriptionError,
+        keywords: keywords ?? currentState.keywords,
       );
     }
 
@@ -328,13 +479,26 @@ class HomeCubit extends Cubit<HomeState> {
       recordings: recordings ?? currentState.recordings,
       isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
       recordingsError: recordingsError ?? currentState.recordingsError,
+      transcriptionText: transcriptionText ?? currentState.transcriptionText,
+      isTranscribing: isTranscribing ?? currentState.isTranscribing,
+      transcriptionError: transcriptionError ?? currentState.transcriptionError,
+      keywords: keywords ?? currentState.keywords,
     );
   }
 
   @override
-  Future<void> close() {
-    developer.log('🔄 [HomeCubit] Closing cubit, cleaning up timer', name: 'VoiceBridge.Cubit');
+  Future<void> close() async {
+    developer.log('🔄 [HomeCubit] Closing cubit, cleaning up resources', name: 'VoiceBridge.Cubit');
     _stopRecordingTimer();
+
+    // Clean up transcription service
+    try {
+      await _transcriptionService.dispose();
+      developer.log('✅ [HomeCubit] Transcription service disposed', name: 'VoiceBridge.Cubit');
+    } catch (e) {
+      developer.log('⚠️ [HomeCubit] Error disposing transcription service: $e', name: 'VoiceBridge.Cubit', error: e);
+    }
+
     return super.close();
   }
 }

@@ -84,6 +84,7 @@ lib/
 abstract class AudioService {
   Future<String> startRecording();
   Future<String> stopRecording();
+  Future<String> playRecording(String filePath);
   Future<bool> hasPermission();
   Future<void> requestPermission();
 }
@@ -194,6 +195,24 @@ class PlatformChannels {
       rethrow;
     }
   }
+  
+  static Future<String> playRecording(String filePath) async {
+    developer.log('🔊 [PlatformChannels] Playing recording: $filePath', 
+                  name: 'VoiceBridge.Audio');
+    
+    try {
+      final String result = await _audioChannel.invokeMethod('playRecording', {
+        'path': filePath,
+      });
+      developer.log('✅ [PlatformChannels] Playback started: $result', 
+                    name: 'VoiceBridge.Audio');
+      return result;
+    } on PlatformException catch (e) {
+      developer.log('❌ [PlatformChannels] Playback error: ${e.code} - ${e.message}', 
+                    name: 'VoiceBridge.Audio', error: e);
+      rethrow;
+    }
+  }
 }
 ```
 
@@ -264,6 +283,91 @@ private func beginRecording(result: @escaping FlutterResult) {
 }
 ```
 
+### Android Native Implementation
+```kotlin
+// MainActivity.kt - Platform channel handler with MediaPlayer integration
+class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener {
+    private val CHANNEL = "voice.bridge/audio"
+    private val TAG = "FlutterVoiceBridge"
+    
+    // Playback related
+    private var mediaPlayer: MediaPlayer? = null
+    private var audioManager: AudioManager? = null
+    private var isPlaying = false
+
+    private fun playRecording(path: String, result: MethodChannel.Result) {
+        Log.d(TAG, "🔊 [Android] playRecording called with path: $path")
+        
+        // Stop any current playback first (idempotent behavior)
+        if (mediaPlayer != null && isPlaying) {
+            Log.d(TAG, "⏹️ [Android] Stopping current playback before starting new one")
+            stopPlayback()
+        }
+        
+        // Validate file existence
+        val file = File(path)
+        if (!file.exists()) {
+            Log.e(TAG, "❌ [Android] File does not exist at path: $path")
+            result.error("FILE_NOT_FOUND", "Audio file not found at specified path", path)
+            return
+        }
+        
+        // Request audio focus
+        val audioFocusResult = audioManager?.requestAudioFocus(
+            null, 
+            AudioManager.STREAM_MUSIC, 
+            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+        )
+        
+        if (audioFocusResult != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            Log.e(TAG, "❌ [Android] Failed to gain audio focus")
+            result.error("AUDIO_FOCUS_ERROR", "Failed to gain audio focus for playback", null)
+            return
+        }
+        
+        // Create and start MediaPlayer
+        try {
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(path)
+                setOnCompletionListener(this@MainActivity)
+                setOnErrorListener(this@MainActivity)
+                setAudioStreamType(AudioManager.STREAM_MUSIC)
+                prepare()
+                start()
+            }
+            
+            isPlaying = true
+            Log.d(TAG, "✅ [Android] Playback started successfully")
+            result.success("Playback started")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "💥 [Android] Error creating media player: ${e.message}")
+            audioManager?.abandonAudioFocus(null)
+            result.error("PLAYER_ERROR", "Failed to create audio player: ${e.message}", e.message)
+        }
+    }
+    
+    // MediaPlayer.OnCompletionListener implementation
+    override fun onCompletion(mp: MediaPlayer?) {
+        Log.d(TAG, "🏁 [Android] Playback completed successfully")
+        isPlaying = false
+        mediaPlayer?.release()
+        mediaPlayer = null
+        audioManager?.abandonAudioFocus(null)
+    }
+    
+    // MediaPlayer.OnErrorListener implementation
+    override fun onError(mp: MediaPlayer?, what: Int, extra: Int): Boolean {
+        Log.e(TAG, "💥 [Android] MediaPlayer error occurred - what: $what, extra: $extra")
+        isPlaying = false
+        mediaPlayer?.release()
+        mediaPlayer = null
+        audioManager?.abandonAudioFocus(null)
+        return true // Handled the error
+    }
+}
+```
+
 ## 🔄 Data Flow Architecture
 
 ### User Interaction Flow
@@ -277,6 +381,8 @@ private func beginRecording(result: @escaping FlutterResult) {
                        └─> MethodChannel.invokeMethod('startRecording')
                            └─> iOS AppDelegate.startRecording()
                                └─> AVAudioRecorder.record()
+                           └─> Android MainActivity.startRecording()
+                               └─> MediaRecorder.start()
 
 2. Native response flows back
    └─> Flutter Result<String> (file path)
@@ -285,6 +391,17 @@ private func beginRecording(result: @escaping FlutterResult) {
                └─> HomeCubit.emit(RecordingInProgress(path))
                    └─> BlocBuilder rebuilds UI
                        └─> HomeView shows recording state
+
+3. Playback flow (cross-platform)
+   └─> User taps play button for recording
+       └─> HomeCubit.playRecording(path)
+           └─> AudioService.playRecording(path)
+               └─> PlatformChannels.playRecording(path)
+                   └─> MethodChannel.invokeMethod('playRecording', {'path': path})
+                       └─> iOS AppDelegate.playRecording()
+                           └─> AVAudioPlayer.play()
+                       └─> Android MainActivity.playRecording()
+                           └─> MediaPlayer.start()
 ```
 
 ### State Transition Diagram
@@ -313,6 +430,23 @@ try {
     throw AudioPermissionException(e.message ?? 'Microphone access denied');
   }
   throw AudioRecordingException('Recording failed: ${e.message}');
+}
+
+// Android-specific playback error handling
+try {
+  final result = await _audioChannel.invokeMethod('playRecording', {'path': filePath});
+  return result;
+} on PlatformException catch (e) {
+  switch (e.code) {
+    case 'FILE_NOT_FOUND':
+      throw AudioFileNotFoundException(e.message ?? 'Audio file not found');
+    case 'AUDIO_FOCUS_ERROR':
+      throw AudioFocusException(e.message ?? 'Failed to gain audio focus');
+    case 'PLAYER_ERROR':
+      throw AudioPlayerException(e.message ?? 'MediaPlayer initialization failed');
+    default:
+      throw AudioPlaybackException('Playback failed: ${e.message}');
+  }
 }
 
 // Business logic layer - handles domain errors
@@ -392,6 +526,58 @@ private func cleanupRecording() {
 }
 ```
 
+### Android Native Optimizations
+```kotlin
+// Efficient AudioManager and MediaPlayer lifecycle
+private fun stopPlayback() {
+    mediaPlayer?.apply {
+        if (isPlaying) {
+            stop()
+        }
+        release()
+    }
+    
+    mediaPlayer = null
+    isPlaying = false
+    
+    // Release audio focus immediately
+    audioManager?.abandonAudioFocus(null)
+}
+
+// Proper resource cleanup in Activity lifecycle
+override fun onDestroy() {
+    super.onDestroy()
+    
+    // Clean up recording
+    if (isRecording) {
+        try {
+            stopRecording()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping recording on destroy: ${e.message}")
+        }
+    }
+    
+    // Clean up playback
+    if (isPlaying || mediaPlayer != null) {
+        try {
+            stopPlayback()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping playback on destroy: ${e.message}")
+        }
+    }
+}
+
+// Audio focus management for better user experience
+private fun requestAudioFocus(): Boolean {
+    val result = audioManager?.requestAudioFocus(
+        null,
+        AudioManager.STREAM_MUSIC,
+        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+    )
+    return result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+}
+```
+
 ## 🧪 Testing Architecture
 
 ### Unit Testing Strategy
@@ -440,14 +626,27 @@ void main() {
 void main() {
   group('Platform Channel Integration', () {
     testWidgets('should record audio when mic button pressed', (tester) async {
-      // Mock platform channel
+      // Mock platform channel with full method support
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         const MethodChannel('voice.bridge/audio'),
         (methodCall) async {
-          if (methodCall.method == 'startRecording') {
-            return '/mock/path/recording.m4a';
+          switch (methodCall.method) {
+            case 'startRecording':
+              return '/mock/path/recording.m4a';
+            case 'stopRecording':
+              return '/mock/path/recording.m4a';
+            case 'playRecording':
+              final path = methodCall.arguments['path'] as String;
+              if (path.isEmpty) {
+                throw PlatformException(
+                  code: 'INVALID_ARGUMENTS',
+                  message: 'Path argument is required',
+                );
+              }
+              return 'Playback started';
+            default:
+              return null;
           }
-          return null;
         },
       );
       
@@ -467,6 +666,42 @@ void main() {
       
       // Verify state change
       expect(find.text('Recording...'), findsOneWidget);
+    });
+    
+    testWidgets('should play audio when play button pressed', (tester) async {
+      // Setup mock with recorded files
+      when(() => mockVoiceMemoService.listRecordings())
+          .thenAnswer((_) async => [
+        VoiceMemo(
+          id: '1',
+          filePath: '/mock/path/recording.m4a',
+          createdAt: DateTime.now(),
+          title: 'Test Recording',
+        ),
+      ]);
+      
+      // Build widget tree
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider(
+            create: (_) => HomeCubit(
+              audioService: PlatformAudioService(),
+              voiceMemoService: mockVoiceMemoService,
+            ),
+            child: const HomeView(),
+          ),
+        ),
+      );
+      
+      await tester.pump();
+      
+      // Test playback interaction
+      await tester.tap(find.byIcon(Icons.play_arrow));
+      await tester.pump();
+      
+      // Verify platform channel called with correct arguments
+      verify(() => mockAudioService.playRecording('/mock/path/recording.m4a'))
+          .called(1);
     });
   });
 }
@@ -574,5 +809,6 @@ class AudioProcessingPipeline {
 
 ---
 
-**Implementation Status**: ✅ Platform Channels architecture complete and production-ready  
+**Implementation Status**: ✅ Platform Channels architecture complete with iOS + Android production-ready  
+**Cross-Platform Features**: ✅ Recording, Playback, File Management working on both platforms  
 **Next Phase**: Data persistence layer with SQLite integration 

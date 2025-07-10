@@ -18,12 +18,17 @@ class DependencyInjection {
     // Register data services
     getIt.registerLazySingleton<VoiceMemoService>(() => VoiceMemoServiceImpl());
 
-    // Register transcription service (placeholder for now)
-    getIt.registerLazySingleton<TranscriptionService>(() => TranscriptionServiceImpl());
+    // Register transcription service (using Mock for development)
+    // For production, switch to WhisperTranscriptionService() when native library is available
+    getIt.registerLazySingleton<TranscriptionService>(() => MockTranscriptionService());
 
     // Register Cubits
     getIt.registerFactory<HomeCubit>(
-      () => HomeCubit(audioService: getIt<AudioService>(), voiceMemoService: getIt<VoiceMemoService>()),
+      () => HomeCubit(
+        audioService: getIt<AudioService>(),
+        voiceMemoService: getIt<VoiceMemoService>(),
+        transcriptionService: getIt<TranscriptionService>(),
+      ),
     );
   }
 }
