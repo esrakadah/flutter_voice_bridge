@@ -1,5 +1,11 @@
 name: flutter_voice_bridge
 description: "AI-powered voice memo app showcasing advanced Flutter integrations. Workshop project demonstrating Platform Channels, FFI, Isolates, and native audio processing beyond Flutter's typical capabilities."
+
+# Repository and homepage information for public release
+homepage: https://github.com/esrakadah/flutter_voice_bridge
+repository: https://github.com/esrakadah/flutter_voice_bridge
+issue_tracker: https://github.com/esrakadah/flutter_voice_bridge/issues
+
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

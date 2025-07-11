@@ -18,7 +18,7 @@ The Whisper FFI integration provides:
 
 ```bash
 # Clone and setup
-git clone <repository-url>
+git clone https://github.com/esrakadah/flutter_voice_bridge.git
 cd flutter_voice_bridge
 
 # One-command setup (downloads model + builds native library)
