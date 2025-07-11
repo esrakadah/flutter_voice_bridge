@@ -6,32 +6,79 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:developer' as developer;
 
-// Native Whisper.cpp function signatures
-typedef WhisperInitNative = Pointer<Void> Function(Pointer<Utf8> modelPath);
-typedef WhisperInit = Pointer<Void> Function(Pointer<Utf8> modelPath);
+/// 🎓 **WORKSHOP MODULE 3: Dart FFI Deep Dive**
+///
+/// **Learning Objectives:**
+/// - Master direct C/C++ library integration in Flutter
+/// - Understand memory management between Dart and native code
+/// - Learn function signature mapping and type safety
+/// - Practice resource cleanup and error handling in FFI context
+///
+/// **Key Concepts Demonstrated:**
+/// - Function Signatures: Mapping C functions to Dart
+/// - Memory Management: Proper allocation and cleanup
+/// - Dynamic Library Loading: Platform-specific library loading
+/// - Pointer Handling: Safe manipulation of native memory
+///
+/// **Performance Focus:** This demonstrates the fastest possible integration method
 
+// ⚡ FFI PATTERN: Direct C Library Integration
+// FFI (Foreign Function Interface) allows direct calls to C/C++ libraries
+// This is the most performant way to integrate native libraries (faster than Platform Channels)
+// 🔗 FFI FUNCTION SIGNATURE MAPPING
+// Every C function needs two typedef declarations:
+// 1. Native signature (what the C library exports)
+// 2. Dart signature (what we call from Dart code)
+
+// 🚀 WHISPER INITIALIZATION FUNCTION
+// C: whisper_context* whisper_ffi_init(const char* model_path)
+typedef WhisperInitNative = Pointer<Void> Function(Pointer<Utf8> modelPath); // Native C signature
+typedef WhisperInit = Pointer<Void> Function(Pointer<Utf8> modelPath); // Dart function signature
+
+// 🎤 AUDIO TRANSCRIPTION FUNCTION
+// C: char* whisper_ffi_transcribe(whisper_context* ctx, const char* audio_path)
 typedef WhisperTranscribeNative = Pointer<Utf8> Function(Pointer<Void> ctx, Pointer<Utf8> audioPath);
 typedef WhisperTranscribe = Pointer<Utf8> Function(Pointer<Void> ctx, Pointer<Utf8> audioPath);
 
+// 🧹 CONTEXT CLEANUP FUNCTION
+// C: void whisper_ffi_free(whisper_context* ctx)
 typedef WhisperFreeNative = Void Function(Pointer<Void> ctx);
 typedef WhisperFree = void Function(Pointer<Void> ctx);
 
+// 🧹 STRING MEMORY CLEANUP FUNCTION
+// C: void whisper_ffi_free_string(char* str)
 typedef WhisperFreeStringNative = Void Function(Pointer<Utf8> str);
 typedef WhisperFreeString = void Function(Pointer<Utf8> str);
 
-/// FFI Service for Whisper.cpp integration
-/// Handles native library loading, initialization, and transcription
+/// 🤖 WHISPER FFI SERVICE
+/// This class demonstrates advanced FFI patterns for AI library integration
+///
+/// **Memory Management Strategy:**
+/// - Native library holds AI model in memory
+/// - Audio processing happens in native code (C++)
+/// - Results are returned as C strings, converted to Dart, then freed
+///
+/// **Performance Characteristics:**
+/// - Direct C library calls (no serialization overhead)
+/// - GPU acceleration available on supported platforms
+/// - Model loaded once, reused for multiple transcriptions
 class WhisperFFIService {
   static const String _logName = 'VoiceBridge.WhisperFFI';
 
-  late final DynamicLibrary _whisperLib;
-  late final WhisperInit _whisperInit;
-  late final WhisperTranscribe _whisperTranscribe;
-  late final WhisperFree _whisperFree;
-  late final WhisperFreeString _whisperFreeString;
+  // 📚 DYNAMIC LIBRARY AND FUNCTION POINTERS
+  // DynamicLibrary: Handle to the loaded native library
+  // Function pointers: Direct references to C functions for fast calls
+  late final DynamicLibrary _whisperLib; // 📖 Loaded native library
+  late final WhisperInit _whisperInit; // 🚀 Model initialization function
+  late final WhisperTranscribe _whisperTranscribe; // 🎤 Audio processing function
+  late final WhisperFree _whisperFree; // 🧹 Context cleanup function
+  late final WhisperFreeString _whisperFreeString; // 🧹 String memory cleanup
 
-  Pointer<Void>? _whisperContext;
-  bool _isInitialized = false;
+  // 💾 NATIVE RESOURCE MANAGEMENT
+  // _whisperContext: Opaque pointer to native AI model context
+  // _isInitialized: Prevents double initialization and resource leaks
+  Pointer<Void>? _whisperContext; // 🧠 Native AI model context
+  bool _isInitialized = false; // 🔒 Initialization state guard
 
   /// Initialize the Whisper FFI service and load the native library
   Future<void> initialize() async {

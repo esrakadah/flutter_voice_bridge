@@ -24,10 +24,199 @@ This project follows **Clean Architecture** principles and demonstrates **real-w
 
 The application is structured using a clean, layered architecture that separates concerns and promotes modularity.
 
+### 📊 System Architecture Overview
+
+```mermaid
+graph TB
+    %% Flutter App Architecture & Native Connections
+    subgraph "Flutter Layer"
+        UI["`**UI Layer**<br/>
+        • HomeView (BlocConsumer)<br/>
+        • VoiceRecorderButton<br/>
+        • AudioVisualizer`"]
+        
+        BL["`**Business Logic**<br/>
+        • HomeCubit (State Management)<br/>
+        • Recording/Transcription Logic<br/>
+        • Error Handling`"]
+        
+        Data["`**Data Layer**<br/>
+        • VoiceMemoService<br/>
+        • VoiceMemo Model<br/>
+        • File I/O Operations`"]
+    end
+    
+    subgraph "Platform Interface"
+        PC["`**Platform Channels**<br/>
+        • MethodChannel Communication<br/>
+        • Audio Recording Control<br/>
+        • Permission Management`"]
+        
+        FFI["`**Dart FFI**<br/>
+        • Direct C++ Integration<br/>
+        • Whisper.cpp Binding<br/>
+        • Memory Management`"]
+    end
+    
+    subgraph "iOS Native"
+        iOS_Swift["`**Swift Implementation**<br/>
+        • AVAudioRecorder<br/>
+        • Audio Session Config<br/>
+        • M4A Format`"]
+        
+        iOS_Metal["`**Metal GPU**<br/>
+        • Hardware Acceleration<br/>
+        • Neural Network Ops`"]
+    end
+    
+    subgraph "Android Native"
+        Android_Kotlin["`**Kotlin Implementation**<br/>
+        • MediaRecorder<br/>
+        • Audio Permissions<br/>
+        • WAV Format`"]
+        
+        Android_GPU["`**GPU Acceleration**<br/>
+        • OpenGL/Vulkan<br/>
+        • Compute Shaders`"]
+    end
+    
+    subgraph "Native C++ Layer"
+        Whisper["`**Whisper.cpp**<br/>
+        • OpenAI Whisper Model<br/>
+        • GGML Backend<br/>
+        • Audio Processing`"]
+        
+        Models["`**AI Models**<br/>
+        • ggml-base.en.bin<br/>
+        • Neural Networks<br/>
+        • Language Processing`"]
+    end
+    
+    %% Flutter Internal Flow
+    UI --> BL
+    BL --> Data
+    BL --> PC
+    BL --> FFI
+    
+    %% Platform Channel Connections
+    PC --> iOS_Swift
+    PC --> Android_Kotlin
+    
+    %% FFI Direct Connections
+    FFI --> Whisper
+    Whisper --> Models
+    
+    %% Native GPU Connections
+    iOS_Swift --> iOS_Metal
+    Android_Kotlin --> Android_GPU
+    Whisper --> iOS_Metal
+    Whisper --> Android_GPU
+    
+    %% Styling
+    classDef flutter fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef platform fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef native fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef cpp fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    
+    class UI,BL,Data flutter
+    class PC,FFI platform
+    class iOS_Swift,Android_Kotlin,iOS_Metal,Android_GPU native
+    class Whisper,Models cpp
+```
+
+### 🔄 Recording & Transcription Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as Flutter UI
+    participant Cubit as HomeCubit
+    participant AudioSvc as AudioService
+    participant PC as Platform Channel
+    participant Native as Native Layer
+    participant FFI as Dart FFI
+    participant Whisper as Whisper.cpp
+    participant FS as File System
+    
+    Note over User,FS: 🎤 Voice Recording & Transcription Flow
+    
+    User->>UI: Tap Record Button
+    UI->>Cubit: startRecording()
+    
+    activate Cubit
+    Cubit->>AudioSvc: startRecording()
+    AudioSvc->>PC: invokeMethod('startRecording')
+    
+    PC->>Native: Platform-specific call
+    alt iOS
+        Native->>Native: AVAudioRecorder.record()
+        Note right of Native: Records to .m4a format
+    else Android
+        Native->>Native: MediaRecorder.start()
+        Note right of Native: Records to .wav format
+    end
+    
+    Native-->>PC: Recording started
+    PC-->>AudioSvc: Success response
+    AudioSvc-->>Cubit: Recording state
+    Cubit-->>UI: Update to recording state
+    UI-->>User: Show recording animation
+    
+    Note over User,FS: Recording in progress...
+    
+    User->>UI: Tap Stop Button
+    UI->>Cubit: stopRecording()
+    Cubit->>AudioSvc: stopRecording()
+    AudioSvc->>PC: invokeMethod('stopRecording')
+    
+    PC->>Native: Stop recording call
+    Native->>Native: Stop & save audio file
+    Native->>FS: Write audio file
+    Native-->>PC: File path returned
+    PC-->>AudioSvc: Audio file path
+    AudioSvc-->>Cubit: File saved
+    
+    Note over User,FS: 🤖 AI Transcription via FFI
+    
+    Cubit->>FFI: transcribeAudio(filePath)
+    activate FFI
+    FFI->>Whisper: Load audio file
+    Whisper->>Whisper: Process with AI model
+    
+    alt Apple Silicon (iOS/macOS)
+        Whisper->>Whisper: Use Metal GPU acceleration
+        Note right of Whisper: Hardware neural network ops
+    else Other platforms
+        Whisper->>Whisper: CPU-based processing
+    end
+    
+    Whisper->>Whisper: Generate transcription
+    Whisper-->>FFI: Text result
+    deactivate FFI
+    FFI-->>Cubit: Transcription complete
+    
+    Cubit->>FS: Save VoiceMemo with transcription
+    deactivate Cubit
+    Cubit-->>UI: Update with transcription
+    UI-->>User: Show transcribed text
+    
+    Note over User,FS: ✅ Complete workflow with native optimizations
+```
+
+### 🏗️ Architecture Layers
+
 - **Presentation Layer**: Flutter widgets, UI components, and state management (BLoC/Cubit).
 - **Business Logic Layer**: Application logic, use cases, and state orchestration.
 - **Data Layer**: Abstract repositories and data sources.
 - **Platform Layer**: Native integrations (Platform Channels, FFI) and device-specific services.
+
+#### 📋 What These Diagrams Show
+
+1. **System Architecture Overview**: The complete technology stack from Flutter UI down to native C++ libraries, showing how Platform Channels and FFI enable advanced native integration.
+
+2. **Recording & Transcription Flow**: The end-to-end user journey from tapping record to seeing transcribed text, highlighting the sophisticated native processing pipeline.
+
+3. **Clean Architecture Layers**: How the codebase maintains separation of concerns while enabling complex cross-platform functionality.
 
 For a complete technical breakdown, including diagrams and design patterns, please see the [**Architecture Deep Dive (`ARCHITECTURE.md`)**](./ARCHITECTURE.md).
 

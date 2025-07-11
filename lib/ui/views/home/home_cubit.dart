@@ -7,20 +7,55 @@ import '../../../data/services/voice_memo_service.dart';
 import '../../../data/models/voice_memo.dart';
 import 'home_state.dart';
 
-// Home Cubit for managing audio recording state
-// Handles all business logic for the home screen recording functionality
+/// 🎓 **WORKSHOP MODULE 1.2: BLoC State Management**
+///
+/// **Learning Objectives:**
+/// - Understand separation between UI and business logic
+/// - Learn proper state management with BLoC pattern
+/// - See how Cubits handle complex async operations
+/// - Practice dependency injection and service coordination
+///
+/// **Key Patterns Demonstrated:**
+/// - Single Responsibility: Only handles recording business logic
+/// - Dependency Injection: Services injected via constructor
+/// - State Immutability: All states are immutable value objects
+/// - Error Handling: Consistent error propagation and logging
+///
+/// **Architecture Layer:** Business Logic (between UI and Data layers)
+
+// 🏗️ ARCHITECTURE PATTERN: Business Logic Layer
+// This Cubit acts as the orchestrator between UI events and data services
+// It contains NO UI code and NO direct data access - only coordination logic
+
+// 📚 LEARNING FOCUS: Cubit State Management
+// Cubits are simplified BLoCs that emit states without events
+// Perfect for straightforward state transitions triggered by UI actions
 
 class HomeCubit extends Cubit<HomeState> {
-  final AudioService _audioService;
-  final VoiceMemoService _voiceMemoService;
-  final TranscriptionService _transcriptionService;
+  // 🔧 DEPENDENCY INJECTION PATTERN
+  // Services are injected via constructor, enabling:
+  // ✅ Easy testing with mock implementations
+  // ✅ Loose coupling between business logic and data layers
+  // ✅ Single responsibility - each service handles one concern
+  final AudioService _audioService; // 🎤 Platform-specific audio operations
+  final VoiceMemoService _voiceMemoService; // 💾 File system and data persistence
+  final TranscriptionService _transcriptionService; // 🤖 AI-powered speech-to-text
 
-  Timer? _recordingTimer;
-  Duration _recordingDuration = Duration.zero;
-  String? _currentRecordingPath;
-  String? _lastCompletedRecordingPath;
-  int _recordingSeconds = 0;
+  // 📊 PRIVATE STATE MANAGEMENT
+  // These are internal state variables that don't need to trigger UI rebuilds
+  // They're used for coordination and will be included in emitted states when needed
+  Timer? _recordingTimer; // ⏱️ Timer for recording duration tracking
+  Duration _recordingDuration = Duration.zero; // 📏 Current recording length
+  String? _currentRecordingPath; // 📁 Path to active recording file
+  String? _lastCompletedRecordingPath; // 📁 Path to most recent completed recording
+  int _recordingSeconds = 0; // 🔢 Simple counter for UI display
 
+  // 🏗️ CONSTRUCTOR INJECTION PATTERN
+  // This is a classic dependency injection pattern where all dependencies
+  // are provided at construction time, making the class:
+  // ✅ Testable (dependencies can be mocked)
+  // ✅ Flexible (different implementations can be injected)
+  // ✅ Clear about its dependencies (explicit in constructor)
   HomeCubit({
     required AudioService audioService,
     required VoiceMemoService voiceMemoService,
@@ -29,6 +64,7 @@ class HomeCubit extends Cubit<HomeState> {
        _voiceMemoService = voiceMemoService,
        _transcriptionService = transcriptionService,
        super(const HomeInitial()) {
+    // 📍 Initial state - app starts in "ready" state
     developer.log(
       '🏠 [HomeCubit] Initialized with audio service: ${_audioService.runtimeType}',
       name: 'VoiceBridge.Cubit',
@@ -60,12 +96,16 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
-  // Start recording functionality
+  // 🎯 BUSINESS LOGIC METHOD: Start Recording
+  // This method demonstrates the complete flow of starting an audio recording
+  // Notice how it coordinates multiple services and handles various edge cases
   Future<void> startRecording() async {
     developer.log('▶️ [HomeCubit] Starting recording process...', name: 'VoiceBridge.Cubit');
 
     try {
-      // Check permissions first
+      // 🔐 PERMISSION HANDLING PATTERN
+      // Always check permissions before attempting platform operations
+      // This prevents crashes and provides better user experience
       developer.log('🔐 [HomeCubit] Checking audio permissions...', name: 'VoiceBridge.Cubit');
       final bool hasPermission = await _audioService.hasPermission();
       developer.log('🔐 [HomeCubit] Has permission: $hasPermission', name: 'VoiceBridge.Cubit');

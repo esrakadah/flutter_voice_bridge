@@ -8,12 +8,39 @@ import 'home/home_state.dart';
 import 'package:flutter/services.dart';
 import '../components/audio_visualizer.dart';
 
+/// 🎓 **WORKSHOP MODULE 1.1: Clean Architecture UI Layer**
+///
+/// **Learning Objectives:**
+/// - Understand separation between UI and business logic
+/// - Learn reactive UI patterns with BLoC builders
+/// - Practice custom widget composition and reusability
+/// - Master dependency injection in widget trees
+///
+/// **Key Patterns Demonstrated:**
+/// - Provider Pattern: BlocProvider for dependency injection
+/// - Observer Pattern: BlocBuilder for reactive UI updates
+/// - Composition: Breaking complex UI into smaller widgets
+/// - State-Driven UI: UI changes based on business logic state
+///
+/// **Architecture Layer:** Presentation (top layer, user-facing)
+
+// 🏗️ WIDGET COMPOSITION PATTERN
+// Separating Provider setup from UI content makes the code more testable
+// and allows for easier widget tree manipulation in tests
+
 class HomeView extends StatelessWidget {
   const HomeView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(create: (_) => getIt<HomeCubit>(), child: const HomeViewContent());
+    // 💉 DEPENDENCY INJECTION PATTERN
+    // BlocProvider creates and provides HomeCubit to the widget tree
+    // getIt<HomeCubit>() uses service locator pattern to resolve dependencies
+    // This creates a new instance each time (registered as Factory in DI)
+    return BlocProvider(
+      create: (_) => getIt<HomeCubit>(), // 🏭 Factory pattern creates new Cubit instance
+      child: const HomeViewContent(), // 🎨 Separate content widget for cleaner separation
+    );
   }
 }
 
@@ -29,6 +56,9 @@ class _HomeViewContentState extends State<HomeViewContent> {
 
   @override
   Widget build(BuildContext context) {
+    // 🎨 REACTIVE UI PATTERN
+    // BlocBuilder automatically rebuilds UI when HomeCubit emits new states
+    // This creates a reactive programming model where UI is a function of state
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
@@ -59,7 +89,14 @@ class _HomeViewContentState extends State<HomeViewContent> {
         ),
       ),
       body: BlocBuilder<HomeCubit, HomeState>(
+        // 🔄 REACTIVE UI BUILDER
+        // This builder function is called every time HomeCubit emits a new state
+        // The 'state' parameter contains the current application state
+        // UI rebuilds are optimized - only changed widgets are rebuilt
         builder: (context, state) {
+          // 📋 CUSTOM SCROLL VIEW PATTERN
+          // Using CustomScrollView with Slivers provides better performance
+          // for complex scrollable layouts with multiple sections
           return CustomScrollView(
             slivers: [
               // Hero section with recording interface
