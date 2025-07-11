@@ -97,7 +97,7 @@ import AVFoundation
       NSLog("✅ [iOS] Audio session configured successfully")
       
       // Setup recording settings (WAV format for Whisper compatibility)
-      let settings = [
+      let settings: [String: Any] = [
         AVFormatIDKey: Int(kAudioFormatLinearPCM),
         AVSampleRateKey: 16000.0,  // 16kHz is optimal for speech recognition
         AVNumberOfChannelsKey: 1,   // Mono for speech
