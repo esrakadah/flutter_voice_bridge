@@ -55,6 +55,9 @@ dependencies:
   http: ^1.2.1
   permission_handler: ^11.3.1
   file_picker: ^8.0.3
+  
+  # Persistent storage for user preferences
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:

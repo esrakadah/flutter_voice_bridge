@@ -8,6 +8,7 @@ import 'home/home_state.dart';
 import 'package:flutter/services.dart';
 import '../components/audio_visualizer.dart';
 import '../components/native_text_view.dart';
+import 'animation_fullscreen_view.dart';
 
 /// 🎓 **WORKSHOP MODULE 1.1: Clean Architecture UI Layer**
 ///
@@ -230,6 +231,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
               secondaryColor: colorScheme.secondary,
               tertiaryColor: colorScheme.tertiary,
               mode: _currentMode,
+              onTap: () => _navigateToFullscreen(context, colorScheme),
             ),
           ),
           const SizedBox(height: 24),
@@ -1159,6 +1161,19 @@ class _HomeViewContentState extends State<HomeViewContent> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _navigateToFullscreen(BuildContext context, ColorScheme colorScheme) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AnimationFullscreenView(
+          initialMode: _currentMode,
+          primaryColor: colorScheme.primary,
+          secondaryColor: colorScheme.secondary,
+          tertiaryColor: colorScheme.tertiary,
         ),
       ),
     );
