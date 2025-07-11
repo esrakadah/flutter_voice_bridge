@@ -112,11 +112,11 @@ graph TB
     Whisper --> iOS_Metal
     Whisper --> Android_GPU
     
-    %% Styling
-    classDef flutter fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef platform fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef native fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
-    classDef cpp fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    %% Styling - Dark mode friendly
+    classDef flutter fill:#1e3a8a,stroke:#3b82f6,stroke-width:2px,color:#ffffff
+    classDef platform fill:#581c87,stroke:#a855f7,stroke-width:2px,color:#ffffff
+    classDef native fill:#14532d,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    classDef cpp fill:#9a3412,stroke:#f97316,stroke-width:2px,color:#ffffff
     
     class UI,BL,Data flutter
     class PC,FFI platform

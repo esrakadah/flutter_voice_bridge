@@ -156,13 +156,13 @@ graph TD
     DI -.-> FFIServices
     DI -.-> DataServices
     
-    %% Styling
-    classDef presentation fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    classDef business fill:#f1f8e9,stroke:#388e3c,stroke-width:2px
-    classDef data fill:#fff8e1,stroke:#f57c00,stroke-width:2px
-    classDef platform fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-    classDef native fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    classDef di fill:#eeeeee,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5
+    %% Styling - Dark mode friendly
+    classDef presentation fill:#1e40af,stroke:#3b82f6,stroke-width:2px,color:#ffffff
+    classDef business fill:#166534,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    classDef data fill:#c2410c,stroke:#f97316,stroke-width:2px,color:#ffffff
+    classDef platform fill:#be185d,stroke:#ec4899,stroke-width:2px,color:#ffffff
+    classDef native fill:#581c87,stroke:#a855f7,stroke-width:2px,color:#ffffff
+    classDef di fill:#374151,stroke:#9ca3af,stroke-width:2px,stroke-dasharray: 5 5,color:#ffffff
     
     class Views,Widgets,Cubit presentation
     class Services,UseCases business
