@@ -1,6 +1,29 @@
-# Flutter Voice Bridge AI - Local Setup Guide
+# Flutter Voice Bridge AI - Setup Guide
 
-This guide helps you set up the Flutter Voice Bridge AI project locally with all required dependencies and model files.
+This guide helps you set up the Flutter Voice Bridge AI project locally with all required dependencies and working transcription capabilities.
+
+## ✅ Quick Start (Recommended)
+
+The fastest way to get up and running with **working transcription**:
+
+```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd flutter_voice_bridge
+
+# 2. Install Flutter dependencies
+flutter pub get
+
+# 3. Build native Whisper library (includes model download)
+./scripts/build_whisper.sh
+
+# 4. Run on macOS/iOS for full transcription features
+flutter run -d macos    # Recommended - full GPU acceleration
+flutter run -d ios      # iOS Simulator
+flutter run -d android  # Android - audio recording only
+```
+
+**🎉 That's it!** The app will be fully functional with offline transcription on iOS/macOS.
 
 ## Prerequisites
 
@@ -9,196 +32,252 @@ This guide helps you set up the Flutter Voice Bridge AI project locally with all
 - **Xcode** (for iOS/macOS development)
 - **Android Studio** (for Android development)
 - **CMake** (for building native Whisper.cpp)
-- **Git LFS** (optional, for large file handling)
 
-## Required Model Files
+## What the Build Script Does
 
-Due to GitHub's 100MB file size limit, the Whisper AI model files are not included in the repository. You need to download them manually.
+The `./scripts/build_whisper.sh` script automatically:
 
-### Download Whisper Base English Model
+1. ✅ Downloads and compiles Whisper.cpp library
+2. ✅ Downloads the Whisper model file (ggml-base.en.bin, ~147MB)
+3. ✅ Copies native libraries to correct platform directories
+4. ✅ Sets up FFI bindings
+5. ✅ Configures app bundle integration
 
-The app requires the `ggml-base.en.bin` model file (~141MB). Download it using one of these methods:
+**No manual file downloads required!**
 
-#### Method 1: Direct Download (Recommended)
+## Platform-Specific Setup
 
-```bash
-# Create model directories
-mkdir -p assets/models
-mkdir -p android/app/src/main/assets/models
-mkdir -p ios/Runner/Models
-mkdir -p macos/Runner/Models
-
-# Download the model file (choose one location first)
-curl -L "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin" -o assets/models/ggml-base.en.bin
-
-# Copy to platform-specific locations
-cp assets/models/ggml-base.en.bin android/app/src/main/assets/models/
-cp assets/models/ggml-base.en.bin ios/Runner/Models/
-cp assets/models/ggml-base.en.bin macos/Runner/Models/
-```
-
-#### Method 2: Using Whisper.cpp Repository
+### iOS/macOS Setup (Recommended)
 
 ```bash
-# Clone whisper.cpp submodule
-git submodule update --init --recursive
+# Install CocoaPods dependencies
+cd ios && pod install && cd ..
+cd macos && pod install && cd ..
 
-# Download model using whisper.cpp script
-cd native/whisper/whisper.cpp
-./models/download-ggml-model.sh base.en
+# Build native libraries (if not done already)
+./scripts/build_whisper.sh
 
-# Copy to Flutter asset locations
-cp models/ggml-base.en.bin ../../../assets/models/
-cp models/ggml-base.en.bin ../../../android/app/src/main/assets/models/
-cp models/ggml-base.en.bin ../../../ios/Runner/Models/
-cp models/ggml-base.en.bin ../../../macos/Runner/Models/
+# Copy libraries to app bundle
+./scripts/copy_native_libraries.sh
 ```
-
-### Verify Model Files
-
-After downloading, verify the files are in place:
-
-```bash
-ls -la assets/models/ggml-base.en.bin                    # Should show ~141MB
-ls -la android/app/src/main/assets/models/ggml-base.en.bin
-ls -la ios/Runner/Models/ggml-base.en.bin
-ls -la macos/Runner/Models/ggml-base.en.bin
-```
-
-## Platform Setup
-
-### iOS/macOS Setup
-
-1. **Install CocoaPods dependencies:**
-   ```bash
-   cd ios && pod install && cd ..
-   cd macos && pod install && cd ..
-   ```
-
-2. **Build native Whisper library:**
-   ```bash
-   chmod +x scripts/build_whisper.sh
-   ./scripts/build_whisper.sh
-   ```
-
-3. **Copy native libraries:**
-   ```bash
-   chmod +x scripts/copy_native_libraries.sh
-   ./scripts/copy_native_libraries.sh
-   ```
 
 ### Android Setup
 
-1. **Ensure Android SDK is configured:**
-   ```bash
-   flutter doctor -v  # Check Android toolchain
-   ```
-
-2. **Accept Android licenses:**
-   ```bash
-   flutter doctor --android-licenses
-   ```
-
-## Project Dependencies
-
-Install Flutter dependencies:
-
 ```bash
-flutter pub get
+# Ensure Android SDK is configured
+flutter doctor -v
+
+# Accept Android licenses
+flutter doctor --android-licenses
+
+# Build for Android
+flutter build apk --debug
 ```
 
-## Build and Run
+## Verify Installation
 
-### Test the Setup
-
+### Test Audio Recording
 ```bash
-# Check everything is configured
-flutter doctor
-
-# Run on your preferred platform
-flutter run -d macos      # macOS
-flutter run -d ios        # iOS Simulator
-flutter run -d android    # Android
+flutter run -d macos
+# Tap record button → Should start recording immediately
+# Tap stop → Should save audio file
 ```
 
-## Project Structure with Models
+### Test Transcription (iOS/macOS)
+```bash
+flutter run -d macos
+# Record some speech → Stop recording
+# Check console logs for transcription output
+# Look for: "Transcription completed: [your text]"
+```
+
+### Expected Output
+You should see logs like:
+```
+🤖 Initializing Whisper with model: [path]
+✅ Whisper context initialized successfully
+🎵 Starting transcription for: [audio file]
+✅ Transcription completed successfully
+📄 Result: "Your spoken text appears here"
+```
+
+## Project Structure After Setup
 
 ```
 flutter_voice_bridge/
 ├── assets/models/
-│   └── ggml-base.en.bin           # Main model file (~141MB)
-├── android/app/src/main/assets/models/
-│   └── ggml-base.en.bin           # Android copy
-├── ios/Runner/Models/
-│   └── ggml-base.en.bin           # iOS copy
-├── macos/Runner/Models/
-│   └── ggml-base.en.bin           # macOS copy
+│   └── ggml-base.en.bin           # Main AI model (~147MB)
+├── ios/Runner/
+│   ├── libwhisper_ffi.dylib       # iOS native library
+│   └── Models/
+│       └── ggml-base.en.bin       # iOS model copy
+├── macos/Runner/
+│   ├── libwhisper_ffi.dylib       # macOS native library
+│   └── Models/
+│       └── ggml-base.en.bin       # macOS model copy
 ├── native/whisper/
-│   ├── whisper.cpp/               # Whisper.cpp submodule
-│   ├── whisper_wrapper.cpp        # C++ wrapper
+│   ├── whisper.cpp/               # Whisper.cpp source
+│   ├── whisper_wrapper.cpp        # C++ FFI wrapper
 │   └── whisper_wrapper.h
 └── lib/                           # Flutter source code
 ```
 
 ## Troubleshooting
 
-### Model File Issues
+### Build Script Issues
 
-- **"Model file not found"**: Ensure model files are in the correct platform directories
-- **"Failed to load model"**: Check file permissions and sizes (should be ~141MB)
-- **Build errors**: Make sure all dependencies are installed and paths are correct
+**Permission denied:**
+```bash
+chmod +x ./scripts/build_whisper.sh
+./scripts/build_whisper.sh
+```
+
+**CMake not found:**
+```bash
+# macOS
+brew install cmake
+
+# Ubuntu/Debian
+sudo apt install cmake
+
+# Windows
+# Install CMake from https://cmake.org/download/
+```
+
+### Transcription Not Working
+
+**Check model file:**
+```bash
+ls -la assets/models/ggml-base.en.bin
+# Should show ~147MB file
+```
+
+**Check native library:**
+```bash
+ls -la macos/Runner/libwhisper_ffi.dylib
+# Should exist for macOS
+```
+
+**Check console logs:**
+```bash
+flutter run -d macos
+# Look for Whisper initialization messages
+# Look for "✅ WhisperFFI Service initialized successfully"
+```
 
 ### Platform-Specific Issues
 
 #### iOS/macOS
-- Run `pod install` in ios/ and macos/ directories
-- Check Xcode is properly configured
-- Verify signing certificates for device deployment
+- **Xcode errors**: Ensure Xcode command line tools are installed: `xcode-select --install`
+- **Signing issues**: Check your Apple Developer account and certificates
+- **Metal GPU**: Requires Apple Silicon (M1/M2/M3) for GPU acceleration
 
 #### Android
-- Ensure Android SDK and NDK are installed
-- Check `android/local.properties` has correct SDK path
-- Run `flutter clean` and `flutter pub get` if gradle issues occur
+- **NDK issues**: Ensure Android NDK is installed via Android Studio
+- **Build failures**: Try `flutter clean && flutter pub get`
+- **Audio permissions**: Grant microphone permission when prompted
 
-### Memory Issues
+### Performance Issues
 
-- **Low memory devices**: Consider using `ggml-tiny.en.bin` (~39MB) instead
-- **App crashes**: Monitor memory usage during transcription
+**Slow transcription:**
+- Ensure you're on Apple Silicon for GPU acceleration
+- Check available RAM (model requires ~200MB)
+- Close other memory-intensive apps
+
+**App crashes:**
+- Check console for memory errors
+- Verify model file integrity
+- Try `flutter clean && flutter run`
+
+## Alternative Model Options
+
+If the default model is too large or slow:
+
+| Model | Size | Speed | Quality | Use Case |
+|-------|------|-------|---------|----------|
+| `ggml-tiny.en.bin` | ~39MB | Very Fast | Basic | Testing, low-end devices |
+| `ggml-base.en.bin` | ~147MB | Fast | **Good** | **Default - Recommended** |
+| `ggml-small.en.bin` | ~244MB | Medium | Better | High-quality transcription |
+| `ggml-medium.en.bin` | ~769MB | Slow | Best | Professional use |
+
+To use a different model:
+```bash
+# Download alternative model
+curl -L "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin" -o assets/models/ggml-tiny.en.bin
+
+# Copy to platform directories
+cp assets/models/ggml-tiny.en.bin ios/Runner/Models/
+cp assets/models/ggml-tiny.en.bin macos/Runner/Models/
+```
+
+## Development Workflow
+
+### Clean Setup
+```bash
+flutter clean
+flutter pub get
+./scripts/build_whisper.sh
+flutter run -d macos
+```
+
+### Testing Changes
+```bash
+# After code changes
+flutter hot reload    # For UI changes
+flutter hot restart   # For logic changes
+flutter run           # For native changes
+```
+
+### Debugging Transcription
+```bash
+# Enable verbose logging
+flutter run -d macos --verbose
+
+# Check for FFI issues
+grep "WhisperFFI" logs.txt
+
+# Check for platform channel issues
+grep "Audio" logs.txt
+```
 
 ## Git Workflow
 
-The `.gitignore` file excludes all model files and build artifacts. To contribute:
+### What's Included in Repository
+- ✅ Flutter source code
+- ✅ Native wrapper code (C++)
+- ✅ Build scripts
+- ✅ Platform configuration
+- ❌ Model files (too large for Git)
+- ❌ Build artifacts
 
-1. **Never commit model files** - they're too large for GitHub
-2. **Document any model changes** in this README
-3. **Include setup instructions** for any new dependencies
+### What to Ignore
+The `.gitignore` excludes:
+- `assets/models/*.bin` (AI models)
+- `build/` (compilation outputs)
+- `*.dylib`, `*.so`, `*.dll` (native libraries)
 
-## Model Alternatives
+## Support & Documentation
 
-If the base model is too large for your use case:
-
-| Model | Size | Quality | Use Case |
-|-------|------|---------|----------|
-| `ggml-tiny.en.bin` | ~39MB | Basic | Testing, low-end devices |
-| `ggml-base.en.bin` | ~141MB | Good | **Recommended for production** |
-| `ggml-small.en.bin` | ~244MB | Better | High-quality transcription |
-| `ggml-medium.en.bin` | ~769MB | Best | Professional use |
-
-## Support
-
-- Check [ARCHITECTURE.md](ARCHITECTURE.md) for technical details
-- Review [FEATURE_STATUS.md](FEATURE_STATUS.md) for current capabilities
-- Open issues for bugs or feature requests
+- **[README.md](./README.md)** - Project overview and features
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical deep dive
+- **[FEATURE_STATUS.md](./FEATURE_STATUS.md)** - Current capabilities
+- **[WHISPER_SETUP.md](./WHISPER_SETUP.md)** - AI transcription details
 
 ---
 
-## Quick Start Checklist
+## Quick Verification Checklist
 
-- [ ] Flutter SDK installed and configured
-- [ ] Download `ggml-base.en.bin` model file
-- [ ] Copy model to all platform directories
-- [ ] Run `flutter pub get`
-- [ ] Build native libraries (iOS/macOS)
-- [ ] Test with `flutter run`
+After setup, verify everything works:
 
-Once these steps are complete, you should have a fully functional offline AI voice transcription app! 🎉 
+- [ ] `flutter doctor` shows no critical issues
+- [ ] App launches without errors
+- [ ] Audio recording works (tap record button)
+- [ ] Audio playback works (tap play button)
+- [ ] Transcription works (record speech, check logs)
+- [ ] Console shows "✅ Transcription completed successfully"
+
+**🎯 Success**: You should be able to record audio and see transcribed text in the logs within seconds!
+
+---
+
+**Need help?** Check the troubleshooting section above or review the logs for specific error messages. 

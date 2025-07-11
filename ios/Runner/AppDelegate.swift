@@ -43,6 +43,10 @@ import AVFoundation
       }
     }
     
+    // Register Platform View factory for native text view
+    let nativeTextViewFactory = NativeTextViewFactory()
+    self.registrar(forPlugin: "NativeTextView")?.register(nativeTextViewFactory, withId: "native-text-view")
+    
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
@@ -296,5 +300,80 @@ extension AppDelegate: AVAudioPlayerDelegate {
   func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
     NSLog("💥 [iOS] audioPlayerDecodeErrorDidOccur: \(error?.localizedDescription ?? "Unknown error")")
     isPlaying = false
+  }
+}
+
+// MARK: - Platform View Implementation
+/// 📺 **Module 3: Platform Views - iOS Implementation**
+/// 
+/// Demonstrates embedding native iOS UI components (UILabel) directly within Flutter.
+/// This shows how Platform Views bridge Flutter's widget tree with native UIKit components.
+
+class NativeTextViewFactory: NSObject, FlutterPlatformViewFactory {
+  func create(withFrame frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?) -> FlutterPlatformView {
+    return NativeTextView(frame: frame, viewId: viewId, args: args)
+  }
+  
+  func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
+    return FlutterStandardMessageCodec.sharedInstance()
+  }
+}
+
+class NativeTextView: NSObject, FlutterPlatformView {
+  private let _view: UIView
+  private let _label: UILabel
+  
+  init(frame: CGRect, viewId: Int64, args: Any?) {
+    // Create container view
+    _view = UIView(frame: frame)
+    
+    // Create and configure native UILabel
+    _label = UILabel()
+    _label.translatesAutoresizingMaskIntoConstraints = false
+    _label.textAlignment = .center
+    _label.numberOfLines = 0
+    _label.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+    _label.textColor = .white
+    
+    // Parse arguments from Flutter
+    if let arguments = args as? [String: Any] {
+      let text = arguments["text"] as? String ?? "Hello from iOS!"
+      let backgroundColorValue = arguments["backgroundColor"] as? Int64 ?? 0xFF2196F3
+      
+      _label.text = text
+      
+      // Convert Flutter color int to UIColor
+      let red = CGFloat((backgroundColorValue >> 16) & 0xFF) / 255.0
+      let green = CGFloat((backgroundColorValue >> 8) & 0xFF) / 255.0
+      let blue = CGFloat(backgroundColorValue & 0xFF) / 255.0
+      let alpha = CGFloat((backgroundColorValue >> 24) & 0xFF) / 255.0
+      
+      let backgroundColor = UIColor(red: red, green: green, blue: blue, alpha: alpha)
+      _view.backgroundColor = backgroundColor
+    } else {
+      _label.text = "Hello from iOS!"
+      _view.backgroundColor = UIColor.systemBlue
+    }
+    
+    // Add label to container view
+    _view.addSubview(_label)
+    
+    // Add constraints for label
+    NSLayoutConstraint.activate([
+      _label.centerXAnchor.constraint(equalTo: _view.centerXAnchor),
+      _label.centerYAnchor.constraint(equalTo: _view.centerYAnchor),
+      _label.leadingAnchor.constraint(greaterThanOrEqualTo: _view.leadingAnchor, constant: 16),
+      _label.trailingAnchor.constraint(lessThanOrEqualTo: _view.trailingAnchor, constant: -16)
+    ])
+    
+    // Add rounded corners
+    _view.layer.cornerRadius = 8
+    _view.layer.masksToBounds = true
+    
+    super.init()
+  }
+  
+  func view() -> UIView {
+    return _view
   }
 }

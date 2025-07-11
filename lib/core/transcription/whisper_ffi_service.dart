@@ -283,37 +283,115 @@ class WhisperFFIService {
   // Private helper methods
 
   void _loadLibrary() {
-    try {
-      if (Platform.isIOS || Platform.isMacOS) {
-        // On iOS/macOS, load the framework or dylib
-        _whisperLib = DynamicLibrary.open('libwhisper_ffi.dylib');
-      } else if (Platform.isAndroid || Platform.isLinux) {
-        // On Android/Linux, load the shared library
-        _whisperLib = DynamicLibrary.open('libwhisper_ffi.so');
-      } else if (Platform.isWindows) {
-        // On Windows, load the DLL
-        _whisperLib = DynamicLibrary.open('whisper_ffi.dll');
-      } else {
-        throw UnsupportedError('Platform ${Platform.operatingSystem} is not supported');
-      }
-
-      developer.log('✅ [WhisperFFI] Native library loaded for ${Platform.operatingSystem}', name: _logName);
-    } catch (e) {
-      developer.log('❌ [WhisperFFI] Failed to load native library: $e', name: _logName, error: e);
-
-      // Provide helpful error message
-      final libName = Platform.isWindows
-          ? 'whisper_ffi.dll'
-          : (Platform.isIOS || Platform.isMacOS)
-          ? 'libwhisper_ffi.dylib'
-          : 'libwhisper_ffi.so';
-
-      throw Exception(
-        'Failed to load Whisper native library ($libName). '
-        'Make sure the library is compiled and available in the app bundle. '
-        'Original error: $e',
-      );
+    if (Platform.isIOS || Platform.isMacOS) {
+      _loadAppleLibrary();
+    } else if (Platform.isAndroid || Platform.isLinux) {
+      _loadLinuxLibrary();
+    } else if (Platform.isWindows) {
+      _loadWindowsLibrary();
+    } else {
+      throw UnsupportedError('Platform ${Platform.operatingSystem} is not supported');
     }
+
+    developer.log('✅ [WhisperFFI] Native library loaded for ${Platform.operatingSystem}', name: _logName);
+  }
+
+  void _loadAppleLibrary() {
+    final List<String> libraryPaths = [
+      // App bundle paths (runtime)
+      'libwhisper_ffi.dylib', // Standard @rpath lookup
+      '@rpath/libwhisper_ffi.dylib', // Explicit @rpath
+      'Frameworks/libwhisper_ffi.dylib', // App bundle Frameworks
+      // Development paths (when running from Xcode/IDE)
+      'macos/Runner/libwhisper_ffi.dylib',
+      './macos/Runner/libwhisper_ffi.dylib',
+      path.join(Directory.current.path, 'macos', 'Runner', 'libwhisper_ffi.dylib'),
+
+      // Build output paths
+      'native/whisper/whisper.cpp/build/libwhisper_ffi.dylib',
+      './native/whisper/whisper.cpp/build/libwhisper_ffi.dylib',
+      path.join(Directory.current.path, 'native', 'whisper', 'whisper.cpp', 'build', 'libwhisper_ffi.dylib'),
+    ];
+
+    Exception? lastError;
+
+    for (final libraryPath in libraryPaths) {
+      try {
+        developer.log('🔍 [WhisperFFI] Trying to load library from: $libraryPath', name: _logName);
+        _whisperLib = DynamicLibrary.open(libraryPath);
+        developer.log('✅ [WhisperFFI] Successfully loaded library from: $libraryPath', name: _logName);
+        return;
+      } catch (e) {
+        developer.log('⚠️ [WhisperFFI] Failed to load from $libraryPath: $e', name: _logName);
+        lastError = e is Exception ? e : Exception(e.toString());
+        continue;
+      }
+    }
+
+    // If we get here, all paths failed
+    throw Exception(
+      'Failed to load Whisper native library (libwhisper_ffi.dylib) from any of the expected locations:\n'
+      '${libraryPaths.map((path) => '  • $path').join('\n')}\n\n'
+      'Please ensure the library is built and accessible. Try running:\n'
+      '  ./scripts/build_whisper.sh\n\n'
+      'Last error: $lastError',
+    );
+  }
+
+  void _loadLinuxLibrary() {
+    final List<String> libraryPaths = [
+      'libwhisper_ffi.so',
+      './libwhisper_ffi.so',
+      'linux/libwhisper_ffi.so',
+      './linux/libwhisper_ffi.so',
+    ];
+
+    Exception? lastError;
+
+    for (final libraryPath in libraryPaths) {
+      try {
+        _whisperLib = DynamicLibrary.open(libraryPath);
+        developer.log('✅ [WhisperFFI] Successfully loaded library from: $libraryPath', name: _logName);
+        return;
+      } catch (e) {
+        lastError = e is Exception ? e : Exception(e.toString());
+        continue;
+      }
+    }
+
+    throw Exception(
+      'Failed to load Whisper native library (libwhisper_ffi.so). '
+      'Please ensure the library is built and accessible. '
+      'Last error: $lastError',
+    );
+  }
+
+  void _loadWindowsLibrary() {
+    final List<String> libraryPaths = [
+      'whisper_ffi.dll',
+      './whisper_ffi.dll',
+      'windows/whisper_ffi.dll',
+      './windows/whisper_ffi.dll',
+    ];
+
+    Exception? lastError;
+
+    for (final libraryPath in libraryPaths) {
+      try {
+        _whisperLib = DynamicLibrary.open(libraryPath);
+        developer.log('✅ [WhisperFFI] Successfully loaded library from: $libraryPath', name: _logName);
+        return;
+      } catch (e) {
+        lastError = e is Exception ? e : Exception(e.toString());
+        continue;
+      }
+    }
+
+    throw Exception(
+      'Failed to load Whisper native library (whisper_ffi.dll). '
+      'Please ensure the library is built and accessible. '
+      'Last error: $lastError',
+    );
   }
 
   void _bindFunctions() {

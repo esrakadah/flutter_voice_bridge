@@ -12,13 +12,16 @@
 By the end of this workshop, you will master:
 
 1. **Platform Channel Integration** - Bidirectional communication between Flutter and native code
-2. **Dart FFI Implementation** - Direct C/C++ library integration for performance-critical operations
-3. **Isolate Programming** - Background processing without blocking the UI thread
-4. **Clean Architecture in Flutter** - Scalable, testable, and maintainable code organization
-5. **Advanced State Management** - Complex state flows with BLoC/Cubit patterns
-6. **Native Audio Processing** - Platform-specific audio recording and playback
-7. **AI Integration** - Offline speech-to-text with Whisper.cpp
-8. **Performance Optimization** - Memory management, GPU acceleration, and efficient resource usage
+2. **Platform Views** - Embedding native UI components within Flutter apps
+3. **Dart FFI Implementation** - Direct C/C++ library integration for performance-critical operations
+4. **Process Run** - System process execution and command-line integration
+5. **Custom Renderer** - Low-level Flutter engine customization and rendering control
+6. **Isolate Programming** - Background processing without blocking the UI thread
+7. **Clean Architecture in Flutter** - Scalable, testable, and maintainable code organization
+8. **Advanced State Management** - Complex state flows with BLoC/Cubit patterns
+9. **Native Audio Processing** - Platform-specific audio recording and playback
+10. **AI Integration** - Offline speech-to-text with Whisper.cpp
+11. **Performance Optimization** - Memory management, GPU acceleration, and efficient resource usage
 
 ---
 
@@ -237,7 +240,7 @@ Create a state diagram showing all possible transitions in `HomeState`.
 
 ---
 
-## 📱 **Module 2: Platform Channel Mastery (120 minutes)**
+## 📱 **Module 2: Platform Channel Mastery (90 minutes)**
 
 ### **2.1 Method Channel Implementation**
 
@@ -358,6 +361,890 @@ class PlatformChannelHelper {
 
 #### **Exercise 2.1**: Platform Channel Design
 Design a platform channel for camera integration with these requirements:
+- Permission handling
+- Photo capture with quality settings
+- Video recording with duration limits
+- Error handling and user feedback
+
+---
+
+## 📺 **Module 3: Platform Views Integration (60 minutes)**
+
+### **3.1 Understanding Platform Views**
+
+**Learning Goal**: Embed native UI components directly within Flutter widget trees.
+
+#### **Platform Views Architecture**
+
+```mermaid
+graph TB
+    subgraph "Flutter Widget Tree"
+        Widget["`**Flutter Widgets**<br/>
+        • Column<br/>
+        • Text<br/>
+        • Buttons`"]
+        
+        PlatformView["`**PlatformView Widget**<br/>
+        • AndroidView<br/>
+        • UiKitView<br/>
+        • Bridge to Native UI`"]
+    end
+    
+    subgraph "Native UI Layer"
+        NativeView["`**Native Components**<br/>
+        • MapView (iOS/Android)<br/>
+        • WebView<br/>
+        • Camera Preview<br/>
+        • Custom Native UI`"]
+    end
+    
+    subgraph "Rendering Pipeline"
+        FlutterRender["`**Flutter Renderer**<br/>
+        • Skia Canvas<br/>
+        • Widget Composition<br/>
+        • Layout Engine`"]
+        
+        NativeRender["`**Native Renderer**<br/>
+        • Platform UI Kit<br/>
+        • Hardware Acceleration<br/>
+        • Native Performance`"]
+        
+        Composition["`**Hybrid Composition**<br/>
+        • Texture Layer<br/>
+        • Z-Index Management<br/>
+        • Event Handling`"]
+    end
+    
+    Widget --> FlutterRender
+    PlatformView --> NativeView
+    NativeView --> NativeRender
+    FlutterRender --> Composition
+    NativeRender --> Composition
+    
+    %% Styling
+    classDef flutter fill:#1e40af,stroke:#3b82f6,stroke-width:2px,color:#ffffff
+    classDef native fill:#166534,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    classDef render fill:#be185d,stroke:#ec4899,stroke-width:2px,color:#ffffff
+    
+    class Widget,PlatformView flutter
+    class NativeView native
+    class FlutterRender,NativeRender,Composition render
+```
+
+### **3.2 Implementation Patterns**
+
+#### **iOS Implementation**:
+```dart
+// Flutter side
+Widget build(BuildContext context) {
+  return UiKitView(
+    viewType: 'map-view',
+    layoutDirection: TextDirection.ltr,
+    creationParams: {'latitude': 37.7749, 'longitude': -122.4194},
+    creationParamsCodec: const StandardMessageCodec(),
+  );
+}
+```
+
+```swift
+// iOS side - UIViewFactory
+import Flutter
+import UIKit
+import MapKit
+
+class MapViewFactory: NSObject, FlutterPlatformViewFactory {
+    func create(withFrame frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?) -> FlutterPlatformView {
+        return MapView(frame: frame, viewId: viewId, args: args)
+    }
+}
+
+class MapView: NSObject, FlutterPlatformView {
+    private var mapView: MKMapView
+    
+    func view() -> UIView {
+        return mapView
+    }
+}
+```
+
+#### **Android Implementation**:
+```kotlin
+// Android side - PlatformViewFactory
+class MapViewFactory : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
+    override fun create(context: Context, viewId: Int, args: Any?): PlatformView {
+        return MapView(context, viewId, args as Map<String, Any>)
+    }
+}
+
+class MapView(context: Context, id: Int, creationParams: Map<String, Any>) : PlatformView {
+    private val mapView = MapView(context)
+    
+    override fun getView(): View = mapView
+}
+```
+
+### **3.3 Use Cases & Trade-offs**
+
+#### **When to Use Platform Views**:
+```mermaid
+flowchart TD
+    Start([Need Native Component?])
+    HasFlutter{Flutter Alternative Exists?}
+    Performance{Performance Critical?}
+    CustomUI{Complex Native UI?}
+    
+    Start --> HasFlutter
+    HasFlutter -->|Yes| UseFlutter[Use Flutter Widget]
+    HasFlutter -->|No| Performance
+    Performance -->|Yes| CustomUI
+    Performance -->|No| PlatformChannel[Platform Channel + Data]
+    CustomUI -->|Yes| PlatformView[✅ Use Platform View]
+    CustomUI -->|No| PlatformChannel
+    
+    %% Examples
+    Examples["`**Examples:**<br/>
+    • Google Maps<br/>
+    • Camera Preview<br/>
+    • Native Video Players<br/>
+    • Complex Charts<br/>
+    • WebView (complex interactions)`"]
+    
+    PlatformView --> Examples
+    
+    %% Styling
+    classDef decision fill:#374151,stroke:#9ca3af,stroke-width:2px,color:#ffffff
+    classDef solution fill:#166534,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    classDef alternative fill:#c2410c,stroke:#f97316,stroke-width:2px,color:#ffffff
+    
+    class Start,HasFlutter,Performance,CustomUI decision
+    class PlatformView solution
+    class UseFlutter,PlatformChannel alternative
+```
+
+#### **Exercise 3.1**: Platform View vs Alternatives
+Compare implementation approaches for video player integration:
+- Pure Flutter plugins
+- Platform Views
+- Platform Channels with data exchange
+
+---
+
+## ⚡ **Module 4: Dart FFI Deep Dive (90 minutes)**
+
+### **4.1 FFI Architecture & Memory Management**
+
+**Learning Goal**: Master direct C/C++ integration with proper memory safety.
+
+#### **FFI Integration Flow**
+
+```mermaid
+sequenceDiagram
+    participant Dart as Dart Code
+    participant FFI as dart:ffi
+    participant Native as C/C++ Library
+    participant Memory as Native Memory
+    
+    Note over Dart,Memory: 🔗 Direct C++ Integration Pipeline
+    
+    Dart->>FFI: Load dynamic library
+    FFI->>Native: DynamicLibrary.open()
+    Native-->>FFI: Library handle
+    
+    Dart->>FFI: Lookup function
+    FFI->>Native: lookupFunction<>()
+    Native-->>FFI: Function pointer
+    
+    Note over Dart,Memory: 📝 Function Call with Memory Management
+    
+    Dart->>FFI: Prepare arguments
+    FFI->>Memory: Allocate native memory
+    Memory-->>FFI: Pointer addresses
+    FFI->>Native: Call C++ function
+    
+    activate Native
+    Native->>Native: Process data
+    Native->>Memory: Write results
+    Native-->>FFI: Return value/pointer
+    deactivate Native
+    
+    FFI->>Dart: Convert to Dart types
+    Dart->>FFI: Read from pointers
+    FFI->>Memory: Free allocated memory
+    
+    Note over Dart,Memory: ⚠️ Critical: Always cleanup memory!
+```
+
+### **4.2 Real-World FFI Implementation**
+
+#### **Our Whisper.cpp Integration**:
+```dart
+// lib/core/transcription/whisper_ffi_service.dart
+class WhisperFFIService implements TranscriptionService {
+  late final DynamicLibrary _whisperLib;
+  late final WhisperTranscribeFunction _transcribeAudio;
+  
+  // Function signature definition
+  typedef WhisperTranscribeNative = Pointer<Utf8> Function(Pointer<Utf8>);
+  typedef WhisperTranscribeFunction = Pointer<Utf8> Function(Pointer<Utf8>);
+  
+  void _loadLibrary() {
+    if (Platform.isAndroid) {
+      _whisperLib = DynamicLibrary.open('libwhisper.so');
+    } else if (Platform.isIOS || Platform.isMacOS) {
+      _whisperLib = DynamicLibrary.process();
+    }
+    
+    // Lookup the function
+    _transcribeAudio = _whisperLib
+        .lookupFunction<WhisperTranscribeNative, WhisperTranscribeFunction>(
+            'transcribe_audio');
+  }
+  
+  @override
+  Future<String> transcribeAudio(String audioPath) async {
+    // Memory management pattern
+    final audioPathPtr = audioPath.toNativeUtf8();
+    try {
+      // Input validation
+      if (!await File(audioPath).exists()) {
+        throw ArgumentError('Audio file not found: $audioPath');
+      }
+      
+      // Call native function
+      final resultPtr = _transcribeAudio(audioPathPtr);
+      
+      // Error checking
+      if (resultPtr.address == 0) {
+        throw Exception('Transcription failed - invalid audio format?');
+      }
+      
+      // Convert result back to Dart
+      final result = resultPtr.toDartString();
+      
+      // Cleanup native memory (C++ side handles resultPtr)
+      return result;
+    } finally {
+      // Always cleanup - prevents memory leaks
+      malloc.free(audioPathPtr);
+    }
+  }
+}
+```
+
+#### **C++ Side Implementation**:
+```cpp
+// native/whisper/whisper_wrapper.cpp
+extern "C" {
+    char* transcribe_audio(const char* audio_path) {
+        // Load Whisper model (cached)
+        static whisper_context* ctx = nullptr;
+        if (!ctx) {
+            whisper_context_params cparams = whisper_context_default_params();
+            cparams.use_gpu = true; // Metal on Apple Silicon
+            ctx = whisper_init_from_file_with_params("ggml-base.en.bin", cparams);
+        }
+        
+        // Load and process audio
+        std::vector<float> pcmf32;
+        if (!load_audio_file(audio_path, pcmf32)) {
+            return nullptr;
+        }
+        
+        // Run transcription
+        whisper_full_params wparams = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
+        int ret = whisper_full(ctx, wparams, pcmf32.data(), pcmf32.size());
+        
+        if (ret != 0) return nullptr;
+        
+        // Extract text
+        std::string result;
+        const int n_segments = whisper_full_n_segments(ctx);
+        for (int i = 0; i < n_segments; ++i) {
+            const char* text = whisper_full_get_segment_text(ctx, i);
+            result += text;
+        }
+        
+        // Return heap-allocated string (Dart will handle cleanup)
+        char* result_ptr = (char*)malloc(result.length() + 1);
+        strcpy(result_ptr, result.c_str());
+        return result_ptr;
+    }
+}
+```
+
+### **4.3 FFI Performance Patterns**
+
+#### **Performance Comparison**:
+```mermaid
+graph LR
+    subgraph "📊 Performance Metrics"
+        PlatformChannel["`**Platform Channels**<br/>
+        • Serialization overhead<br/>
+        • ~1-5ms per call<br/>
+        • Good for simple data<br/>
+        • Built-in error handling`"]
+        
+        FFI["`**Dart FFI**<br/>
+        • Direct memory access<br/>
+        • ~0.1-0.5ms per call<br/>
+        • Best for heavy computation<br/>
+        • Manual memory management`"]
+        
+        WebAssembly["`**WebAssembly**<br/>
+        • Cross-platform<br/>
+        • ~2-3x FFI overhead<br/>
+        • Limited GPU access<br/>
+        • Easier distribution`"]
+    end
+    
+    subgraph "🎯 Use Case Decision"
+        Simple[Simple Operations<br/>String/Number exchange]
+        Heavy[Heavy Computation<br/>AI/Graphics/Math]
+        CrossPlatform[Maximum Portability<br/>Web compatibility]
+    end
+    
+    Simple --> PlatformChannel
+    Heavy --> FFI
+    CrossPlatform --> WebAssembly
+    
+    %% Styling
+    classDef performance fill:#1e40af,stroke:#3b82f6,stroke-width:2px,color:#ffffff
+    classDef usecase fill:#166534,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    
+    class PlatformChannel,FFI,WebAssembly performance
+    class Simple,Heavy,CrossPlatform usecase
+```
+
+#### **Exercise 4.1**: Memory Safety Analysis
+Identify and fix memory leaks in this FFI code:
+```dart
+// Buggy code - find the issues!
+Future<String> processImage(String imagePath) async {
+  final pathPtr = imagePath.toNativeUtf8();
+  final resultPtr = processImageFunction(pathPtr);
+  return resultPtr.toDartString();
+  // What's wrong? How to fix?
+}
+```
+
+---
+
+## 🚀 **Module 5: Process Run & System Integration (45 minutes)**
+
+### **5.1 Process Execution Patterns**
+
+**Learning Goal**: Execute system commands and integrate with external tools.
+
+#### **Process Run Architecture**
+
+```mermaid
+graph TB
+    subgraph "Flutter Application"
+        DartCode["`**Dart Code**<br/>
+        • Process.run()<br/>
+        • Process.start()<br/>
+        • ProcessResult handling`"]
+        
+        ProcessManager["`**Process Manager**<br/>
+        • Command execution<br/>
+        • Environment setup<br/>
+        • Error handling`"]
+    end
+    
+    subgraph "System Layer"
+        Shell["`**System Shell**<br/>
+        • bash/zsh (Unix)<br/>
+        • cmd/PowerShell (Windows)<br/>
+        • Command interpretation`"]
+        
+        ExternalTools["`**External Tools**<br/>
+        • ffmpeg (video processing)<br/>
+        • ImageMagick (images)<br/>
+        • git (version control)<br/>
+        • Custom scripts`"]
+    end
+    
+    subgraph "Security Sandbox"
+        Permissions["`**Security Context**<br/>
+        • File system access<br/>
+        • Network permissions<br/>
+        • Executable permissions<br/>
+        • Process isolation`"]
+    end
+    
+    DartCode --> ProcessManager
+    ProcessManager --> Shell
+    Shell --> ExternalTools
+    ProcessManager --> Permissions
+    
+    %% Data Flow
+    DartCode -->|Command + Args| ProcessManager
+    ProcessManager -->|stdout/stderr| DartCode
+    
+    %% Styling
+    classDef flutter fill:#1e40af,stroke:#3b82f6,stroke-width:2px,color:#ffffff
+    classDef system fill:#166534,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    classDef security fill:#be185d,stroke:#ec4899,stroke-width:2px,color:#ffffff
+    
+    class DartCode,ProcessManager flutter
+    class Shell,ExternalTools system
+    class Permissions security
+```
+
+### **5.2 Real-World Process Examples**
+
+#### **Audio Format Conversion** (Solving our Android .wav issue):
+```dart
+// lib/core/audio/audio_converter.dart
+class AudioConverter {
+  static Future<String> convertToWav(String inputPath) async {
+    final outputPath = inputPath.replaceAll('.m4a', '.wav');
+    
+    // Use ffmpeg for audio conversion
+    final result = await Process.run('ffmpeg', [
+      '-i', inputPath,           // Input file
+      '-acodec', 'pcm_s16le',    // Audio codec
+      '-ar', '16000',            // Sample rate
+      '-ac', '1',                // Mono channel
+      outputPath,                // Output file
+    ]);
+    
+    if (result.exitCode != 0) {
+      throw Exception('Audio conversion failed: ${result.stderr}');
+    }
+    
+    return outputPath;
+  }
+  
+  // Batch processing for multiple files
+  static Future<List<String>> convertBatch(List<String> inputPaths) async {
+    final List<String> convertedPaths = [];
+    
+    for (String inputPath in inputPaths) {
+      try {
+        final converted = await convertToWav(inputPath);
+        convertedPaths.add(converted);
+        print('✅ Converted: $inputPath → $converted');
+      } catch (e) {
+        print('❌ Failed to convert $inputPath: $e');
+      }
+    }
+    
+    return convertedPaths;
+  }
+}
+```
+
+#### **Git Integration for Version Control**:
+```dart
+// lib/core/development/git_integration.dart
+class GitIntegration {
+  static Future<String> getCurrentBranch() async {
+    final result = await Process.run('git', ['branch', '--show-current']);
+    if (result.exitCode == 0) {
+      return result.stdout.toString().trim();
+    }
+    throw Exception('Failed to get git branch: ${result.stderr}');
+  }
+  
+  static Future<List<String>> getChangedFiles() async {
+    final result = await Process.run('git', ['diff', '--name-only']);
+    if (result.exitCode == 0) {
+      return result.stdout.toString().trim().split('\n');
+    }
+    return [];
+  }
+  
+  static Future<void> commitChanges(String message) async {
+    // Add all changes
+    await Process.run('git', ['add', '.']);
+    
+    // Commit with message
+    final result = await Process.run('git', ['commit', '-m', message]);
+    if (result.exitCode != 0) {
+      throw Exception('Git commit failed: ${result.stderr}');
+    }
+  }
+}
+```
+
+### **5.3 Process Security & Best Practices**
+
+#### **Security Considerations**:
+```mermaid
+flowchart TD
+    UserInput[User Input]
+    Validate{Input Validation}
+    Sanitize[Sanitize Arguments]
+    Whitelist{Command Whitelist}
+    Execute[Execute Process]
+    Monitor[Monitor Execution]
+    
+    UserInput --> Validate
+    Validate -->|Invalid| Reject[❌ Reject Request]
+    Validate -->|Valid| Sanitize
+    Sanitize --> Whitelist
+    Whitelist -->|Not Allowed| Reject
+    Whitelist -->|Allowed| Execute
+    Execute --> Monitor
+    Monitor -->|Timeout| Kill[🚫 Kill Process]
+    Monitor -->|Success| Return[✅ Return Result]
+    
+    %% Security Notes
+    SecurityNotes["`**Security Best Practices:**<br/>
+    • Never execute user input directly<br/>
+    • Use argument arrays, not string commands<br/>
+    • Set execution timeouts<br/>
+    • Validate all file paths<br/>
+    • Run with minimal permissions`"]
+    
+    Whitelist --> SecurityNotes
+    
+    %% Styling
+    classDef security fill:#be185d,stroke:#ec4899,stroke-width:2px,color:#ffffff
+    classDef process fill:#166534,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    classDef danger fill:#dc2626,stroke:#ef4444,stroke-width:2px,color:#ffffff
+    
+    class Validate,Sanitize,Whitelist,Monitor security
+    class Execute,Return process
+    class Reject,Kill danger
+```
+
+#### **Exercise 5.1**: Secure Command Execution
+Implement a secure wrapper for external tool execution:
+```dart
+class SecureProcessRunner {
+  static const allowedCommands = ['ffmpeg', 'git', 'convert'];
+  static const maxExecutionTime = Duration(seconds: 30);
+  
+  // TODO: Implement secure execution with:
+  // - Command whitelist validation
+  // - Argument sanitization  
+  // - Timeout handling
+  // - Error recovery
+}
+```
+
+---
+
+## 🎨 **Module 6: Custom Renderer & Engine Modification (60 minutes)**
+
+### **6.1 Flutter Rendering Pipeline**
+
+**Learning Goal**: Understand and customize Flutter's rendering engine for specialized use cases.
+
+#### **Flutter Rendering Architecture**
+
+```mermaid
+graph TB
+    subgraph "🎨 Flutter Rendering Pipeline"
+        Widgets["`**Widget Layer**<br/>
+        • StatelessWidget<br/>
+        • StatefulWidget<br/>
+        • Declarative UI`"]
+        
+        Elements["`**Element Tree**<br/>
+        • Widget instantiation<br/>
+        • State management<br/>
+        • Build context`"]
+        
+        RenderObjects["`**Render Object Tree**<br/>
+        • Layout computation<br/>
+        • Paint operations<br/>
+        • Hit testing`"]
+        
+        Engine["`**Flutter Engine**<br/>
+        • Skia graphics library<br/>
+        • Dart VM<br/>
+        • Platform embedding`"]
+    end
+    
+    subgraph "🔧 Custom Rendering Points"
+        CustomWidget["`**Custom Widget**<br/>
+        • Custom RenderObject<br/>
+        • Specialized layout<br/>
+        • Custom painting`"]
+        
+        CustomPainter["`**Custom Painter**<br/>
+        • Canvas operations<br/>
+        • Path manipulation<br/>
+        • Shader effects`"]
+        
+        EngineModification["`**Engine Modification**<br/>
+        • Native embedding<br/>
+        • Custom surface<br/>
+        • Hardware integration`"]
+    end
+    
+    subgraph "🖥️ Platform Layer"
+        Skia["`**Skia Graphics**<br/>
+        • GPU acceleration<br/>
+        • Vector graphics<br/>
+        • Text rendering`"]
+        
+        Hardware["`**Hardware Layer**<br/>
+        • GPU drivers<br/>
+        • Display composition<br/>
+        • Memory management`"]
+    end
+    
+    Widgets --> Elements
+    Elements --> RenderObjects
+    RenderObjects --> Engine
+    Engine --> Skia
+    Skia --> Hardware
+    
+    %% Custom Integration Points
+    CustomWidget --> RenderObjects
+    CustomPainter --> Engine
+    EngineModification --> Skia
+    
+    %% Styling
+    classDef flutter fill:#1e40af,stroke:#3b82f6,stroke-width:2px,color:#ffffff
+    classDef custom fill:#be185d,stroke:#ec4899,stroke-width:2px,color:#ffffff
+    classDef platform fill:#166534,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    
+    class Widgets,Elements,RenderObjects,Engine flutter
+    class CustomWidget,CustomPainter,EngineModification custom
+    class Skia,Hardware platform
+```
+
+### **6.2 Custom Renderer Implementation**
+
+#### **Audio Visualizer Custom Renderer** (From our project):
+```dart
+// lib/ui/components/audio_visualizer.dart
+class AudioVisualizerPainter extends CustomPainter {
+  final List<double> waveformData;
+  final double animationValue;
+  final Color primaryColor;
+  
+  AudioVisualizerPainter({
+    required this.waveformData,
+    required this.animationValue,
+    required this.primaryColor,
+  });
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = primaryColor.withOpacity(0.8)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+    
+    // Create dynamic waveform path
+    final path = Path();
+    final centerY = size.height / 2;
+    
+    for (int i = 0; i < waveformData.length; i++) {
+      final x = (i / waveformData.length) * size.width;
+      final amplitude = waveformData[i] * animationValue;
+      final y = centerY + (amplitude * size.height * 0.3);
+      
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    
+    canvas.drawPath(path, paint);
+    
+    // Add particle effects
+    _drawParticles(canvas, size);
+  }
+  
+  void _drawParticles(Canvas canvas, Size size) {
+    final particlePaint = Paint()
+      ..color = primaryColor.withOpacity(0.6)
+      ..style = PaintingStyle.fill;
+    
+    for (int i = 0; i < 20; i++) {
+      final x = (i / 20) * size.width;
+      final radius = (waveformData[i % waveformData.length] * 3 + 1) * animationValue;
+      canvas.drawCircle(Offset(x, size.height / 2), radius, particlePaint);
+    }
+  }
+  
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+```
+
+### **6.3 Engine-Level Customization**
+
+#### **Custom Embedder for Specialized Hardware**:
+```mermaid
+sequenceDiagram
+    participant App as Flutter App
+    participant Engine as Flutter Engine
+    participant Embedder as Custom Embedder
+    participant Hardware as Specialized Hardware
+    
+    Note over App,Hardware: 🔧 Custom Engine Integration
+    
+    App->>Engine: Initialize with custom config
+    Engine->>Embedder: Create custom surface
+    Embedder->>Hardware: Initialize hardware interface
+    
+    Note over App,Hardware: 🎨 Custom Rendering Pipeline
+    
+    App->>Engine: Widget build
+    Engine->>Engine: Layout & Paint
+    Engine->>Embedder: Submit render commands
+    Embedder->>Hardware: Hardware-optimized rendering
+    Hardware-->>Embedder: Completion callback
+    Embedder-->>Engine: Frame complete
+    Engine-->>App: UI updated
+    
+    Note over App,Hardware: 📊 Performance Monitoring
+    
+    Embedder->>Engine: Performance metrics
+    Engine->>App: Frame timing data
+    
+    %% Use Cases
+    Note right of Hardware: IoT displays<br/>Automotive dashboards<br/>Industrial controls<br/>Embedded systems
+```
+
+#### **Real-World Custom Renderer Use Cases**:
+```mermaid
+graph LR
+    subgraph "🎯 Use Cases for Custom Rendering"
+        Gaming["`**Game Development**<br/>
+        • Custom shaders<br/>
+        • Particle systems<br/>
+        • 3D integration<br/>
+        • Performance optimization`"]
+        
+        DataViz["`**Data Visualization**<br/>
+        • Real-time charts<br/>
+        • Scientific plots<br/>
+        • Geographic maps<br/>
+        • Custom animations`"]
+        
+        Industrial["`**Industrial Applications**<br/>
+        • Control interfaces<br/>
+        • Monitoring dashboards<br/>
+        • CAD viewers<br/>
+        • Hardware integration`"]
+        
+        Creative["`**Creative Tools**<br/>
+        • Drawing applications<br/>
+        • Image editors<br/>
+        • Audio visualizers<br/>
+        • Design tools`"]
+    end
+    
+    subgraph "🛠️ Implementation Approaches"
+        CustomPainter["`**CustomPainter**<br/>
+        • Canvas-based rendering<br/>
+        • 2D graphics<br/>
+        • Animation support<br/>
+        • Easy integration`"]
+        
+        RenderObject["`**Custom RenderObject**<br/>
+        • Layout control<br/>
+        • Hit testing<br/>
+        • Performance optimization<br/>
+        • Complex interactions`"]
+        
+        EngineEmbed["`**Engine Embedding**<br/>
+        • Hardware integration<br/>
+        • Platform-specific<br/>
+        • Maximum control<br/>
+        • Development complexity`"]
+    end
+    
+    Gaming --> RenderObject
+    DataViz --> CustomPainter
+    Industrial --> EngineEmbed
+    Creative --> CustomPainter
+    
+    %% Styling
+    classDef usecase fill:#1e40af,stroke:#3b82f6,stroke-width:2px,color:#ffffff
+    classDef implementation fill:#166534,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    
+    class Gaming,DataViz,Industrial,Creative usecase
+    class CustomPainter,RenderObject,EngineEmbed implementation
+```
+
+#### **Exercise 6.1**: Performance-Critical Renderer
+Design a custom renderer for real-time audio spectrum analysis:
+```dart
+class SpectrumAnalyzerRenderer extends RenderBox {
+  List<double> _frequencyData = [];
+  
+  // TODO: Implement:
+  // - Efficient frequency domain rendering
+  // - GPU-accelerated drawing
+  // - 60fps performance optimization
+  // - Memory-efficient data handling
+}
+```
+
+---
+
+## 🎯 **Advanced Integration Workshop Summary**
+
+### **Complete Native Integration Spectrum**
+
+```mermaid
+graph TB
+    subgraph "🏗️ Flutter Native Integration Landscape"
+        PlatformChannels["`**Platform Channels**<br/>
+        ✅ Bi-directional communication<br/>
+        ✅ Type-safe messaging<br/>
+        ✅ Error handling<br/>
+        📱 Audio recording example`"]
+        
+        PlatformViews["`**Platform Views**<br/>
+        ✅ Native UI embedding<br/>
+        ✅ Complex interactions<br/>
+        ⚠️ Performance overhead<br/>
+        📺 MapView, WebView examples`"]
+        
+        DartFFI["`**Dart FFI**<br/>
+        ✅ Direct C++ integration<br/>
+        ✅ Maximum performance<br/>
+        ⚠️ Memory management<br/>
+        🤖 Whisper.cpp AI example`"]
+        
+        ProcessRun["`**Process Run**<br/>
+        ✅ System command execution<br/>
+        ✅ External tool integration<br/>
+        ⚠️ Security considerations<br/>
+        🔧 ffmpeg, git examples`"]
+        
+        CustomRenderer["`**Custom Renderer**<br/>
+        ✅ Hardware optimization<br/>
+        ✅ Specialized graphics<br/>
+        ⚠️ Development complexity<br/>
+        🎨 Audio visualizer example`"]
+    end
+    
+    subgraph "📊 Decision Matrix"
+        Simple[Simple Data Exchange]
+        UI[Native UI Needed]
+        Performance[High Performance Computing]
+        SystemTools[External Tools]
+        Graphics[Custom Graphics]
+    end
+    
+    Simple --> PlatformChannels
+    UI --> PlatformViews
+    Performance --> DartFFI
+    SystemTools --> ProcessRun
+    Graphics --> CustomRenderer
+    
+    %% Styling
+    classDef integration fill:#1e40af,stroke:#3b82f6,stroke-width:2px,color:#ffffff
+    classDef decision fill:#166534,stroke:#22c55e,stroke-width:2px,color:#ffffff
+    
+    class PlatformChannels,PlatformViews,DartFFI,ProcessRun,CustomRenderer integration
+    class Simple,UI,Performance,SystemTools,Graphics decision
+```
+
+This comprehensive workshop now covers **all advanced Flutter native integration patterns** with real-world examples, detailed implementations, and practical exercises. Students will master the complete spectrum of extending Flutter beyond its standard capabilities!
 - Take photo with flash control
 - Handle permissions gracefully
 - Support both front and back cameras

@@ -14,6 +14,13 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import java.io.IOException
 import java.io.File
+import io.flutter.plugin.platform.PlatformView
+import io.flutter.plugin.platform.PlatformViewFactory
+import io.flutter.plugin.common.StandardMessageCodec
+import android.widget.TextView
+import android.view.View
+import android.graphics.Color
+import android.graphics.Typeface
 
 class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener {
     private val CHANNEL = "voice.bridge/audio"
@@ -89,6 +96,11 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
                 }
             }
         }
+        
+        // Register Platform View factory for native text view
+        flutterEngine.platformViewsController
+            .registry
+            .registerViewFactory("native-text-view", NativeTextViewFactory())
     }
 
     private fun startRecording(): String {
@@ -321,10 +333,66 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
                 } else {
                     Log.e(TAG, "❌ [Android] RECORD_AUDIO permission denied")
                     result?.error("PERMISSION_DENIED", "Microphone permission is required for audio recording", null)
-                }
-            }
+                            }
         }
     }
+}
+
+// MARK: - Platform View Implementation
+/// 📺 **Module 3: Platform Views - Android Implementation**
+/// 
+/// Demonstrates embedding native Android UI components (TextView) directly within Flutter.
+/// This shows how Platform Views bridge Flutter's widget tree with native Android View components.
+
+class NativeTextViewFactory : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
+    override fun create(context: Context, viewId: Int, args: Any?): PlatformView {
+        return NativeTextView(context, viewId, args)
+    }
+}
+
+class NativeTextView(context: Context, id: Int, creationParams: Any?) : PlatformView {
+    private val textView: TextView
+
+    init {
+        textView = TextView(context)
+        
+        // Parse creation parameters from Flutter
+        val params = creationParams as? Map<*, *>
+        val text = params?.get("text") as? String ?: "Hello from Android!"
+        val backgroundColorValue = params?.get("backgroundColor") as? Int ?: Color.parseColor("#2196F3")
+        
+        // Configure the native TextView
+        textView.apply {
+            this.text = text
+            
+            // Convert Flutter color int to Android Color
+            val color = if (backgroundColorValue is Long) {
+                backgroundColorValue.toInt()
+            } else {
+                backgroundColorValue
+            }
+            setBackgroundColor(color)
+            
+            // Styling
+            setTextColor(Color.WHITE)
+            textAlignment = View.TEXT_ALIGNMENT_CENTER
+            gravity = android.view.Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            textSize = 16f
+            
+            // Padding
+            setPadding(32, 24, 32, 24)
+        }
+    }
+
+    override fun getView(): View {
+        return textView
+    }
+
+    override fun dispose() {
+        // Clean up any resources if needed
+    }
+}
 
     override fun onDestroy() {
         super.onDestroy()
