@@ -4,7 +4,7 @@
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.16.0+-blue.svg)](https://flutter.dev/)
 [![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20macOS%20%7C%20Android-green.svg)](https://flutter.dev/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 [![AI](https://img.shields.io/badge/AI-Whisper.cpp-purple.svg)](https://github.com/ggerganov/whisper.cpp)
 
 ## ⚡ Quick Demo
@@ -44,10 +44,11 @@
 
 | Document | Purpose | For Who |
 |----------|---------|---------|
-| [SETUP.md](SETUP.md) | Complete setup guide | New contributors |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Technical deep dive | Advanced developers |
-| [WORKSHOP_GUIDE.md](WORKSHOP_GUIDE.md) | Learning modules | Students/educators |
-| [FEATURE_STATUS.md](FEATURE_STATUS.md) | Implementation status | Project managers |
+| [SETUP.md](../SETUP.md) | Complete setup guide | New contributors |
+| [ARCHITECTURE.md](../ARCHITECTURE.md) | Technical deep dive | Advanced developers |
+| [TECHNICAL_GUIDE.md](../TECHNICAL_GUIDE.md) | Implementation patterns | All developers |
+| [VISUAL_ARCHITECTURE_GUIDE.md](../VISUAL_ARCHITECTURE_GUIDE.md) | Visual learning | Visual learners |
+| [FEATURE_STATUS.md](../FEATURE_STATUS.md) | Implementation status | Project managers |
 
 ## 🚀 Perfect For
 

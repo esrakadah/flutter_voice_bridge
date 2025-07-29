@@ -83,7 +83,7 @@ A cross-platform Flutter application demonstrating advanced integration of nativ
 
 ## 🏗️ Architecture Overview
 
-> 💡 **For visual learners**: See [VISUAL_ARCHITECTURE_GUIDE.md](VISUAL_ARCHITECTURE_GUIDE.md) for all architectural diagrams with detailed explanations!
+> 💡 **For visual learners**: See [VISUAL_ARCHITECTURE_GUIDE.md](./VISUAL_ARCHITECTURE_GUIDE.md) for all architectural diagrams with detailed explanations!
 
 ```mermaid
 graph TB
@@ -148,116 +148,21 @@ graph TB
 
 ---
 
-## 🎯 Learning Objectives
-
-This project teaches advanced Flutter development concepts:
-
-### **1. Native Integration Patterns**
-- Implementing Platform Channels for bidirectional communication
-- Integrating C++ libraries using Dart FFI
-- Managing native resources and memory
-- Platform-specific conditional implementations
-
-### **2. AI Integration Techniques**
-- Local AI model integration without cloud dependencies
-- FFI memory management for C++ libraries
-- GPU acceleration setup and optimization
-- Offline-first AI processing workflows
-
-### **3. Advanced UI Patterns**
-- Custom animations with hardware acceleration
-- State management with complex flows
-- Responsive design across platforms
-- Performance optimization for 60fps animations
-
-### **4. Clean Architecture Implementation**
-- MVVM pattern with dependency injection
-- Service abstraction and interface segregation
-- Error handling across architectural layers
-- Testable code organization
-
----
-
-## 📱 Features Overview
-
-| Feature | iOS/macOS | Android | Description |
-|---------|-----------|---------|-------------|
-| **Audio Recording** | ✅ | ✅ | Native high-quality audio capture |
-| **Audio Playback** | ✅ | ✅ | In-app audio playback functionality |
-| **Speech Transcription** | ✅ | 🔄 | Offline AI transcription (Android in progress) |
-| **Animation Visualizations** | ✅ | ✅ | 4 modes with dynamic controls |
-| **Settings Persistence** | ✅ | ✅ | Animation preferences saved across sessions |
-| **Fullscreen Mode** | ✅ | ✅ | Immersive animation experience |
-
-**Legend**: ✅ Complete, 🔄 In Progress
-
----
-
-## 🔍 Key Code Examples
-
-### Platform Channel Implementation
-```dart
-// lib/core/platform/platform_channels.dart
-class PlatformChannels {
-  static const MethodChannel _audioChannel = MethodChannel('audio_recorder');
-
-  static Future<String> startRecording() async {
-    final String? result = await _audioChannel.invokeMethod('startRecording');
-    return result ?? '';
-  }
-}
-```
-
-### FFI Integration
-```dart
-// lib/core/transcription/whisper_ffi_service.dart
-class WhisperFFIService {
-  late final DynamicLibrary _whisperLib;
-  
-  Future<String> transcribeAudio(String audioPath) async {
-    final audioPathPtr = audioPath.toNativeUtf8();
-    try {
-      final resultPtr = _whisperLib.lookup('whisper_transcribe');
-      return resultPtr.toDartString();
-    } finally {
-      malloc.free(audioPathPtr); // Critical: Memory cleanup
-    }
-  }
-}
-```
-
-### State Management
-```dart
-// lib/ui/views/home/home_cubit.dart
-class HomeCubit extends Cubit<HomeState> {
-  final AudioService _audioService;
-  final TranscriptionService _transcriptionService;
-
-  Future<void> startRecording() async {
-    emit(const HomeState.recording());
-    final audioPath = await _audioService.startRecording();
-    emit(HomeState.recordingInProgress(audioPath: audioPath));
-  }
-}
-```
-
----
-
 ## 📚 Documentation
 
 ### **Core Documentation**
-- **[VISUAL_ARCHITECTURE_GUIDE.md](VISUAL_ARCHITECTURE_GUIDE.md)** - 🎯 **All diagrams in one place** - Perfect starting point for visual learners
-- **[TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md)** - Comprehensive implementation patterns
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Detailed system architecture 
-- **[SETUP.md](SETUP.md)** - Complete setup and troubleshooting guide
+- **[VISUAL_ARCHITECTURE_GUIDE.md](./VISUAL_ARCHITECTURE_GUIDE.md)** - 🎯 **All diagrams in one place** - Perfect starting point for visual learners
+- **[TECHNICAL_GUIDE.md](./TECHNICAL_GUIDE.md)** - Comprehensive implementation patterns
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Detailed system architecture 
+- **[SETUP.md](./SETUP.md)** - Complete setup and troubleshooting guide
 
 ### **Specialized Guides**
-- **[WHISPER_SETUP.md](WHISPER_SETUP.md)** - AI model integration details
-- **[ANIMATION_GUIDE.md](ANIMATION_GUIDE.md)** - Animation system deep dive
-- **[FEATURE_STATUS.md](FEATURE_STATUS.md)** - Implementation status across platforms
+- **[WHISPER_SETUP.md](./WHISPER_SETUP.md)** - AI model integration details
+- **[ANIMATION_GUIDE.md](./ANIMATION_GUIDE.md)** - Animation system deep dive
+- **[FEATURE_STATUS.md](./FEATURE_STATUS.md)** - Implementation status across platforms
 
 ### **Project Management**
-- **[project_management/](project_management/)** - Development documentation
+- **[project_management/](./project_management/)** - Development documentation
   - `requirements/` - UI patterns and technical specifications
   - `design/` - Design system and visual guidelines
   - `development_paths/` - Implementation guides and best practices
@@ -289,11 +194,11 @@ lib/
 
 ## 🤝 Contributing
 
-See **[CONTRIBUTING.md](CONTRIBUTING.md)** for development guidelines, code standards, and contribution workflow.
+See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for development guidelines, code standards, and contribution workflow.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the **[LICENSE](LICENSE)** file for details.
+This project is licensed under the MIT License - see the **[LICENSE](./LICENSE)** file for details.
 
