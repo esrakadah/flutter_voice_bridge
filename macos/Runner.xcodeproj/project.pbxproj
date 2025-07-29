@@ -240,6 +240,7 @@
 				33CC10EB2044A3C60003C045 /* Resources */,
 				33CC110E2044A8840003C045 /* Bundle Framework */,
 				3399D490228B24CF009A79C7 /* ShellScript */,
+				582345F22C5E9045000C12A5 /* Copy Native Libraries */,
 				F2B738AEACC8BBCC907A0229 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
@@ -340,6 +341,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "echo \"$PRODUCT_NAME.app\" > \"$PROJECT_DIR\"/Flutter/ephemeral/.app_filename && \"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh embed\n";
+		};
+		582345F22C5E9045000C12A5 /* Copy Native Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Frameworks";
+			dstSubfolderSpec = 16;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			name = "Copy Native Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "NATIVE_LIB_DIR=\"${PROJECT_DIR}/../native/whisper/whisper.cpp/build\"\nFRAMEWORKS_DIR=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\n\necho \"Copying native libraries from $NATIVE_LIB_DIR to $FRAMEWORKS_DIR\"\n\nmkdir -p \"$FRAMEWORKS_DIR\"\n\nfind \"$NATIVE_LIB_DIR\" -name '*.dylib' -exec cp -v {} \"$FRAMEWORKS_DIR\" \\;\n\necho \"Signing native libraries in $FRAMEWORKS_DIR\"\n\nfind \"$FRAMEWORKS_DIR\" -name '*.dylib' -exec codesign --force --sign - --timestamp --options runtime {} \\;\n";
+			showEnvVarsInLog = 0;
 		};
 		33CC111E2044C6BF0003C045 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;

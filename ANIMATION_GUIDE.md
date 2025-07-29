@@ -1,7 +1,7 @@
 # 🎨 Animation System Guide
 
 > **Flutter Voice Bridge - Immersive Animation Experience**  
-> **Version**: 1.1.0 | **Last Updated**: January 11, 2025
+> **Version**: 1.1.0 | **Last Updated**: 29 July 2025
 
 ## 🚀 Quick Start
 

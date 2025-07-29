@@ -5,19 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-01-01 - 🎉 Public Release
+## [1.0.0] - 29 July 2025 - Initial Release
 
 ### ✨ Added
-- **Offline AI Transcription**: Fully working speech-to-text using Whisper.cpp with Metal GPU acceleration
+- **Offline AI Transcription**: Speech-to-text using Whisper.cpp with Metal GPU acceleration
 - **Cross-Platform Audio Recording**: Native audio recording on iOS, macOS, and Android
-- **Immersive Animation System**: 4 stunning fullscreen visualization modes (Waveform, Spectrum, Particles, Radial)
+- **Animation System**: 4 fullscreen visualization modes (Waveform, Spectrum, Particles, Radial)
 - **Dynamic Animation Controls**: Real-time size (50%-300%) and speed (0.5x-2x) adjustment
-- **Smart Settings Persistence**: All animation preferences automatically saved across sessions
+- **Settings Persistence**: Animation preferences saved across sessions
 - **Platform Channels Integration**: Bidirectional communication with native iOS/Android code
 - **Dart FFI Implementation**: Direct C++ library integration for AI processing
 - **Custom Renderer System**: Hardware-accelerated 60fps animations with Custom Painters
 - **Clean Architecture**: MVVM pattern with dependency injection and BLoC state management
-- **Production-Ready Documentation**: Comprehensive setup guides, architecture docs, and learning materials
+- **Comprehensive Documentation**: Setup guides, architecture docs, and learning materials
 
 ### 🔧 Technical Features
 - **Memory Management**: Proper FFI resource cleanup and native memory handling
