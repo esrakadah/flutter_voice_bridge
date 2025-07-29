@@ -1,6 +1,6 @@
 # 🎙️ Flutter Voice Bridge
 
-> **A production-ready Flutter app demonstrating advanced platform integrations with offline AI transcription**
+> **Advanced Flutter development with native platform integration and offline AI transcription**
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.16.0+-blue.svg)](https://flutter.dev/)
 [![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20macOS%20%7C%20Android-green.svg)](https://flutter.dev/)
@@ -26,7 +26,7 @@
 
 ## 🏆 What Makes This Special
 
-### **✅ Production-Ready Features**
+### **✅ Advanced Flutter Features**
 - **Offline AI**: 147MB Whisper model, no internet required
 - **Cross-Platform**: iOS, macOS, Android native integration
 - **GPU Acceleration**: Metal GPU support on Apple Silicon
@@ -40,15 +40,18 @@
 - **Process.run**: System command execution
 - **BLoC State Management**: Reactive programming patterns
 
-## 📚 Learning Resources
+## 📚 Complete Documentation
 
-| Document | Purpose | For Who |
-|----------|---------|---------|
-| [SETUP.md](../SETUP.md) | Complete setup guide | New contributors |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | Technical deep dive | Advanced developers |
-| [TECHNICAL_GUIDE.md](../TECHNICAL_GUIDE.md) | Implementation patterns | All developers |
-| [VISUAL_ARCHITECTURE_GUIDE.md](../VISUAL_ARCHITECTURE_GUIDE.md) | Visual learning | Visual learners |
-| [FEATURE_STATUS.md](../FEATURE_STATUS.md) | Implementation status | Project managers |
+| Guide | Description | For Who |
+|-------|-------------|---------|
+| **[📖 Documentation Hub](../docs/README.md)** | Complete navigation center | Everyone |
+| **[⚙️ Setup Guide](../docs/guides/setup.md)** | Installation & troubleshooting | New contributors |
+| **[🏛️ System Architecture](../docs/guides/architecture.md)** | Technical deep dive | Advanced developers |
+| **[🔗 Implementation Patterns](../docs/guides/implementation_patterns.md)** | Code patterns & examples | All developers |
+| **[🎯 Visual Architecture](../docs/guides/visual_architecture.md)** | All diagrams in one place | Visual learners |
+| **[🤖 AI Integration](../docs/guides/ai_integration.md)** | Whisper.cpp FFI setup | AI enthusiasts |
+| **[🎭 Animation System](../docs/guides/animations.md)** | Custom animations guide | UI/UX developers |
+| **[📊 Feature Status](../docs/guides/feature_status.md)** | Implementation status | Project managers |
 
 ## 🚀 Perfect For
 
@@ -88,7 +91,7 @@ If this project helps you learn something new:
 
 - 🐛 **Issues**: [GitHub Issues](https://github.com/esrakadah/flutter_voice_bridge/issues)
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/esrakadah/flutter_voice_bridge/discussions)
-- 📖 **Documentation**: Complete guides in repository
+- 📖 **Documentation**: [Complete Documentation Hub](../docs/README.md)
 
 ---
 

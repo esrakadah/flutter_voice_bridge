@@ -293,7 +293,7 @@ The `.gitignore` excludes:
 - **[README.md](./README.md)** - Project overview and features
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical deep dive
 - **[FEATURE_STATUS.md](./FEATURE_STATUS.md)** - Current capabilities
-- **[WHISPER_SETUP.md](./WHISPER_SETUP.md)** - AI transcription details
+- **[ai_integration.md](./ai_integration.md)** - AI transcription details
 
 ---
 

@@ -447,10 +447,10 @@ sequenceDiagram
 
 ### **Quick Reference**
 - **Architecture Overview** → `README.md` (simplified)
-- **Clean Architecture** → `TECHNICAL_GUIDE.md` (implementation details)
+- **Clean Architecture** → `implementation_patterns.md` (implementation details)
 - **Complete System** → `ARCHITECTURE.md` (comprehensive)
 - **UI Components** → `project_management/requirements/ui_patterns.md`
-- **All Diagrams** → This file (`VISUAL_ARCHITECTURE_GUIDE.md`)
+- **All Diagrams** → This file (`visual_architecture.md`)
 
 ### **Learning Path**
 1. **Start here**: README.md architecture overview
