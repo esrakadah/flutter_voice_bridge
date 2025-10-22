@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 /// 📺 **Module 3: Platform Views Implementation**
@@ -24,7 +23,7 @@ class NativeTextView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Platform view creation parameters
-    final Map<String, dynamic> creationParams = {'text': text, 'backgroundColor': backgroundColor.value};
+    final Map<String, dynamic> creationParams = {'text': text, 'backgroundColor': backgroundColor.toARGB32()};
 
     return Container(
       height: 60,
@@ -65,7 +64,10 @@ class NativeTextView extends StatelessWidget {
         // Fallback for unsupported platforms (web, desktop)
         return Container(
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: backgroundColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(
+            color: backgroundColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
           child: Text(
             '$text\n(Platform Views not supported on this platform)',
             textAlign: TextAlign.center,

@@ -1,6 +1,6 @@
 /// Voice Bridge Error System
 /// Provides typed errors with user-friendly messages and recovery suggestions
-library voice_bridge_errors;
+library;
 
 import 'dart:developer' as developer;
 

@@ -1,5 +1,7 @@
-import 'package:get_it/get_it.dart';
+import 'dart:developer' as developer;
 import 'dart:io';
+
+import 'package:get_it/get_it.dart';
 import 'core/audio/audio_service.dart';
 import 'core/audio/platform_audio_service.dart';
 import 'core/transcription/transcription_service.dart';
@@ -97,11 +99,11 @@ class DependencyInjection {
   /// 🔍 DEBUGGING HELPER
   /// Useful during development to see what services are registered
   static void printRegisteredServices() {
-    print('📋 Registered Services:');
-    print('  🎤 AudioService: ${getIt.isRegistered<AudioService>()}');
-    print('  🤖 TranscriptionService: ${getIt.isRegistered<TranscriptionService>()}');
-    print('  💾 VoiceMemoService: ${getIt.isRegistered<VoiceMemoService>()}');
-    print('  🎨 ThemeCubit: ${getIt.isRegistered<ThemeCubit>()}');
+    developer.log('📋 Registered Services:', name: 'DI');
+    developer.log('  🎤 AudioService: ${getIt.isRegistered<AudioService>()}', name: 'DI');
+    developer.log('  🤖 TranscriptionService: ${getIt.isRegistered<TranscriptionService>()}', name: 'DI');
+    developer.log('  💾 VoiceMemoService: ${getIt.isRegistered<VoiceMemoService>()}', name: 'DI');
+    developer.log('  🎨 ThemeCubit: ${getIt.isRegistered<ThemeCubit>()}', name: 'DI');
   }
 }
 

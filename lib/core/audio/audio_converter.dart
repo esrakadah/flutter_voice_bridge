@@ -32,18 +32,24 @@ class AudioConverter {
     'ffprobe', // For audio file analysis
   ];
 
-  // ⏱️ TIMEOUT: Prevent hung processes
-  static const Duration _defaultTimeout = Duration(seconds: 30);
-
   // 🔄 CACHING: Cache FFmpeg availability to prevent repeated checks
   static bool? _ffmpegAvailabilityCache;
   static String? _ffmpegVersionCache;
+
+  /// Validate that a command is allowed for security
+  static bool _isCommandAllowed(String command) {
+    return _allowedCommands.contains(command);
+  }
 
   /// Convert audio file to WAV format optimized for Whisper transcription
   ///
   /// **Workshop Demo Point**: This shows real-world Process.run usage for audio processing
   /// that would be extremely complex to implement in pure Dart.
   static Future<String> convertToWav(String inputPath) async {
+    if (!_isCommandAllowed('ffmpeg')) {
+      throw AudioConverterException('FFmpeg command not allowed by security policy');
+    }
+
     developer.log('🎵 Converting audio file to WAV format for Whisper compatibility', name: _logName);
 
     // 🔍 INPUT VALIDATION: Security-first approach
@@ -129,6 +135,10 @@ class AudioConverter {
   ///
   /// **Workshop Demo Point**: Shows how to parse structured output from external tools
   static Future<AudioFileInfo> getAudioInfo(String filePath) async {
+    if (!_isCommandAllowed('ffprobe')) {
+      throw AudioConverterException('FFprobe command not allowed by security policy');
+    }
+
     developer.log('📊 Analyzing audio file: $filePath', name: _logName);
 
     if (!await File(filePath).exists()) {
@@ -290,11 +300,6 @@ class AudioConverter {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
   }
 
-  /// Validate that a command is in the allowed list
-  static bool _isCommandAllowed(String command) {
-    return _allowedCommands.contains(command);
-  }
-
   /// Reset cached FFmpeg availability (useful for testing or configuration changes)
   static void resetFFmpegCache() {
     _ffmpegAvailabilityCache = null;
@@ -337,12 +342,13 @@ class AudioFileInfo {
       final bool isM4a = jsonOutput.contains('"codec_name":"aac"');
 
       String format = 'unknown';
-      if (isWav)
+      if (isWav) {
         format = 'WAV';
-      else if (isMp3)
+      } else if (isMp3) {
         format = 'MP3';
-      else if (isM4a)
+      } else if (isM4a) {
         format = 'M4A/AAC';
+      }
 
       // Extract duration (simplified parsing)
       final RegExp durationRegex = RegExp(r'"duration":"([^"]+)"');

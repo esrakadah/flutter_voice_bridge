@@ -11,7 +11,6 @@ class AnimationPreferences {
 
   static const double _defaultSpeed = 1.0;
   static const bool _defaultEnabled = true;
-  static const AnimationMode _defaultMode = AnimationMode.waveform;
 
   /// Get whether animations are enabled
   static Future<bool> getAnimationEnabled() async {

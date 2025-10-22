@@ -558,9 +558,9 @@ class _HomeViewContentState extends State<HomeViewContent> {
                   const SizedBox(height: 16),
                   Text(
                     'No recordings yet',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -1142,7 +1142,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceVariant.withAlpha(50),
+                  color: colorScheme.surfaceContainerHighest.withAlpha(50),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: colorScheme.outline.withAlpha(30)),
                 ),
@@ -1283,7 +1283,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceVariant.withAlpha(50),
+                  color: colorScheme.surfaceContainerHighest.withAlpha(50),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: colorScheme.outline.withAlpha(30)),
                 ),

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:isolate';
 import 'dart:developer' as developer;
-import 'package:flutter/foundation.dart';
 import 'transcription_service.dart';
 import 'whisper_ffi_service.dart';
 
@@ -206,8 +205,8 @@ class IsolateTranscriptionService implements TranscriptionService {
 
               try {
                 whisperService = WhisperFFIService();
-                await whisperService!.initialize();
-                await whisperService!.initializeModel(modelPath);
+                await whisperService.initialize();
+                await whisperService.initializeModel(modelPath);
                 isModelLoaded = true;
 
                 mainSendPort.send({'type': 'init_result', 'success': true});
@@ -229,7 +228,7 @@ class IsolateTranscriptionService implements TranscriptionService {
               final String audioFilePath = data['audioFilePath'] as String;
 
               try {
-                final String result = await whisperService!.transcribeAudio(audioFilePath);
+                final String result = await whisperService.transcribeAudio(audioFilePath);
 
                 mainSendPort.send({'type': 'transcription_result', 'success': true, 'result': result});
               } catch (e) {
@@ -242,17 +241,24 @@ class IsolateTranscriptionService implements TranscriptionService {
                 await whisperService?.dispose();
               } catch (e) {
                 // Log but don't throw during disposal
-                print('Error disposing whisper service in isolate: $e');
+                developer.log('Error disposing whisper service in isolate: $e', name: 'IsolateTranscription', error: e);
               }
 
               isolateReceivePort.close();
               return; // Exit isolate
 
             default:
-              print('Unknown message type in transcription isolate: ${data['type']}');
+              developer.log(
+                'Unknown message type in transcription isolate: ${data['type']}',
+                name: 'IsolateTranscription',
+              );
           }
         } catch (e) {
-          print('Error processing message in transcription isolate: $e');
+          developer.log(
+            'Error processing message in transcription isolate: $e',
+            name: 'IsolateTranscription',
+            error: e,
+          );
           mainSendPort.send({'type': 'error', 'error': e.toString()});
         }
       }

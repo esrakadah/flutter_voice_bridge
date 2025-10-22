@@ -158,8 +158,8 @@ class _VoiceRecorderButtonState extends State<VoiceRecorderButton> with TickerPr
                   height: 80 + (_rippleAnimation.value * 40),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: (widget.isRecording ? errorColor : primaryColor).withOpacity(
-                      0.2 * (1 - _rippleAnimation.value),
+                    color: (widget.isRecording ? errorColor : primaryColor).withValues(
+                      alpha: 0.2 * (1 - _rippleAnimation.value),
                     ),
                   ),
                 ),
@@ -171,7 +171,7 @@ class _VoiceRecorderButtonState extends State<VoiceRecorderButton> with TickerPr
                   height: 76,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: errorColor.withOpacity(0.4), blurRadius: 16, spreadRadius: 4)],
+                    boxShadow: [BoxShadow(color: errorColor.withValues(alpha: 0.4), blurRadius: 16, spreadRadius: 4)],
                   ),
                 ),
 
@@ -191,7 +191,7 @@ class _VoiceRecorderButtonState extends State<VoiceRecorderButton> with TickerPr
                           ? LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [errorColor, errorColor.withOpacity(0.8)],
+                              colors: [errorColor, errorColor.withValues(alpha: 0.8)],
                             )
                           : LinearGradient(
                               begin: Alignment.topLeft,
@@ -201,7 +201,7 @@ class _VoiceRecorderButtonState extends State<VoiceRecorderButton> with TickerPr
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: (widget.isRecording ? errorColor : primaryColor).withOpacity(0.3),
+                          color: (widget.isRecording ? errorColor : primaryColor).withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -228,13 +228,13 @@ class _VoiceRecorderButtonState extends State<VoiceRecorderButton> with TickerPr
 
               // State indicator ring
               if (widget.isRecording)
-                Container(
+                SizedBox(
                   width: 80,
                   height: 80,
                   child: CircularProgressIndicator(
                     value: null,
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(errorColor.withOpacity(0.6)),
+                    valueColor: AlwaysStoppedAnimation<Color>(errorColor.withValues(alpha: 0.6)),
                   ),
                 ),
             ],
@@ -322,13 +322,15 @@ class _CompactVoiceRecorderButtonState extends State<CompactVoiceRecorderButton>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: widget.isRecording
-                      ? [theme.colorScheme.error, theme.colorScheme.error.withOpacity(0.8)]
+                      ? [theme.colorScheme.error, theme.colorScheme.error.withValues(alpha: 0.8)]
                       : [theme.colorScheme.primary, theme.colorScheme.secondary],
                 ),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: (widget.isRecording ? theme.colorScheme.error : theme.colorScheme.primary).withOpacity(0.2),
+                    color: (widget.isRecording ? theme.colorScheme.error : theme.colorScheme.primary).withValues(
+                      alpha: 0.2,
+                    ),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
