@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:developer' as developer;
 import '../../../core/audio/audio_service.dart';
 import '../../../core/transcription/transcription_service.dart';
 import '../../../data/services/voice_memo_service.dart';
 import '../../../data/models/voice_memo.dart';
+import '../../../core/errors/voice_bridge_error.dart' as errors;
 import 'home_state.dart';
 
 /// 🎓 **WORKSHOP MODULE 1.2: BLoC State Management**
@@ -130,17 +132,11 @@ class HomeCubit extends Cubit<HomeState> {
       emit(const RecordingInProgress());
       developer.log('⏺️ [HomeCubit] State changed to RecordingInProgress, timer started', name: 'VoiceBridge.Cubit');
     } catch (e) {
-      developer.log('❌ [HomeCubit] Error starting recording: $e', name: 'VoiceBridge.Cubit', error: e);
-      developer.log('❌ [HomeCubit] Error type: ${e.runtimeType}', name: 'VoiceBridge.Cubit');
-
-      // Check for specific permission errors
-      String errorMessage = e.toString().toLowerCase();
-      if (errorMessage.contains('permission') || errorMessage.contains('denied')) {
-        developer.log('🚫 [HomeCubit] Permission denied error detected', name: 'VoiceBridge.Cubit');
-        emit(const RecordingError(errorMessage: 'PERMISSION_DENIED'));
-      } else {
-        emit(RecordingError(errorMessage: e.toString()));
-      }
+      // Use typed error system for better error handling
+      final voiceBridgeError = errors.ErrorHelpers.fromException(Exception(e.toString()));
+      errors.ErrorHelpers.logError(voiceBridgeError, context: 'HomeCubit.startRecording');
+      
+      emit(RecordingError(errorMessage: voiceBridgeError.userMessage));
     }
   }
 
@@ -252,9 +248,6 @@ class HomeCubit extends Cubit<HomeState> {
       final String finalPath = await _audioService.stopRecording();
       developer.log('✅ [HomeCubit] Recording stopped at path: $finalPath', name: 'VoiceBridge.Cubit');
 
-      // Stop timer
-      _stopRecordingTimer();
-
       // Create voice memo record
       developer.log('💾 [HomeCubit] Creating voice memo record...', name: 'VoiceBridge.Cubit');
       await _createVoiceMemo(finalPath);
@@ -288,9 +281,15 @@ class HomeCubit extends Cubit<HomeState> {
         // Don't rethrow - recording is saved, transcription can be retried manually
       }
     } catch (e) {
-      developer.log('❌ [HomeCubit] Error stopping recording: $e', name: 'VoiceBridge.Cubit', error: e);
+      // Use typed error system for better error handling
+      final voiceBridgeError = errors.ErrorHelpers.fromException(Exception(e.toString()));
+      errors.ErrorHelpers.logError(voiceBridgeError, context: 'HomeCubit.stopRecording');
+      
+      emit(RecordingError(errorMessage: voiceBridgeError.userMessage));
+    } finally {
+      // Always stop timer, even if exceptions occurred
+      // This prevents resource leaks
       _stopRecordingTimer();
-      emit(RecordingError(errorMessage: e.toString()));
     }
   }
 
@@ -413,6 +412,11 @@ class HomeCubit extends Cubit<HomeState> {
     try {
       developer.log('📝 [HomeCubit] Creating voice memo for file: $filePath', name: 'VoiceBridge.Cubit');
 
+      // Get actual file size
+      final file = File(filePath);
+      final fileStat = await file.stat();
+      final fileSizeBytes = fileStat.size.toDouble();
+
       final VoiceMemo voiceMemo = VoiceMemo(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         filePath: filePath,
@@ -420,7 +424,7 @@ class HomeCubit extends Cubit<HomeState> {
         keywords: const <String>[],
         createdAt: DateTime.now(),
         durationSeconds: _recordingDuration.inSeconds,
-        fileSizeBytes: 0.0, // TODO: Calculate actual file size
+        fileSizeBytes: fileSizeBytes,
         isTranscribed: false,
         status: VoiceMemoStatus.completed,
       );

@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/theme/theme_provider.dart';
 import 'ui/views/home_view.dart';
 import 'di.dart';
-// import 'package:google_fonts/google_fonts.dart'; // Temporarily disabled due to network restrictions
 
 class App extends StatelessWidget {
   const App({super.key});

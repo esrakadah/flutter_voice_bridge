@@ -10,6 +10,8 @@ import '../components/audio_visualizer.dart';
 import '../components/native_text_view.dart';
 import 'animation_fullscreen_view.dart';
 import '../../core/audio/audio_converter.dart';
+import 'home/widgets/animation_controls_widget.dart';
+import 'home/widgets/recording_status_widget.dart';
 
 /// 🎓 **WORKSHOP MODULE 1.1: Clean Architecture UI Layer**
 ///
@@ -106,7 +108,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
               SliverToBoxAdapter(child: _buildHeroSection(context, state)),
 
               // Current recording status
-              SliverToBoxAdapter(child: _buildRecordingStatusCard(context, state)),
+              SliverToBoxAdapter(child: RecordingStatusWidget(state: state)),
 
               // Transcription results
               if (state.transcriptionText != null) SliverToBoxAdapter(child: _buildTranscriptionCard(context, state)),
@@ -135,55 +137,6 @@ class _HomeViewContentState extends State<HomeViewContent> {
         },
       ),
       floatingActionButton: _buildFloatingActionButton(context),
-    );
-  }
-
-  Widget _buildVisualizationModeChips(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildModeChip(context, 'Waveform', AudioVisualizationMode.waveform),
-        const SizedBox(width: 8),
-        _buildModeChip(context, 'Spectrum', AudioVisualizationMode.spectrum),
-        const SizedBox(width: 8),
-        _buildModeChip(context, 'Particles', AudioVisualizationMode.particles),
-        const SizedBox(width: 8),
-        _buildModeChip(context, 'Radial', AudioVisualizationMode.radial),
-      ],
-    );
-  }
-
-  Widget _buildModeChip(BuildContext context, String label, AudioVisualizationMode mode) {
-    final isSelected = _currentMode == mode;
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentMode = mode;
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          gradient: isSelected
-              ? LinearGradient(colors: [colorScheme.primary.withAlpha(20), colorScheme.secondary.withAlpha(10)])
-              : null,
-          border: Border.all(
-            color: isSelected ? colorScheme.primary.withAlpha(100) : colorScheme.outline.withAlpha(30),
-          ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: textTheme.bodySmall?.copyWith(
-            color: isSelected ? colorScheme.primary : colorScheme.onSurface.withAlpha(70),
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-          ),
-        ),
-      ),
     );
   }
 
@@ -248,110 +201,14 @@ class _HomeViewContentState extends State<HomeViewContent> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
-            _buildVisualizationModeChips(context),
+            AnimationControlsWidget(
+              currentMode: _currentMode,
+              onModeChanged: (mode) => setState(() => _currentMode = mode),
+            ),
           ],
         ],
       ),
     );
-  }
-
-  Widget _buildRecordingStatusCard(BuildContext context, HomeState state) {
-    if (state is HomeInitial) return const SizedBox.shrink();
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
-      child: Card(
-        child: Padding(padding: const EdgeInsets.all(20), child: _buildStatusContent(context, state)),
-      ),
-    );
-  }
-
-  Widget _buildStatusContent(BuildContext context, HomeState state) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    if (state is RecordingInProgress) {
-      return Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(color: colorScheme.error, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 12),
-              Text('Recording in progress', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Icon(Icons.timer_outlined, size: 20, color: colorScheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                _formatDuration(state.recordingDuration),
-                style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.primary),
-              ),
-            ],
-          ),
-        ],
-      );
-    }
-
-    if (state is RecordingCompleted) {
-      return Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.green.withAlpha(26), borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.check_circle, color: Colors.green, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Recording completed',
-                  style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: Colors.green),
-                ),
-                Text('Duration: ${_formatDuration(state.recordingDuration)}', style: textTheme.bodyMedium),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (state is RecordingError) {
-      return Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.error.withAlpha(26),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(Icons.error, color: Theme.of((context)).colorScheme.error, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Recording Error',
-                  style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.error),
-                ),
-                Text(state.errorMessage, style: textTheme.bodyMedium),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
-
-    return const SizedBox.shrink();
   }
 
   Widget _buildTranscriptionCard(BuildContext context, HomeState state) {
@@ -898,12 +755,6 @@ class _HomeViewContentState extends State<HomeViewContent> {
         ),
       );
     }
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
   String _formatFileSize(double bytes) {

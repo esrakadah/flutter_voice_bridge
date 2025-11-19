@@ -5,36 +5,20 @@ import '../models/voice_memo.dart';
 
 // Service for managing voice memo data persistence and operations
 abstract class VoiceMemoService {
-  Future<List<VoiceMemo>> getAllVoiceMemos();
-  Future<VoiceMemo?> getVoiceMemoById(String id);
+  /// Save a voice memo and return its ID
   Future<String> saveVoiceMemo(VoiceMemo voiceMemo);
-  Future<void> deleteVoiceMemo(String id);
-  Future<void> updateVoiceMemo(VoiceMemo voiceMemo);
-  Future<List<VoiceMemo>> searchVoiceMemos(String query);
 
-  // New methods for recording management
+  /// List all recordings from file system
   Future<List<VoiceMemo>> listRecordings();
+  
+  /// Delete a recording by file path
   Future<void> deleteRecording(String filePath);
 }
 
 class VoiceMemoServiceImpl implements VoiceMemoService {
-  // File-based implementation using device storage
-
-  @override
-  Future<List<VoiceMemo>> getAllVoiceMemos() async {
-    // For now, same as listRecordings - in future this could include database records
-    return await listRecordings();
-  }
-
-  @override
-  Future<VoiceMemo?> getVoiceMemoById(String id) async {
-    // TODO: Implement single record retrieval
-    throw UnimplementedError('Single record retrieval not implemented yet');
-  }
-
   @override
   Future<String> saveVoiceMemo(VoiceMemo voiceMemo) async {
-    // TODO: Implement database saving (currently just file-based)
+    // Currently just logs - in future this could save to database
     developer.log('📄 [VoiceMemoService] Saving memo: ${voiceMemo.title}', name: 'VoiceBridge.Service');
     developer.log('📁 [VoiceMemoService] File path: ${voiceMemo.filePath}', name: 'VoiceBridge.Service');
     developer.log('🆔 [VoiceMemoService] ID: ${voiceMemo.id}', name: 'VoiceBridge.Service');
@@ -49,24 +33,6 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
     }
 
     return voiceMemo.id;
-  }
-
-  @override
-  Future<void> deleteVoiceMemo(String id) async {
-    // TODO: Implement database deletion
-    throw UnimplementedError('Database deletion not implemented yet');
-  }
-
-  @override
-  Future<void> updateVoiceMemo(VoiceMemo voiceMemo) async {
-    // TODO: Implement data updates
-    throw UnimplementedError('Data updates not implemented yet');
-  }
-
-  @override
-  Future<List<VoiceMemo>> searchVoiceMemos(String query) async {
-    // TODO: Implement search functionality
-    throw UnimplementedError('Search functionality not implemented yet');
   }
 
   @override
