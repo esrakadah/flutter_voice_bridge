@@ -7,14 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/gemma_downloader_datasource.dart';
 import '../domain/available_models.dart';
 
-/// Settings screen for managing Gemma AI models.
-///
-/// This screen allows users to:
-/// - View available models
-/// - Download new models
-/// - Select which model to use
-/// - Delete models to free up space
-/// - See model status and characteristics
 class GemmaSettingsScreen extends StatefulWidget {
   const GemmaSettingsScreen({super.key});
 
@@ -34,24 +26,21 @@ class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
     _loadSettings();
   }
 
-  /// Loads the current settings and model availability status.
   Future<void> _loadSettings() async {
     setState(() => _loading = true);
 
     final prefs = await SharedPreferences.getInstance();
     final selectedFilename = prefs.getString('selected_gemma_model');
 
-    // Find selected model
     if (selectedFilename != null) {
       _selectedModel = AvailableModel.values.firstWhere(
         (m) => m.filename == selectedFilename,
         orElse: () => AvailableModel.gemma1b,
       );
     } else {
-      _selectedModel = AvailableModel.gemma1b; // Default to recommended
+      _selectedModel = AvailableModel.gemma1b;
     }
 
-    // Check which models exist
     for (final model in AvailableModel.values) {
       final datasource = GemmaDownloaderDataSource(
         model: model.toDownloadModel(),
@@ -63,7 +52,6 @@ class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
     setState(() => _loading = false);
   }
 
-  /// Selects a model and saves the preference.
   Future<void> _selectModel(AvailableModel model) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('selected_gemma_model', model.filename);
@@ -72,16 +60,22 @@ class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Selected ${model.displayName}. Return to chat to reload.',
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Text('Selected ${model.displayName}. Return to chat to reload.'),
+            ],
           ),
           backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(16),
         ),
       );
     }
   }
 
-  /// Downloads a model with progress tracking.
   Future<void> _downloadModel(AvailableModel model) async {
     setState(() {
       _downloadProgress[model] = 0.0;
@@ -109,8 +103,17 @@ class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${model.displayName} downloaded successfully!'),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Text('${model.displayName} downloaded!'),
+              ],
+            ),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -122,31 +125,40 @@ class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to download: $e'),
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Text('Failed to download: $e'),
+              ],
+            ),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
     }
   }
 
-  /// Deletes a model from local storage.
   Future<void> _deleteModel(AvailableModel model) async {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Delete Model'),
-        content: Text(
-          'Are you sure you want to delete ${model.displayName}?',
-        ),
+        content: Text('Are you sure you want to delete ${model.displayName}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
             child: const Text('Delete'),
           ),
         ],
@@ -173,8 +185,17 @@ class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${model.displayName} deleted'),
+            content: Row(
+              children: [
+                const Icon(Icons.delete, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Text('${model.displayName} deleted'),
+              ],
+            ),
             backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -192,219 +213,378 @@ class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Gemma Model Settings'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
+        title: Text(
+          'Gemma Model Settings',
+          style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                colorScheme.primary.withAlpha(26),
+                colorScheme.secondary.withAlpha(13),
+              ],
+            ),
+          ),
+        ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: [
-                const Text(
-                  'Available Models',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+          ? Center(
+              child: Container(
+                margin: const EdgeInsets.all(32),
+                child: Card(
+                  elevation: 4,
+                  shadowColor: colorScheme.primary.withAlpha(13),
+                  child: const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Current: ${_selectedModel?.displayName ?? "None"}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ...AvailableModel.values.map((model) {
-                  final exists = _modelExistence[model] ?? false;
-                  final progress = _downloadProgress[model];
-                  final isSelected = model == _selectedModel;
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    elevation: isSelected ? 4 : 1,
-                    color: isSelected ? Colors.blue.shade50 : null,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          model.displayName,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        if (isSelected) ...[
-                                          const SizedBox(width: 8),
-                                          const Icon(
-                                            Icons.check_circle,
-                                            color: Colors.green,
-                                            size: 20,
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Size: ${model.size}',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      model.description,
-                                      style: TextStyle(
-                                        color: Colors.grey.shade700,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    if (model.supportsImages) ...[
-                                      const SizedBox(height: 4),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.orange.shade100,
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                        child: const Text(
-                                          '📸 Image Support',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              Icon(
-                                exists
-                                    ? Icons.download_done
-                                    : Icons.cloud_download,
-                                color: exists ? Colors.green : Colors.grey,
-                              ),
-                            ],
-                          ),
-                          if (progress != null) ...[
-                            const SizedBox(height: 12),
-                            LinearProgressIndicator(value: progress),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${(progress * 100).toStringAsFixed(1)}%',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ] else ...[
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                if (!exists) ...[
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: () => _downloadModel(model),
-                                      icon: const Icon(Icons.download),
-                                      label: const Text('Download'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.blue.shade600,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ] else ...[
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: () => _selectModel(model),
-                                      icon: const Icon(Icons.check),
-                                      label: Text(
-                                        isSelected ? 'Selected' : 'Use This',
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: isSelected
-                                            ? Colors.green
-                                            : Colors.grey.shade700,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  IconButton(
-                                    onPressed: () => _deleteModel(model),
-                                    icon: const Icon(Icons.delete),
-                                    color: Colors.red,
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-                const SizedBox(height: 16),
-                Container(
+              ),
+            )
+          : CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: _buildHeader(context, colorScheme, textTheme)),
+                SliverPadding(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.info_outline, color: Colors.blue.shade700),
-                          const SizedBox(width: 8),
-                          Text(
-                            'About Gemma Models',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade900,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '• Models run entirely on your device\n'
-                        '• No internet required after download\n'
-                        '• Privacy-focused: data never leaves device\n'
-                        '• Larger models = better quality, more space\n'
-                        '• Multimodal models can analyze images',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade800,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
+                  sliver: SliverList.builder(
+                    itemCount: AvailableModel.values.length,
+                    itemBuilder: (context, index) {
+                      final model = AvailableModel.values[index];
+                      return _buildModelCard(model, colorScheme, textTheme);
+                    },
                   ),
                 ),
+                SliverToBoxAdapter(child: _buildInfoCard(colorScheme, textTheme)),
+                const SliverToBoxAdapter(child: SizedBox(height: 32)),
               ],
             ),
     );
   }
-}
 
+  Widget _buildHeader(BuildContext context, ColorScheme colorScheme, TextTheme textTheme) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Available Models',
+            style: textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_circle, size: 16, color: colorScheme.onPrimaryContainer),
+                const SizedBox(width: 6),
+                Text(
+                  'Current: ${_selectedModel?.displayName ?? "None"}',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModelCard(AvailableModel model, ColorScheme colorScheme, TextTheme textTheme) {
+    final exists = _modelExistence[model] ?? false;
+    final progress = _downloadProgress[model];
+    final isSelected = model == _selectedModel;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        elevation: isSelected ? 6 : 3,
+        shadowColor: isSelected ? colorScheme.primary.withAlpha(26) : colorScheme.shadow.withAlpha(13),
+        color: isSelected ? colorScheme.primaryContainer.withAlpha(51) : null,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                model.displayName,
+                                style: textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                            if (isSelected)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withAlpha(26),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.check_circle, color: Colors.green, size: 14),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Selected',
+                                      style: textTheme.bodySmall?.copyWith(
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Size: ${model.size}',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurface.withValues(alpha: 0.7),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          model.description,
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurface.withValues(alpha: 0.8),
+                          ),
+                        ),
+                        if (model.supportsImages) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  colorScheme.tertiary.withAlpha(26),
+                                  colorScheme.secondary.withAlpha(13),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: colorScheme.tertiary.withAlpha(39),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.image, size: 14, color: colorScheme.tertiary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Image Support',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.tertiary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(
+                    exists ? Icons.download_done : Icons.cloud_download_outlined,
+                    color: exists ? Colors.green : colorScheme.outline,
+                    size: 28,
+                  ),
+                ],
+              ),
+              if (progress != null) ...[
+                const SizedBox(height: 16),
+                LinearProgressIndicator(
+                  value: progress,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Downloading: ${(progress * 100).toStringAsFixed(1)}%',
+                  style: textTheme.bodySmall?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: 16),
+                if (!exists)
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => _downloadModel(model),
+                      icon: const Icon(Icons.download),
+                      label: const Text('Download Model'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () => _selectModel(model),
+                          icon: Icon(isSelected ? Icons.check : Icons.radio_button_unchecked),
+                          label: Text(isSelected ? 'Currently Selected' : 'Use This Model'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: isSelected ? Colors.green : colorScheme.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      IconButton.filled(
+                        onPressed: () => _deleteModel(model),
+                        icon: const Icon(Icons.delete_outline),
+                        style: IconButton.styleFrom(
+                          backgroundColor: colorScheme.error.withAlpha(26),
+                          foregroundColor: colorScheme.error,
+                        ),
+                        tooltip: 'Delete Model',
+                      ),
+                    ],
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(ColorScheme colorScheme, TextTheme textTheme) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        elevation: 2,
+        shadowColor: colorScheme.primary.withAlpha(13),
+        color: colorScheme.surfaceContainerHighest.withAlpha(80),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [colorScheme.tertiary, colorScheme.primary],
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.info_outline, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'About Gemma Models',
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildInfoRow(
+                icon: Icons.smartphone,
+                text: 'Models run entirely on your device',
+                colorScheme: colorScheme,
+                textTheme: textTheme,
+              ),
+              _buildInfoRow(
+                icon: Icons.cloud_off,
+                text: 'No internet required after download',
+                colorScheme: colorScheme,
+                textTheme: textTheme,
+              ),
+              _buildInfoRow(
+                icon: Icons.lock,
+                text: 'Privacy-focused: data never leaves device',
+                colorScheme: colorScheme,
+                textTheme: textTheme,
+              ),
+              _buildInfoRow(
+                icon: Icons.trending_up,
+                text: 'Larger models = better quality, more space',
+                colorScheme: colorScheme,
+                textTheme: textTheme,
+              ),
+              _buildInfoRow(
+                icon: Icons.photo,
+                text: 'Multimodal models can analyze images',
+                colorScheme: colorScheme,
+                textTheme: textTheme,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String text,
+    required ColorScheme colorScheme,
+    required TextTheme textTheme,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface.withValues(alpha: 0.85),
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

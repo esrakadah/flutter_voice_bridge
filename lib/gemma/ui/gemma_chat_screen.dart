@@ -11,13 +11,6 @@ import '../data/gemma_downloader_datasource.dart';
 import '../domain/available_models.dart';
 import 'gemma_settings_screen.dart';
 
-/// Main chat screen for interacting with Gemma AI.
-///
-/// This screen provides a chat interface where users can:
-/// - Send text messages to the AI
-/// - Upload images for multimodal analysis (if supported by model)
-/// - View AI responses with markdown formatting
-/// - Access settings to change AI models
 class GemmaChatScreen extends StatefulWidget {
   const GemmaChatScreen({super.key});
 
@@ -42,7 +35,7 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
 
   final _textController = TextEditingController();
 
-  late final GemmaDownloaderDataSource _downloaderDataSource;
+  GemmaDownloaderDataSource? _downloaderDataSource;
 
   @override
   void initState() {
@@ -56,7 +49,6 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
     super.dispose();
   }
 
-  /// Gets the selected model from SharedPreferences.
   Future<AvailableModel> _getSelectedModel() async {
     final prefs = await SharedPreferences.getInstance();
     final selectedFilename = prefs.getString('selected_gemma_model');
@@ -67,44 +59,33 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
         orElse: () => AvailableModel.gemma1b,
       );
     }
-    return AvailableModel.gemma1b; // Default to recommended model
+    return AvailableModel.gemma1b;
   }
 
-  /// Initializes the Gemma AI model.
-  ///
-  /// This method:
-  /// 1. Checks which model is selected
-  /// 2. Downloads it if not present
-  /// 3. Initializes the inference engine
-  /// 4. Creates a chat session
   Future<void> _initializeModel() async {
     try {
       final gemma = FlutterGemmaPlugin.instance;
-
-      // Get selected model from settings
       final selectedModel = await _getSelectedModel();
 
-      _downloaderDataSource = GemmaDownloaderDataSource(
-        model: selectedModel.toDownloadModel(),
-      );
+      _downloaderDataSource = GemmaDownloaderDataSource(model: selectedModel.toDownloadModel());
 
-      // Clean up old models to free up space
-      await _downloaderDataSource.deleteOldModels();
+      await _downloaderDataSource!.deleteOldModels();
 
-      final isModelInstalled = await _downloaderDataSource.checkModelExistence();
+      final isModelInstalled = await _downloaderDataSource!.checkModelExistence();
 
       if (!isModelInstalled) {
         setState(() {
-          _loadingMessage =
-              'Downloading ${selectedModel.displayName} (${selectedModel.size})...';
+          _loadingMessage = 'Downloading ${selectedModel.displayName} (${selectedModel.size})...';
         });
 
-        await _downloaderDataSource.downloadModel(
+        await _downloaderDataSource!.downloadModel(
           token: accessToken,
           onProgress: (progress) {
-            setState(() {
-              _downloadProgress = progress;
-            });
+            if (mounted) {
+              setState(() {
+                _downloadProgress = progress;
+              });
+            }
           },
         );
       }
@@ -114,11 +95,9 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
         _downloadProgress = null;
       });
 
-      // Get the path to the downloaded model file
-      final modelPath = await _downloaderDataSource.getFilePath();
+      final modelPath = await _downloaderDataSource!.getFilePath();
       await gemma.modelManager.setModelPath(modelPath);
 
-      // Use model's actual image support capability
       final supportsImages = selectedModel.supportsImages;
 
       _inferenceModel = await gemma.createModel(
@@ -127,9 +106,7 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
         maxTokens: 2048,
       );
 
-      _chat = await _inferenceModel!.createChat(
-        supportImage: supportsImages,
-      );
+      _chat = await _inferenceModel!.createChat(supportImage: supportsImages);
 
       setState(() {
         _isModelLoading = false;
@@ -137,12 +114,20 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
       });
     } catch (e) {
       debugPrint("Error initializing model: $e");
-      final scaffoldMessenger = ScaffoldMessenger.of(context);
       if (mounted) {
-        scaffoldMessenger.showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to initialize AI model: $e'),
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Failed: $e')),
+              ],
+            ),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -152,9 +137,7 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
     }
   }
 
-  /// Picks an image from the gallery for multimodal chat.
   Future<void> _pickImage() async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       final pickedFile = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -170,203 +153,294 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
         });
       }
     } catch (e) {
-      scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text('Image selection error: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image error: $e')));
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Chat with Gemma'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
-        centerTitle: true,
+        title: Text('Chat with Gemma', style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const GemmaSettingsScreen(),
-                ),
-              );
-              // Reload model if settings changed
-              setState(() {
-                _isModelLoading = true;
-                _messages.clear(); // Clear chat history
-              });
-              _initializeModel();
-            },
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () async {
+                await Navigator.push(context, MaterialPageRoute(builder: (context) => const GemmaSettingsScreen()));
+                setState(() {
+                  _isModelLoading = true;
+                  _messages.clear();
+                  _selectedImage = null;
+                });
+                _initializeModel();
+              },
+              tooltip: 'Model Settings',
+            ),
           ),
         ],
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.blue.shade50, Colors.blue.shade100],
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [colorScheme.primary.withAlpha(26), colorScheme.secondary.withAlpha(13)],
+            ),
           ),
         ),
-        child: _isModelLoading
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 24),
-                    Text(
-                      _loadingMessage,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    if (_downloadProgress != null)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32.0,
-                          vertical: 16.0,
+      ),
+      body: _isModelLoading
+          ? _buildLoadingState(context, colorScheme, textTheme)
+          : Column(
+              children: [
+                Expanded(
+                  child: _messages.isEmpty
+                      ? _buildEmptyState(context, colorScheme, textTheme)
+                      : ListView.builder(
+                          reverse: true,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _messages.length,
+                          itemBuilder: (context, index) {
+                            final message = _messages[_messages.length - 1 - index];
+                            return ChatMessageWidget(message: message, colorScheme: colorScheme, textTheme: textTheme);
+                          },
                         ),
-                        child: LinearProgressIndicator(value: _downloadProgress),
-                      ),
-                  ],
                 ),
-              )
-            : Column(
-                children: [
-                  Expanded(
-                    child: ListView.builder(
-                      reverse: true,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8.0,
-                        vertical: 16.0,
-                      ),
-                      itemCount: _messages.length,
-                      itemBuilder: (context, index) {
-                        final message = _messages[_messages.length - 1 - index];
-                        return ChatMessageWidget(message: message);
-                      },
-                    ),
+                if (_isAwaitingResponse) _buildThinkingIndicator(colorScheme, textTheme),
+                _buildChatInputArea(colorScheme, textTheme),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildLoadingState(BuildContext context, ColorScheme colorScheme, TextTheme textTheme) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.all(32),
+        child: Card(
+          elevation: 4,
+          shadowColor: colorScheme.primary.withAlpha(13),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary)),
+                const SizedBox(height: 24),
+                Text(
+                  _loadingMessage,
+                  style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+                  textAlign: TextAlign.center,
+                ),
+                if (_downloadProgress != null) ...[
+                  const SizedBox(height: 16),
+                  LinearProgressIndicator(
+                    value: _downloadProgress,
+                    backgroundColor: colorScheme.surfaceContainerHighest,
                   ),
-                  if (_isAwaitingResponse)
-                    const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Row(
-                        children: [
-                          SizedBox.square(
-                            dimension: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          SizedBox(width: 12),
-                          Text('Gemma is thinking...'),
-                        ],
-                      ),
-                    ),
-                  _buildChatInputArea(),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${(_downloadProgress! * 100).toStringAsFixed(1)}%',
+                    style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.7)),
+                  ),
                 ],
-              ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  /// Builds the chat input area with text field and action buttons.
-  Widget _buildChatInputArea() {
+  Widget _buildEmptyState(BuildContext context, ColorScheme colorScheme, TextTheme textTheme) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.all(32),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [colorScheme.primary, colorScheme.secondary]),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(Icons.chat_bubble_outline, size: 48, color: Colors.white),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Start a conversation',
+                  style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: colorScheme.onSurface),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Ask Gemma anything! I can help with questions, ideas, creative writing, and more.',
+                  style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.7)),
+                  textAlign: TextAlign.center,
+                ),
+                if (_modelSupportsImages) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: colorScheme.tertiary.withAlpha(26),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.image_outlined, size: 16, color: colorScheme.tertiary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Image analysis enabled',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.tertiary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThinkingIndicator(ColorScheme colorScheme, TextTheme textTheme) {
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: const Color.fromARGB(13, 0, 0, 0),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
+        color: colorScheme.surfaceContainerHighest.withAlpha(50),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outline.withAlpha(30)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Gemma is thinking...',
+            style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.7)),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-        child: SafeArea(
+    );
+  }
+
+  Widget _buildChatInputArea(ColorScheme colorScheme, TextTheme textTheme) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        boxShadow: [BoxShadow(color: colorScheme.shadow.withAlpha(13), blurRadius: 8, offset: const Offset(0, -2))],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (_selectedImage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
                   child: Stack(
                     alignment: Alignment.topRight,
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.memory(
-                          _selectedImage!,
-                          height: 120,
-                          width: 120,
-                          fit: BoxFit.cover,
-                        ),
+                        child: Image.memory(_selectedImage!, height: 120, width: 120, fit: BoxFit.cover),
                       ),
-                      Material(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: () {
+                      Container(
+                        margin: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(color: colorScheme.error, borderRadius: BorderRadius.circular(20)),
+                        child: IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                          onPressed: () {
                             setState(() => _selectedImage = null);
                           },
-                          child: const Padding(
-                            padding: EdgeInsets.all(4.0),
-                            child: Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                         ),
                       ),
                     ],
                   ),
                 ),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.image_outlined),
+                    icon: Icon(
+                      Icons.image_outlined,
+                      color: _modelSupportsImages ? colorScheme.primary : colorScheme.outline,
+                    ),
                     onPressed: _modelSupportsImages ? _pickImage : null,
-                    color: _modelSupportsImages
-                        ? Colors.blue.shade700
-                        : Colors.grey,
-                    tooltip: _modelSupportsImages
-                        ? 'Add image'
-                        : 'Current model does not support images',
+                    tooltip: _modelSupportsImages ? 'Add image' : 'Current model does not support images',
                   ),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: TextField(
-                      controller: _textController,
-                      decoration: InputDecoration(
-                        hintText: 'Ask Gemma anything...',
-                        filled: true,
-                        fillColor: Colors.grey.shade100,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest.withAlpha(80),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: colorScheme.outline.withAlpha(39)),
+                      ),
+                      child: TextField(
+                        controller: _textController,
+                        maxLines: null,
+                        textCapitalization: TextCapitalization.sentences,
+                        style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface),
+                        decoration: InputDecoration(
+                          hintText: 'Ask Gemma anything...',
+                          hintStyle: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.5)),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  IconButton.filled(
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.blue.shade600,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [colorScheme.primary, colorScheme.secondary]),
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colorScheme.primary.withAlpha(40),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    icon: const Icon(Icons.send),
-                    onPressed: _isAwaitingResponse ? null : _sendMessage,
+                    child: IconButton(
+                      icon: const Icon(Icons.send_rounded, color: Colors.white),
+                      onPressed: _isAwaitingResponse ? null : _sendMessage,
+                      padding: const EdgeInsets.all(12),
+                    ),
                   ),
                 ],
               ),
@@ -377,23 +451,16 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
     );
   }
 
-  /// Sends a message to Gemma AI and handles the response.
   void _sendMessage() async {
     final text = _textController.text.trim();
     final image = _selectedImage;
 
-    if (text.isEmpty && image == null) {
-      return;
-    }
+    if (text.isEmpty && image == null) return;
 
-    // Check if trying to send image with text-only model
     if (image != null && !_modelSupportsImages) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Current model does not support images. '
-            'Please select a multimodal model in settings.',
-          ),
+          content: Text('Current model does not support images. Change model in settings.'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -406,20 +473,14 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
       _isAwaitingResponse = true;
     });
 
-    // Create the user's message object
     final Message userMessage;
     if (image != null) {
       final prompt = text.isNotEmpty ? text : "What's in this image?";
-      userMessage = Message.withImage(
-        text: prompt,
-        imageBytes: image,
-        isUser: true,
-      );
+      userMessage = Message.withImage(text: prompt, imageBytes: image, isUser: true);
     } else {
       userMessage = Message(text: text, isUser: true);
     }
 
-    // Add the user's message to the UI and clear input fields
     setState(() {
       _messages.add(userMessage);
       _selectedImage = null;
@@ -429,16 +490,13 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
     FocusScope.of(context).unfocus();
 
     try {
-      // Send the user's message to the Gemma chat instance
       await _chat!.addQueryChunk(userMessage);
 
-      // Add an empty placeholder for the AI's response
       final responsePlaceholder = Message(text: '', isUser: false);
       setState(() {
         _messages.add(responsePlaceholder);
       });
 
-      // Listen to the stream and aggregate the tokens
       final responseStream = _chat!.generateChatResponseAsync();
 
       await for (final token in responseStream) {
@@ -446,23 +504,13 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
         setState(() {
           final lastMessage = _messages.last;
           final updatedText = lastMessage.text + token;
-          _messages[_messages.length - 1] = Message(
-            text: updatedText,
-            isUser: false,
-          );
+          _messages[_messages.length - 1] = Message(text: updatedText, isUser: false);
         });
       }
     } catch (e) {
-      debugPrint("Error during chat generation: $e");
-      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      debugPrint("Error during chat: $e");
       if (mounted) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text('Error generating response: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        // Remove the empty AI message placeholder on error
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
         setState(() {
           if (_messages.isNotEmpty && !_messages.last.isUser) {
             _messages.removeLast();
@@ -479,76 +527,60 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
   }
 }
 
-/// Widget for displaying individual chat messages.
 class ChatMessageWidget extends StatelessWidget {
   final Message message;
+  final ColorScheme colorScheme;
+  final TextTheme textTheme;
 
-  const ChatMessageWidget({super.key, required this.message});
+  const ChatMessageWidget({super.key, required this.message, required this.colorScheme, required this.textTheme});
 
   @override
   Widget build(BuildContext context) {
-    final radius = Radius.circular(16);
     final isUser = message.isUser;
     final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
-    final color = isUser ? Colors.blue.shade600 : Colors.white;
-    final textColor = isUser ? Colors.white : Colors.black87;
-    final borderRadius = BorderRadius.only(
-      topLeft: radius,
-      topRight: radius,
-      bottomLeft: isUser ? radius : Radius.zero,
-      bottomRight: isUser ? Radius.zero : radius,
-    );
 
     return Align(
       alignment: alignment,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: borderRadius,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        child: Card(
+          elevation: 2,
+          shadowColor: colorScheme.shadow.withAlpha(13),
+          color: isUser ? colorScheme.primaryContainer : colorScheme.surfaceContainerHighest,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (message.imageBytes != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.memory(message.imageBytes!, width: 200, height: 200, fit: BoxFit.cover),
+                    ),
+                  ),
+                if (message.text.isNotEmpty)
+                  MarkdownBody(
+                    data: message.text.replaceAll(r'\n', '\n'),
+                    styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                      p: textTheme.bodyLarge?.copyWith(
+                        color: isUser ? colorScheme.onPrimaryContainer : colorScheme.onSurface,
+                      ),
+                      code: TextStyle(
+                        color: isUser ? colorScheme.onPrimaryContainer : colorScheme.onSurface,
+                        backgroundColor: Colors.transparent,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                    selectable: true,
+                  ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (message.imageBytes != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(
-                    message.imageBytes!,
-                    width: 200,
-                    height: 200,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            if (message.text.isNotEmpty)
-              MarkdownBody(
-                data: message.text.replaceAll(r'\n', '\n'),
-                styleSheet: MarkdownStyleSheet.fromTheme(
-                  Theme.of(context),
-                ).copyWith(
-                  p: TextStyle(color: textColor, fontSize: 15),
-                  code: TextStyle(
-                    color: textColor,
-                    backgroundColor: Colors.transparent,
-                  ),
-                ),
-                selectable: true,
-              ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
-
