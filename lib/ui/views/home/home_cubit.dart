@@ -124,12 +124,12 @@ class HomeCubit extends Cubit<HomeState> {
       developer.log('✅ [HomeCubit] Recording started at path: $recordingPath', name: 'VoiceBridge.Cubit');
 
       // Emit started state
-      emit(RecordingStarted(recordingPath: recordingPath));
+      emit(_copyCurrentState(baseState: RecordingStarted(recordingPath: recordingPath)));
       developer.log('📡 [HomeCubit] State changed to RecordingStarted', name: 'VoiceBridge.Cubit');
 
       // Start timer for recording duration
       _startRecordingTimer();
-      emit(const RecordingInProgress());
+      emit(_copyCurrentState(baseState: const RecordingInProgress()));
       developer.log('⏺️ [HomeCubit] State changed to RecordingInProgress, timer started', name: 'VoiceBridge.Cubit');
     } catch (e) {
       // Use typed error system for better error handling
@@ -176,15 +176,44 @@ class HomeCubit extends Cubit<HomeState> {
     developer.log('🗑️ [HomeCubit] Deleting recording: $filePath', name: 'VoiceBridge.Cubit');
 
     try {
-      // Delete file via service
+      // Optimistic update: Remove from list immediately
+      final currentRecordings = List<VoiceMemo>.from(state.recordings);
+      currentRecordings.removeWhere((memo) => memo.filePath == filePath);
+      
+      // Emit updated state immediately
+      emit(_copyCurrentState(recordings: currentRecordings));
+
+      // Delete file via service asynchronously
       await _voiceMemoService.deleteRecording(filePath);
       developer.log('✅ [HomeCubit] Recording deleted successfully', name: 'VoiceBridge.Cubit');
-
-      // Reload recordings list
-      await loadRecordings();
+      
+      // No need to reload recordings, we already updated the state
     } catch (e) {
       developer.log('❌ [HomeCubit] Error deleting recording: $e', name: 'VoiceBridge.Cubit', error: e);
+      // Revert state if deletion failed (optional, but good practice)
+      // For now just show error
       emit(_copyCurrentState(recordingsError: 'Failed to delete recording: $e'));
+      // Reload to ensure consistency
+      await loadRecordings();
+    }
+  }
+
+  // Delete all recordings functionality
+  Future<void> deleteAllRecordings() async {
+    developer.log('🗑️ [HomeCubit] Deleting ALL recordings', name: 'VoiceBridge.Cubit');
+
+    try {
+      // Optimistic update: Clear list immediately
+      emit(_copyCurrentState(recordings: []));
+
+      // Delete all files via service
+      await _voiceMemoService.deleteAllRecordings();
+      developer.log('✅ [HomeCubit] All recordings deleted successfully', name: 'VoiceBridge.Cubit');
+    } catch (e) {
+      developer.log('❌ [HomeCubit] Error deleting all recordings: $e', name: 'VoiceBridge.Cubit', error: e);
+      emit(_copyCurrentState(recordingsError: 'Failed to delete all recordings: $e'));
+      // Reload to ensure consistency
+      await loadRecordings();
     }
   }
 
@@ -220,7 +249,7 @@ class HomeCubit extends Cubit<HomeState> {
 
     try {
       // Emit playback in progress state
-      emit(PlaybackInProgress(filePath: _lastCompletedRecordingPath!));
+      emit(_copyCurrentState(baseState: PlaybackInProgress(filePath: _lastCompletedRecordingPath!)));
       developer.log('📡 [HomeCubit] State changed to PlaybackInProgress', name: 'VoiceBridge.Cubit');
 
       // Start playback via audio service
@@ -229,7 +258,7 @@ class HomeCubit extends Cubit<HomeState> {
 
       // For now, immediately emit completed state
       // In the future, we could listen to playback completion events
-      emit(PlaybackCompleted(filePath: _lastCompletedRecordingPath!));
+      emit(_copyCurrentState(baseState: PlaybackCompleted(filePath: _lastCompletedRecordingPath!)));
       developer.log('🎵 [HomeCubit] State changed to PlaybackCompleted', name: 'VoiceBridge.Cubit');
     } catch (e) {
       developer.log('❌ [HomeCubit] Error during playback: $e', name: 'VoiceBridge.Cubit', error: e);
@@ -396,7 +425,14 @@ class HomeCubit extends Cubit<HomeState> {
 
       _recordingDuration = Duration(seconds: _recordingSeconds);
       if (state is RecordingInProgress) {
-        emit(RecordingInProgress(recordingPath: _currentRecordingPath, recordingDuration: _recordingDuration));
+        emit(
+          _copyCurrentState(
+            baseState: RecordingInProgress(
+              recordingPath: _currentRecordingPath,
+              recordingDuration: _recordingDuration,
+            ),
+          ),
+        );
       }
     });
   }
@@ -572,6 +608,29 @@ class HomeCubit extends Cubit<HomeState> {
           transcriptionText: transcriptionText ?? currentState.transcriptionText,
           isTranscribing: isTranscribing ?? baseState.isTranscribing,
           transcriptionError: transcriptionError ?? baseState.errorMessage,
+          keywords: keywords ?? currentState.keywords,
+        );
+      } else if (baseState is RecordingStarted) {
+        return RecordingStarted(
+          recordingPath: baseState.recordingPath,
+          recordings: recordings ?? currentState.recordings,
+          isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+          recordingsError: recordingsError ?? currentState.recordingsError,
+          transcriptionText: transcriptionText ?? currentState.transcriptionText,
+          isTranscribing: isTranscribing ?? currentState.isTranscribing,
+          transcriptionError: transcriptionError ?? currentState.transcriptionError,
+          keywords: keywords ?? currentState.keywords,
+        );
+      } else if (baseState is RecordingInProgress) {
+        return RecordingInProgress(
+          recordingPath: baseState.recordingPath,
+          recordingDuration: baseState.recordingDuration,
+          recordings: recordings ?? currentState.recordings,
+          isLoadingRecordings: isLoadingRecordings ?? currentState.isLoadingRecordings,
+          recordingsError: recordingsError ?? currentState.recordingsError,
+          transcriptionText: transcriptionText ?? currentState.transcriptionText,
+          isTranscribing: isTranscribing ?? currentState.isTranscribing,
+          transcriptionError: transcriptionError ?? currentState.transcriptionError,
           keywords: keywords ?? currentState.keywords,
         );
       }

@@ -13,6 +13,9 @@ abstract class VoiceMemoService {
   
   /// Delete a recording by file path
   Future<void> deleteRecording(String filePath);
+
+  /// Delete all recordings
+  Future<void> deleteAllRecordings();
 }
 
 class VoiceMemoServiceImpl implements VoiceMemoService {
@@ -106,6 +109,39 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
       }
     } catch (e) {
       developer.log('❌ [VoiceMemoService] Error deleting recording: $e', name: 'VoiceBridge.Service', error: e);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteAllRecordings() async {
+    developer.log('🗑️ [VoiceMemoService] Deleting ALL recordings', name: 'VoiceBridge.Service');
+
+    try {
+      final Directory documentsDir = await getApplicationDocumentsDirectory();
+      final Directory audioDir = Directory('${documentsDir.path}/audio');
+
+      if (await audioDir.exists()) {
+        final List<FileSystemEntity> entities = audioDir.listSync();
+        int deletedCount = 0;
+        
+        for (final entity in entities) {
+          if (entity is File && (entity.path.endsWith('.m4a') || entity.path.endsWith('.wav'))) {
+            try {
+              await entity.delete();
+              deletedCount++;
+            } catch (e) {
+              developer.log('⚠️ [VoiceMemoService] Failed to delete file: ${entity.path}', name: 'VoiceBridge.Service');
+            }
+          }
+        }
+        
+        developer.log('✅ [VoiceMemoService] Deleted $deletedCount recordings', name: 'VoiceBridge.Service');
+      } else {
+        developer.log('⚠️ [VoiceMemoService] Audio directory not found', name: 'VoiceBridge.Service');
+      }
+    } catch (e) {
+      developer.log('❌ [VoiceMemoService] Error deleting all recordings: $e', name: 'VoiceBridge.Service', error: e);
       rethrow;
     }
   }

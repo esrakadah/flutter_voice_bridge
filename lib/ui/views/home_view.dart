@@ -374,6 +374,17 @@ class _HomeViewContentState extends State<HomeViewContent> {
             tooltip: 'Refresh',
             style: IconButton.styleFrom(side: BorderSide(color: Theme.of(context).colorScheme.outline.withAlpha(39))),
           ),
+          if (state.recordings.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            IconButton.outlined(
+              onPressed: () => _showDeleteAllDialog(context),
+              icon: Icon(Icons.delete_sweep_outlined, size: 20, color: Theme.of(context).colorScheme.error),
+              tooltip: 'Delete All',
+              style: IconButton.styleFrom(
+                side: BorderSide(color: Theme.of(context).colorScheme.error.withAlpha(128)),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -748,6 +759,38 @@ class _HomeViewContentState extends State<HomeViewContent> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Deleted "${recording.title}"'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    }
+  }
+
+  Future<void> _showDeleteAllDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete All Recordings'),
+        content: const Text('Are you sure you want to delete ALL recordings? This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('Delete All'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      context.read<HomeCubit>().deleteAllRecordings();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('All recordings deleted'),
           backgroundColor: Theme.of(context).colorScheme.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
