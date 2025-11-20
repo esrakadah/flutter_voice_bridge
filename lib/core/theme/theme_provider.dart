@@ -2,36 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 
+// Custom theme modes
+enum AppThemeMode {
+  light,
+  dark,
+  system,
+  devfest, // DevFest themed mode
+}
+
 // Theme management for the app with smooth transitions
 class ThemeCubit extends Cubit<ThemeState> {
-  ThemeCubit() : super(const ThemeState(themeMode: ThemeMode.system));
+  ThemeCubit() : super(const ThemeState(themeMode: AppThemeMode.devfest));
 
   void toggleTheme() {
-    if (state.themeMode == ThemeMode.light) {
-      emit(state.copyWith(themeMode: ThemeMode.dark));
-    } else if (state.themeMode == ThemeMode.dark) {
-      emit(state.copyWith(themeMode: ThemeMode.light));
+    if (state.themeMode == AppThemeMode.light) {
+      emit(state.copyWith(themeMode: AppThemeMode.dark));
+    } else if (state.themeMode == AppThemeMode.dark) {
+      emit(state.copyWith(themeMode: AppThemeMode.devfest));
+    } else if (state.themeMode == AppThemeMode.devfest) {
+      emit(state.copyWith(themeMode: AppThemeMode.light));
     } else {
       // If system mode, switch to light first
-      emit(state.copyWith(themeMode: ThemeMode.light));
+      emit(state.copyWith(themeMode: AppThemeMode.light));
     }
   }
 
-  void setThemeMode(ThemeMode mode) {
+  void setThemeMode(AppThemeMode mode) {
     emit(state.copyWith(themeMode: mode));
   }
 
-  bool get isDarkMode => state.themeMode == ThemeMode.dark;
-  bool get isLightMode => state.themeMode == ThemeMode.light;
-  bool get isSystemMode => state.themeMode == ThemeMode.system;
+  bool get isDarkMode => state.themeMode == AppThemeMode.dark;
+  bool get isLightMode => state.themeMode == AppThemeMode.light;
+  bool get isSystemMode => state.themeMode == AppThemeMode.system;
+  bool get isDevFestMode => state.themeMode == AppThemeMode.devfest;
 }
 
 class ThemeState extends Equatable {
-  final ThemeMode themeMode;
+  final AppThemeMode themeMode;
 
   const ThemeState({required this.themeMode});
 
-  ThemeState copyWith({ThemeMode? themeMode}) {
+  ThemeState copyWith({AppThemeMode? themeMode}) {
     return ThemeState(themeMode: themeMode ?? this.themeMode);
   }
 
@@ -150,24 +161,28 @@ class _ThemeToggleButtonState extends State<ThemeToggleButton> with TickerProvid
     );
   }
 
-  IconData _getThemeIcon(ThemeMode mode) {
+  IconData _getThemeIcon(AppThemeMode mode) {
     switch (mode) {
-      case ThemeMode.light:
+      case AppThemeMode.light:
         return Icons.light_mode_rounded;
-      case ThemeMode.dark:
+      case AppThemeMode.dark:
         return Icons.dark_mode_rounded;
-      case ThemeMode.system:
+      case AppThemeMode.system:
         return Icons.auto_mode_rounded;
+      case AppThemeMode.devfest:
+        return Icons.celebration_rounded; // DevFest icon
     }
   }
 
-  Color _getThemeIconColor(BuildContext context, ThemeMode mode) {
+  Color _getThemeIconColor(BuildContext context, AppThemeMode mode) {
     switch (mode) {
-      case ThemeMode.light:
+      case AppThemeMode.light:
         return widget.lightColor ?? Theme.of(context).colorScheme.primary;
-      case ThemeMode.dark:
+      case AppThemeMode.dark:
         return widget.darkColor ?? Theme.of(context).colorScheme.secondary;
-      case ThemeMode.system:
+      case AppThemeMode.devfest:
+        return const Color(0xFF4285F4); // Google Blue
+      case AppThemeMode.system:
         return Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8);
     }
   }

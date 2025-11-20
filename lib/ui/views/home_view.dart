@@ -16,6 +16,8 @@ import '../../core/audio/audio_converter.dart';
 import 'home/widgets/animation_controls_widget.dart';
 import 'home/widgets/recording_status_widget.dart';
 import '../../gemma/ui/gemma_chat_screen.dart';
+import '../components/devfest_app_bar.dart';
+import '../components/confetti_overlay.dart';
 
 /// 🎓 **WORKSHOP MODULE 1.1: Clean Architecture UI Layer**
 ///
@@ -62,42 +64,65 @@ class HomeViewContent extends StatefulWidget {
 
 class _HomeViewContentState extends State<HomeViewContent> {
   AudioVisualizationMode _currentMode = AudioVisualizationMode.waveform;
+  final ConfettiController _confettiController = ConfettiController();
 
   @override
   Widget build(BuildContext context) {
     // 🎨 REACTIVE UI PATTERN
     // BlocBuilder automatically rebuilds UI when HomeCubit emits new states
     // This creates a reactive programming model where UI is a function of state
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: Text(
-          'Voice Bridge AI',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          // Theme toggle button
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: ThemeToggleButton(themeCubit: context.read<ThemeCubit>(), size: 36),
-          ),
-        ],
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Theme.of(context).colorScheme.primary.withAlpha(26),
-                Theme.of(context).colorScheme.secondary.withAlpha(13),
+    final themeCubit = context.read<ThemeCubit>();
+    final isDevFestMode = themeCubit.isDevFestMode;
+
+    return ConfettiOverlay(
+      controller: _confettiController,
+      child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        appBar: isDevFestMode
+          ? DevFestAppBar(
+              themeCubit: themeCubit,
+              confettiController: _confettiController,
+              eventName: 'DevFest',
+              location: 'Berlin',
+              year: '2025',
+              flag: '🇩🇪',
+            )
+          : AppBar(
+              title: Text(
+                'Voice Bridge AI',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              actions: [
+                // Confetti button
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ConfettiButton(
+                    controller: _confettiController,
+                    size: 36,
+                  ),
+                ),
+                // Theme toggle button
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: ThemeToggleButton(themeCubit: themeCubit, size: 36),
+                ),
               ],
+              flexibleSpace: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Theme.of(context).colorScheme.primary.withAlpha(26),
+                      Theme.of(context).colorScheme.secondary.withAlpha(13),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
-      body: BlocBuilder<HomeCubit, HomeState>(
+        body: BlocBuilder<HomeCubit, HomeState>(
         // 🔄 REACTIVE UI BUILDER
         // This builder function is called every time HomeCubit emits a new state
         // The 'state' parameter contains the current application state
@@ -144,7 +169,8 @@ class _HomeViewContentState extends State<HomeViewContent> {
           );
         },
       ),
-      floatingActionButton: _buildFloatingActionButton(context),
+        floatingActionButton: _buildFloatingActionButton(context),
+      ),
     );
   }
 
