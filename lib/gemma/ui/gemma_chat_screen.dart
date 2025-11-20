@@ -1,47 +1,36 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gemma/core/chat.dart';
-import 'package:flutter_gemma/core/model.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../data/gemma_downloader_datasource.dart';
-import '../domain/available_models.dart';
+import '../../di.dart';
+import 'gemma_cubit.dart';
 import 'gemma_settings_screen.dart';
+import 'gemma_state.dart';
 
-class GemmaChatScreen extends StatefulWidget {
+class GemmaChatScreen extends StatelessWidget {
   const GemmaChatScreen({super.key});
 
   @override
-  State<GemmaChatScreen> createState() => _GemmaChatScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider.value(
+      value: getIt<GemmaCubit>(),
+      child: const _GemmaChatView(),
+    );
+  }
 }
 
-class _GemmaChatScreenState extends State<GemmaChatScreen> {
-  InferenceModel? _inferenceModel;
-  InferenceChat? _chat;
-
-  final List<Message> _messages = [];
-
-  bool _isModelLoading = true;
-  String _loadingMessage = 'Initializing...';
-  double? _downloadProgress;
-  bool _isAwaitingResponse = false;
-  bool _modelSupportsImages = false;
-
-  final ImagePicker _imagePicker = ImagePicker();
-  Uint8List? _selectedImage;
-
-  final _textController = TextEditingController();
-
-  GemmaDownloaderDataSource? _downloaderDataSource;
+class _GemmaChatView extends StatefulWidget {
+  const _GemmaChatView();
 
   @override
-  void initState() {
-    super.initState();
-    _initializeModel();
-  }
+  State<_GemmaChatView> createState() => _GemmaChatViewState();
+}
+
+class _GemmaChatViewState extends State<_GemmaChatView> {
+  final _textController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void dispose() {
@@ -49,95 +38,7 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
     super.dispose();
   }
 
-  Future<AvailableModel> _getSelectedModel() async {
-    final prefs = await SharedPreferences.getInstance();
-    final selectedFilename = prefs.getString('selected_gemma_model');
-
-    if (selectedFilename != null) {
-      return AvailableModel.values.firstWhere(
-        (m) => m.filename == selectedFilename,
-        orElse: () => AvailableModel.gemma1b,
-      );
-    }
-    return AvailableModel.gemma1b;
-  }
-
-  Future<void> _initializeModel() async {
-    try {
-      final gemma = FlutterGemmaPlugin.instance;
-      final selectedModel = await _getSelectedModel();
-
-      _downloaderDataSource = GemmaDownloaderDataSource(model: selectedModel.toDownloadModel());
-
-      await _downloaderDataSource!.deleteOldModels();
-
-      final isModelInstalled = await _downloaderDataSource!.checkModelExistence();
-
-      if (!isModelInstalled) {
-        setState(() {
-          _loadingMessage = 'Downloading ${selectedModel.displayName} (${selectedModel.size})...';
-        });
-
-        await _downloaderDataSource!.downloadModel(
-          token: accessToken,
-          onProgress: (progress) {
-            if (mounted) {
-              setState(() {
-                _downloadProgress = progress;
-              });
-            }
-          },
-        );
-      }
-
-      setState(() {
-        _loadingMessage = 'Initializing model...';
-        _downloadProgress = null;
-      });
-
-      final modelPath = await _downloaderDataSource!.getFilePath();
-      await gemma.modelManager.setModelPath(modelPath);
-
-      final supportsImages = selectedModel.supportsImages;
-
-      _inferenceModel = await gemma.createModel(
-        modelType: ModelType.gemmaIt,
-        supportImage: supportsImages,
-        maxTokens: 2048,
-      );
-
-      _chat = await _inferenceModel!.createChat(supportImage: supportsImages);
-
-      setState(() {
-        _isModelLoading = false;
-        _modelSupportsImages = supportsImages;
-      });
-    } catch (e) {
-      debugPrint("Error initializing model: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white, size: 20),
-                const SizedBox(width: 12),
-                Expanded(child: Text('Failed: $e')),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
-      }
-      setState(() {
-        _isModelLoading = false;
-      });
-    }
-  }
-
-  Future<void> _pickImage() async {
+  Future<void> _pickImage(BuildContext context) async {
     try {
       final pickedFile = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -146,14 +47,12 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
         imageQuality: 85,
       );
 
-      if (pickedFile != null) {
+      if (pickedFile != null && context.mounted) {
         final bytes = await pickedFile.readAsBytes();
-        setState(() {
-          _selectedImage = bytes;
-        });
+        context.read<GemmaCubit>().selectImage(bytes);
       }
     } catch (e) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image error: $e')));
       }
     }
@@ -177,12 +76,9 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
               icon: const Icon(Icons.settings_outlined),
               onPressed: () async {
                 await Navigator.push(context, MaterialPageRoute(builder: (context) => const GemmaSettingsScreen()));
-                setState(() {
-                  _isModelLoading = true;
-                  _messages.clear();
-                  _selectedImage = null;
-                });
-                _initializeModel();
+                if (context.mounted) {
+                  context.read<GemmaCubit>().resetChat();
+                }
               },
               tooltip: 'Model Settings',
             ),
@@ -198,31 +94,56 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
           ),
         ),
       ),
-      body: _isModelLoading
-          ? _buildLoadingState(context, colorScheme, textTheme)
-          : Column(
-              children: [
-                Expanded(
-                  child: _messages.isEmpty
-                      ? _buildEmptyState(context, colorScheme, textTheme)
-                      : ListView.builder(
-                          reverse: true,
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _messages.length,
-                          itemBuilder: (context, index) {
-                            final message = _messages[_messages.length - 1 - index];
-                            return ChatMessageWidget(message: message, colorScheme: colorScheme, textTheme: textTheme);
-                          },
-                        ),
+      body: BlocConsumer<GemmaCubit, GemmaState>(
+        listener: (context, state) {
+          if (state.status == GemmaStatus.error && state.errorMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.error, color: Colors.white, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text('Failed: ${state.errorMessage}')),
+                  ],
                 ),
-                if (_isAwaitingResponse) _buildThinkingIndicator(colorScheme, textTheme),
-                _buildChatInputArea(colorScheme, textTheme),
-              ],
-            ),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                margin: const EdgeInsets.all(16),
+              ),
+            );
+          }
+        },
+        builder: (context, state) {
+          if (state.status == GemmaStatus.loading) {
+            return _buildLoadingState(context, state, colorScheme, textTheme);
+          }
+
+          return Column(
+            children: [
+              Expanded(
+                child: state.messages.isEmpty
+                    ? _buildEmptyState(context, state, colorScheme, textTheme)
+                    : ListView.builder(
+                        reverse: true,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: state.messages.length,
+                        itemBuilder: (context, index) {
+                          final message = state.messages[state.messages.length - 1 - index];
+                          return ChatMessageWidget(message: message, colorScheme: colorScheme, textTheme: textTheme);
+                        },
+                      ),
+              ),
+              if (state.isAwaitingResponse) _buildThinkingIndicator(colorScheme, textTheme),
+              _buildChatInputArea(context, state, colorScheme, textTheme),
+            ],
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildLoadingState(BuildContext context, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildLoadingState(BuildContext context, GemmaState state, ColorScheme colorScheme, TextTheme textTheme) {
     return Center(
       child: Container(
         margin: const EdgeInsets.all(32),
@@ -237,19 +158,19 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
                 CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary)),
                 const SizedBox(height: 24),
                 Text(
-                  _loadingMessage,
+                  state.loadingMessage,
                   style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.onSurface),
                   textAlign: TextAlign.center,
                 ),
-                if (_downloadProgress != null) ...[
+                if (state.downloadProgress != null) ...[
                   const SizedBox(height: 16),
                   LinearProgressIndicator(
-                    value: _downloadProgress,
+                    value: state.downloadProgress,
                     backgroundColor: colorScheme.surfaceContainerHighest,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${(_downloadProgress! * 100).toStringAsFixed(1)}%',
+                    '${(state.downloadProgress! * 100).toStringAsFixed(1)}%',
                     style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.7)),
                   ),
                 ],
@@ -261,7 +182,7 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildEmptyState(BuildContext context, GemmaState state, ColorScheme colorScheme, TextTheme textTheme) {
     return Center(
       child: Container(
         margin: const EdgeInsets.all(32),
@@ -290,7 +211,7 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
                   style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.7)),
                   textAlign: TextAlign.center,
                 ),
-                if (_modelSupportsImages) ...[
+                if (state.modelSupportsImages) ...[
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -352,7 +273,7 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
     );
   }
 
-  Widget _buildChatInputArea(ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildChatInputArea(BuildContext context, GemmaState state, ColorScheme colorScheme, TextTheme textTheme) {
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surface,
@@ -364,7 +285,7 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (_selectedImage != null)
+              if (state.selectedImage != null)
                 Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: Stack(
@@ -372,7 +293,7 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.memory(_selectedImage!, height: 120, width: 120, fit: BoxFit.cover),
+                        child: Image.memory(state.selectedImage!, height: 120, width: 120, fit: BoxFit.cover),
                       ),
                       Container(
                         margin: const EdgeInsets.all(4),
@@ -380,7 +301,7 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
                         child: IconButton(
                           icon: const Icon(Icons.close, color: Colors.white, size: 18),
                           onPressed: () {
-                            setState(() => _selectedImage = null);
+                            context.read<GemmaCubit>().clearImage();
                           },
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -395,10 +316,10 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
                   IconButton(
                     icon: Icon(
                       Icons.image_outlined,
-                      color: _modelSupportsImages ? colorScheme.primary : colorScheme.outline,
+                      color: state.modelSupportsImages ? colorScheme.primary : colorScheme.outline,
                     ),
-                    onPressed: _modelSupportsImages ? _pickImage : null,
-                    tooltip: _modelSupportsImages ? 'Add image' : 'Current model does not support images',
+                    onPressed: state.modelSupportsImages ? () => _pickImage(context) : null,
+                    tooltip: state.modelSupportsImages ? 'Add image' : 'Current model does not support images',
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -438,7 +359,13 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
                     ),
                     child: IconButton(
                       icon: const Icon(Icons.send_rounded, color: Colors.white),
-                      onPressed: _isAwaitingResponse ? null : _sendMessage,
+                      onPressed: state.isAwaitingResponse
+                          ? null
+                          : () {
+                              final text = _textController.text.trim();
+                              context.read<GemmaCubit>().sendMessage(text);
+                              _textController.clear();
+                            },
                       padding: const EdgeInsets.all(12),
                     ),
                   ),
@@ -449,81 +376,6 @@ class _GemmaChatScreenState extends State<GemmaChatScreen> {
         ),
       ),
     );
-  }
-
-  void _sendMessage() async {
-    final text = _textController.text.trim();
-    final image = _selectedImage;
-
-    if (text.isEmpty && image == null) return;
-
-    if (image != null && !_modelSupportsImages) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Current model does not support images. Change model in settings.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    if (_isAwaitingResponse) return;
-
-    setState(() {
-      _isAwaitingResponse = true;
-    });
-
-    final Message userMessage;
-    if (image != null) {
-      final prompt = text.isNotEmpty ? text : "What's in this image?";
-      userMessage = Message.withImage(text: prompt, imageBytes: image, isUser: true);
-    } else {
-      userMessage = Message(text: text, isUser: true);
-    }
-
-    setState(() {
-      _messages.add(userMessage);
-      _selectedImage = null;
-    });
-
-    _textController.clear();
-    FocusScope.of(context).unfocus();
-
-    try {
-      await _chat!.addQueryChunk(userMessage);
-
-      final responsePlaceholder = Message(text: '', isUser: false);
-      setState(() {
-        _messages.add(responsePlaceholder);
-      });
-
-      final responseStream = _chat!.generateChatResponseAsync();
-
-      await for (final token in responseStream) {
-        if (!mounted) return;
-        setState(() {
-          final lastMessage = _messages.last;
-          final updatedText = lastMessage.text + token;
-          _messages[_messages.length - 1] = Message(text: updatedText, isUser: false);
-        });
-      }
-    } catch (e) {
-      debugPrint("Error during chat: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
-        setState(() {
-          if (_messages.isNotEmpty && !_messages.last.isUser) {
-            _messages.removeLast();
-          }
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isAwaitingResponse = false;
-        });
-      }
-    }
   }
 }
 

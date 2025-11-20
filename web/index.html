@@ -31,6 +31,13 @@
 
   <title>flutter_voice_bridge</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- MediaPipe for Flutter Gemma -->
+  <script type="module">
+    import { FilesetResolver, LlmInference } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai';
+    window.FilesetResolver = FilesetResolver;
+    window.LlmInference = LlmInference;
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

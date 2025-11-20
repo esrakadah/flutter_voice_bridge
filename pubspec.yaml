@@ -75,6 +75,7 @@ dependencies:
   
   # URL launcher for markdown links
   url_launcher: ^6.3.1
+  universal_io: ^2.3.1
 
 dev_dependencies:
   flutter_test:

@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'dart:async';
+import 'package:universal_io/io.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -7,9 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/download_model.dart';
 
-/// TODO: Replace with your actual Hugging Face access token.
-/// Get your token from https://huggingface.co/settings/tokens
-const String accessToken = 'YOUR_HUGGING_FACE_TOKEN_HERE';
+import 'gemma_constants.dart';
 
 /// Data source responsible for downloading and managing Gemma AI models.
 ///
@@ -25,7 +24,7 @@ class GemmaDownloaderDataSource {
   GemmaDownloaderDataSource({required this.model});
 
   /// SharedPreferences key for tracking model download status.
-  String get _preferenceKey => 'model_downloaded_${model.modelFilename}';
+  String get _preferenceKey => '${GemmaConstants.prefsModelDownloadedPrefix}${model.modelFilename}';
 
   /// Gets the full file path where the model should be stored.
   Future<String> getFilePath() async {
@@ -58,7 +57,7 @@ class GemmaDownloaderDataSource {
       final filePath = await getFilePath();
       final file = File(filePath);
 
-      final Map<String, String> headers = accessToken.isNotEmpty ? {'Authorization': 'Bearer $accessToken'} : {};
+      final Map<String, String> headers = GemmaConstants.huggingFaceAccessToken.isNotEmpty ? {'Authorization': 'Bearer ${GemmaConstants.huggingFaceAccessToken}'} : {};
 
       final headResponse = await http.head(Uri.parse(model.modelUrl), headers: headers);
 
@@ -95,7 +94,7 @@ class GemmaDownloaderDataSource {
       final selectedFilename = prefs.getString('selected_gemma_model');
 
       // List of old/unused model files to potentially delete
-      final oldModels = ['gemma-3n-E4B-it-int4.task', 'gemma-3n-E2B-it-int4.task', 'gemma3-270m-it-q8.task'];
+      final oldModels = GemmaConstants.oldModels;
 
       for (final filename in oldModels) {
         // Skip if this is the currently selected model
@@ -115,7 +114,7 @@ class GemmaDownloaderDataSource {
         }
 
         // Clean up SharedPreferences for deleted model
-        await prefs.remove('model_downloaded_$filename');
+        await prefs.remove('${GemmaConstants.prefsModelDownloadedPrefix}$filename');
       }
     } catch (e) {
       if (kDebugMode) {

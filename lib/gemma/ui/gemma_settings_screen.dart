@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../data/gemma_constants.dart';
 import '../data/gemma_downloader_datasource.dart';
 import '../domain/available_models.dart';
 
@@ -87,7 +88,7 @@ class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
       );
 
       await datasource.downloadModel(
-        token: accessToken,
+        token: GemmaConstants.huggingFaceAccessToken,
         onProgress: (progress) {
           setState(() {
             _downloadProgress[model] = progress;
