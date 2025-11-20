@@ -195,57 +195,66 @@ class _AnimationFullscreenViewState extends State<AnimationFullscreenView> {
                   BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20, offset: const Offset(0, 10)),
                 ],
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Scale controls
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildControlButton(
-                        icon: Icons.remove_rounded,
-                        onTap: _animationScale > _minScale ? _decreaseScale : null,
-                        tooltip: 'Decrease Size',
-                        size: 40,
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Scale controls
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildControlButton(
+                          icon: Icons.remove_rounded,
+                          onTap: _animationScale > _minScale ? _decreaseScale : null,
+                          tooltip: 'Decrease Size',
+                          size: 40,
                         ),
-                        child: Text(
-                          '${(_animationScale * 100).round()}%',
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                          ),
+                          child: Text(
+                            '${(_animationScale * 100).round()}%',
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildControlButton(
-                        icon: Icons.add_rounded,
-                        onTap: _animationScale < _maxScale ? _increaseScale : null,
-                        tooltip: 'Increase Size',
-                        size: 40,
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: 8),
+                        _buildControlButton(
+                          icon: Icons.add_rounded,
+                          onTap: _animationScale < _maxScale ? _increaseScale : null,
+                          tooltip: 'Increase Size',
+                          size: 40,
+                        ),
+                      ],
+                    ),
 
-                  // Play/Pause
-                  _buildControlButton(
-                    icon: _isAnimationPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                    onTap: _toggleAnimation,
-                    tooltip: _isAnimationPlaying ? 'Pause' : 'Play',
-                    isPrimary: true,
-                    size: 56,
-                  ),
+                    const SizedBox(width: 16), // Add spacing between groups
 
-                  // Speed control
-                  _buildSpeedButton(),
+                    // Play/Pause
+                    _buildControlButton(
+                      icon: _isAnimationPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      onTap: _toggleAnimation,
+                      tooltip: _isAnimationPlaying ? 'Pause' : 'Play',
+                      isPrimary: true,
+                      size: 56,
+                    ),
 
-                  // Mode switcher
-                  _buildModeButton(),
-                ],
+                    const SizedBox(width: 16), // Add spacing between groups
+
+                    // Speed control
+                    _buildSpeedButton(),
+
+                    const SizedBox(width: 16), // Add spacing between groups
+
+                    // Mode switcher
+                    _buildModeButton(),
+                  ],
+                ),
               ),
             ),
           ),

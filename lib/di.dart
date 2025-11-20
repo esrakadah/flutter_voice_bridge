@@ -56,12 +56,12 @@ class DependencyInjection {
     // Shows how to handle platform-specific features gracefully
     getIt.registerLazySingleton<TranscriptionService>(() {
       // 🍎 APPLE PLATFORMS: Full Whisper.cpp FFI integration
-      // iOS and macOS have native library support with GPU acceleration
-      if (Platform.isMacOS || Platform.isIOS) {
+      // Currently only enabled for macOS as iOS requires signed dylibs and complex setup
+      if (Platform.isMacOS) {
         return WhisperTranscriptionService();
       } else {
         // 🤖 OTHER PLATFORMS: Mock service for development
-        // Android and other platforms use mock until native library is compiled
+        // Android and iOS use mock until native library is properly configured
         // This allows development to continue on all platforms
         return MockTranscriptionService();
       }

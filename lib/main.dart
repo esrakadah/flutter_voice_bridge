@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'app.dart';
 import 'di.dart';
 
@@ -24,6 +25,15 @@ void main() async {
   // Must be called before any platform channel operations
   // Required for: Platform channels, plugins, async operations in main()
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 📱 ORIENTATION SETUP
+  // Allow both portrait and landscape orientations
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
 
   // 💉 DEPENDENCY INJECTION SETUP
   // Initialize all services before starting the UI
