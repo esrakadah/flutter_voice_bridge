@@ -231,37 +231,45 @@ class WhisperFFIService {
 
   /// Get model file path by extracting from Flutter assets to temporary location
   static Future<String> getDefaultModelPath() async {
+    const String modelAssetPath = 'assets/models/ggml-base.en.bin';
+    developer.log('📁 [WhisperFFI] Getting model path, asset path: "$modelAssetPath"', name: _logName);
+
     try {
-      developer.log('📁 [WhisperFFI] Extracting model from assets...', name: _logName);
-
-      // Load the model file from assets
-      final ByteData assetData = await rootBundle.load('assets/models/ggml-base.en.bin');
-
       // Get temporary directory
-      final Directory tempDir = await getTemporaryDirectory();
+      final Directory tempDir = await getApplicationCacheDirectory();
       final String modelTempPath = path.join(tempDir.path, 'ggml-base.en.bin');
+      final File tempModelFile = File(modelTempPath);
+
+      developer.log('ℹ️ [WhisperFFI] Temp model path: "$modelTempPath"', name: _logName);
+
+      // Check if the model file already exists in the temporary directory
+      if (await tempModelFile.exists()) {
+        developer.log('✅ [WhisperFFI] Model already exists in cache. Using existing file.', name: _logName);
+        return modelTempPath;
+      }
+
+      developer.log('📥 [WhisperFFI] Model not found in cache. Extracting from assets...', name: _logName);
+      
+      // Load the model file from assets
+      final ByteData assetData = await rootBundle.load(modelAssetPath);
 
       // Write asset data to temporary file
-      final File tempModelFile = File(modelTempPath);
       await tempModelFile.writeAsBytes(assetData.buffer.asUint8List());
 
       developer.log('✅ [WhisperFFI] Model extracted to: $modelTempPath', name: _logName);
       developer.log('📊 [WhisperFFI] Model file size: ${assetData.lengthInBytes} bytes', name: _logName);
 
       return modelTempPath;
-    } catch (e) {
-      developer.log('❌ [WhisperFFI] Failed to extract model from assets: $e', name: _logName, error: e);
-
-      // Fallback to old paths for development/testing
-      if (Platform.isIOS) {
-        return path.join('ios', 'Runner', 'Models', 'ggml-base.en.bin');
-      } else if (Platform.isAndroid) {
-        return path.join('android', 'app', 'src', 'main', 'assets', 'models', 'ggml-base.en.bin');
-      } else if (Platform.isMacOS) {
-        return path.join('macos', 'Runner', 'Models', 'ggml-base.en.bin');
-      } else {
-        return path.join('assets', 'models', 'ggml-base.en.bin');
-      }
+    } catch (e, s) {
+      developer.log(
+        '❌ [WhisperFFI] Critical error: Failed to extract model from assets.',
+        name: _logName,
+        error: e,
+        stackTrace: s,
+      );
+      // In a production app, you might want to inform the user or try a fallback.
+      // For this workshop, we throw to make the issue visible.
+      throw Exception('Failed to provide a valid model path. Asset: "$modelAssetPath". Error: $e');
     }
   }
 
