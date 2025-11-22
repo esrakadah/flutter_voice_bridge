@@ -79,96 +79,92 @@ class _HomeViewContentState extends State<HomeViewContent> {
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: isDevFestMode
-          ? DevFestAppBar(
-              themeCubit: themeCubit,
-              confettiController: _confettiController,
-              eventName: 'DevFest',
-              location: 'Berlin',
-              year: '2025',
-              flag: '🇩🇪',
-            )
-          : AppBar(
-              title: Text(
-                'Voice Bridge AI',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              actions: [
-                // Confetti button
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: ConfettiButton(
-                    controller: _confettiController,
-                    size: 36,
+            ? DevFestAppBar(
+                themeCubit: themeCubit,
+                confettiController: _confettiController,
+                eventName: 'DevFest',
+                location: 'Berlin',
+                year: '2025',
+                flag: '🇩🇪',
+              )
+            : AppBar(
+                title: Text(
+                  'Voice Bridge AI',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                actions: [
+                  // Confetti button
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ConfettiButton(controller: _confettiController, size: 36),
                   ),
-                ),
-                // Theme toggle button
-                Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
-                  child: ThemeToggleButton(themeCubit: themeCubit, size: 36),
-                ),
-              ],
-              flexibleSpace: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).colorScheme.primary.withAlpha(26),
-                      Theme.of(context).colorScheme.secondary.withAlpha(13),
-                    ],
+                  // Theme toggle button
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: ThemeToggleButton(themeCubit: themeCubit, size: 36),
+                  ),
+                ],
+                flexibleSpace: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Theme.of(context).colorScheme.primary.withAlpha(26),
+                        Theme.of(context).colorScheme.secondary.withAlpha(13),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
         body: BlocBuilder<HomeCubit, HomeState>(
-        // 🔄 REACTIVE UI BUILDER
-        // This builder function is called every time HomeCubit emits a new state
-        // The 'state' parameter contains the current application state
-        // UI rebuilds are optimized - only changed widgets are rebuilt
-        builder: (context, state) {
-          // 📋 CUSTOM SCROLL VIEW PATTERN
-          // Using CustomScrollView with Slivers provides better performance
-          // for complex scrollable layouts with multiple sections
-          return CustomScrollView(
-            slivers: [
-              // Hero section with recording interface
-              SliverToBoxAdapter(child: _buildHeroSection(context, state)),
+          // 🔄 REACTIVE UI BUILDER
+          // This builder function is called every time HomeCubit emits a new state
+          // The 'state' parameter contains the current application state
+          // UI rebuilds are optimized - only changed widgets are rebuilt
+          builder: (context, state) {
+            // 📋 CUSTOM SCROLL VIEW PATTERN
+            // Using CustomScrollView with Slivers provides better performance
+            // for complex scrollable layouts with multiple sections
+            return CustomScrollView(
+              slivers: [
+                // Hero section with recording interface
+                SliverToBoxAdapter(child: _buildHeroSection(context, state)),
 
-              // Current recording status
-              SliverToBoxAdapter(child: RecordingStatusWidget(state: state)),
+                // Current recording status
+                SliverToBoxAdapter(child: RecordingStatusWidget(state: state)),
 
-              // Transcription results
-              if (state.transcriptionText != null) SliverToBoxAdapter(child: _buildTranscriptionCard(context, state)),
+                // Transcription results
+                if (state.transcriptionText != null) SliverToBoxAdapter(child: _buildTranscriptionCard(context, state)),
 
-              // Transcription status (in progress or error)
-              if (state.isTranscribing) SliverToBoxAdapter(child: _buildTranscriptionProgressCard(context, state)),
-              if (state.transcriptionError != null)
-                SliverToBoxAdapter(child: _buildTranscriptionErrorCard(context, state)),
+                // Transcription status (in progress or error)
+                if (state.isTranscribing) SliverToBoxAdapter(child: _buildTranscriptionProgressCard(context, state)),
+                if (state.transcriptionError != null)
+                  SliverToBoxAdapter(child: _buildTranscriptionErrorCard(context, state)),
 
-              // Recordings list header
-              SliverToBoxAdapter(child: _buildRecordingsHeader(context, state)),
+                // Recordings list header
+                SliverToBoxAdapter(child: _buildRecordingsHeader(context, state)),
 
-              // Recordings list
-              _buildRecordingsList(context, state),
+                // Recordings list
+                _buildRecordingsList(context, state),
 
-              // Gemma AI Chat (iOS and Web)
-              if (Platform.isIOS || kIsWeb)
-                SliverToBoxAdapter(child: _buildGemmaChatCard(context)),
+                // Gemma AI Chat (iOS and Web)
+                if (Platform.isIOS || kIsWeb) SliverToBoxAdapter(child: _buildGemmaChatCard(context)),
 
-              // Platform View demonstration
-              SliverToBoxAdapter(child: _buildPlatformViewDemo(context)),
+                // Platform View demonstration
+                SliverToBoxAdapter(child: _buildPlatformViewDemo(context)),
 
-              // Process.run demo
-              SliverToBoxAdapter(child: _buildProcessRunDemo(context)),
+                // Process.run demo
+                SliverToBoxAdapter(child: _buildProcessRunDemo(context)),
 
-              // Bottom padding
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
-            ],
-          );
-        },
-      ),
+                // Bottom padding
+                const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              ],
+            );
+          },
+        ),
         floatingActionButton: _buildFloatingActionButton(context),
       ),
     );
@@ -199,13 +195,13 @@ class _HomeViewContentState extends State<HomeViewContent> {
         children: [
           // App title and subtitle
           Text(
-            'AI Voice Memo',
+            'Flutter Voice Bridge',
             style: textTheme.displayMedium?.copyWith(fontWeight: FontWeight.w800, color: colorScheme.onSurface),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
-            'Record, transcribe, and extract insights',
+            'Record, transcribe, and extract insights. Enjoy the design elements.',
             style: textTheme.titleMedium?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.7)),
             textAlign: TextAlign.center,
           ),
@@ -219,8 +215,9 @@ class _HomeViewContentState extends State<HomeViewContent> {
               isRecording: isRecording,
               height: 80,
               primaryColor: colorScheme.primary,
-              secondaryColor: colorScheme.secondary,
-              tertiaryColor: colorScheme.tertiary,
+              secondaryColor: colorScheme.tertiary,
+              tertiaryColor: colorScheme.secondary,
+              quaternaryColor: colorScheme.error,
               mode: _currentMode,
               onTap: () => _navigateToFullscreen(context, colorScheme),
             ),
@@ -986,11 +983,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
         shadowColor: colorScheme.primary.withAlpha(13),
         child: InkWell(
           onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const GemmaChatScreen(),
-              ),
-            );
+            Navigator.of(context).push(MaterialPageRoute(builder: (context) => const GemmaChatScreen()));
           },
           borderRadius: BorderRadius.circular(12),
           child: Padding(
@@ -1004,19 +997,10 @@ class _HomeViewContentState extends State<HomeViewContent> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            colorScheme.tertiary,
-                            colorScheme.primary,
-                          ],
-                        ),
+                        gradient: LinearGradient(colors: [colorScheme.tertiary, colorScheme.primary]),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
-                        Icons.chat_bubble_outline,
-                        color: Colors.white,
-                        size: 28,
-                      ),
+                      child: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 28),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -1025,27 +1009,17 @@ class _HomeViewContentState extends State<HomeViewContent> {
                         children: [
                           Text(
                             'Chat with Gemma AI',
-                            style: textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             'On-device AI assistant',
-                            style: textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurface.withValues(
-                                alpha: 0.7,
-                              ),
-                            ),
+                            style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.7)),
                           ),
                         ],
                       ),
                     ),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      color: colorScheme.primary,
-                      size: 20,
-                    ),
+                    Icon(Icons.arrow_forward_ios, color: colorScheme.primary, size: 20),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -1056,19 +1030,14 @@ class _HomeViewContentState extends State<HomeViewContent> {
                   decoration: BoxDecoration(
                     color: colorScheme.surfaceContainerHighest.withAlpha(50),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: colorScheme.outline.withAlpha(30),
-                    ),
+                    border: Border.all(color: colorScheme.outline.withAlpha(30)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         '✨ Features:',
-                        style: textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.primary,
-                        ),
+                        style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.primary),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -1076,9 +1045,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
                         '• Image analysis with multimodal models\n'
                         '• 100% offline & privacy-focused\n'
                         '• Multiple model options available',
-                        style: textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurface.withValues(alpha: 0.8),
-                        ),
+                        style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.8)),
                       ),
                     ],
                   ),
@@ -1090,11 +1057,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
                   width: double.infinity,
                   child: FilledButton.icon(
                     onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const GemmaChatScreen(),
-                        ),
-                      );
+                      Navigator.of(context).push(MaterialPageRoute(builder: (context) => const GemmaChatScreen()));
                     },
                     icon: const Icon(Icons.chat),
                     label: const Text('Start Chatting'),
@@ -1345,8 +1308,9 @@ class _HomeViewContentState extends State<HomeViewContent> {
         builder: (context) => AnimationFullscreenView(
           initialMode: _currentMode,
           primaryColor: colorScheme.primary,
-          secondaryColor: colorScheme.secondary,
-          tertiaryColor: colorScheme.tertiary,
+          secondaryColor: colorScheme.tertiary,
+          tertiaryColor: colorScheme.secondary,
+          quaternaryColor: colorScheme.error,
         ),
       ),
     );

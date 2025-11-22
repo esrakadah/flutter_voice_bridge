@@ -9,6 +9,7 @@ class AnimationFullscreenView extends StatefulWidget {
   final Color primaryColor;
   final Color secondaryColor;
   final Color tertiaryColor;
+  final Color quaternaryColor;
 
   const AnimationFullscreenView({
     super.key,
@@ -16,6 +17,7 @@ class AnimationFullscreenView extends StatefulWidget {
     required this.primaryColor,
     required this.secondaryColor,
     required this.tertiaryColor,
+    required this.quaternaryColor,
   });
 
   @override
@@ -138,6 +140,7 @@ class _AnimationFullscreenViewState extends State<AnimationFullscreenView> {
                 primaryColor: widget.primaryColor,
                 secondaryColor: widget.secondaryColor,
                 tertiaryColor: widget.tertiaryColor,
+                quaternaryColor: widget.quaternaryColor,
                 mode: _currentMode,
                 showControls: false, // We'll show our own controls
                 externalAnimationState: _isAnimationPlaying,
