@@ -16,17 +16,20 @@ class AnimationControlsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildModeChip(context, 'Waveform', AudioVisualizationMode.waveform),
-        const SizedBox(width: 8),
-        _buildModeChip(context, 'Spectrum', AudioVisualizationMode.spectrum),
-        const SizedBox(width: 8),
-        _buildModeChip(context, 'Particles', AudioVisualizationMode.particles),
-        const SizedBox(width: 8),
-        _buildModeChip(context, 'Radial', AudioVisualizationMode.radial),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildModeChip(context, 'Waveform', AudioVisualizationMode.waveform),
+          const SizedBox(width: 8),
+          _buildModeChip(context, 'Spectrum', AudioVisualizationMode.spectrum),
+          const SizedBox(width: 8),
+          _buildModeChip(context, 'Particles', AudioVisualizationMode.particles),
+          const SizedBox(width: 8),
+          _buildModeChip(context, 'Radial', AudioVisualizationMode.radial),
+        ],
+      ),
     );
   }
 

@@ -10,6 +10,7 @@ class AdvancedAudioVisualizer extends StatefulWidget {
   final Color primaryColor;
   final Color secondaryColor;
   final Color tertiaryColor;
+  final Color quaternaryColor;
   final AudioVisualizationMode mode;
   final VoidCallback? onAnimationToggle;
   final bool showControls;
@@ -27,6 +28,7 @@ class AdvancedAudioVisualizer extends StatefulWidget {
     required this.primaryColor,
     required this.secondaryColor,
     required this.tertiaryColor,
+    required this.quaternaryColor,
     this.mode = AudioVisualizationMode.waveform,
     this.onAnimationToggle,
     this.showControls = true,
@@ -261,6 +263,7 @@ class _AdvancedAudioVisualizerState extends State<AdvancedAudioVisualizer> with 
                       primaryColor: widget.primaryColor,
                       secondaryColor: widget.secondaryColor,
                       tertiaryColor: widget.tertiaryColor,
+                      quaternaryColor: widget.quaternaryColor,
                       isRecording: widget.isRecording,
                       isAnimating: _isAnimationPlaying,
                       mode: widget.mode,
@@ -397,6 +400,7 @@ class AdvancedAudioPainter extends CustomPainter {
   final Color primaryColor;
   final Color secondaryColor;
   final Color tertiaryColor;
+  final Color quaternaryColor;
   final bool isRecording;
   final bool isAnimating;
   final AudioVisualizationMode mode;
@@ -410,6 +414,7 @@ class AdvancedAudioPainter extends CustomPainter {
     required this.primaryColor,
     required this.secondaryColor,
     required this.tertiaryColor,
+    required this.quaternaryColor,
     required this.isRecording,
     required this.isAnimating,
     required this.mode,
@@ -446,10 +451,11 @@ class AdvancedAudioPainter extends CustomPainter {
     // Enhanced intensity when recording vs just animating
     final intensityMultiplier = isRecording ? 1.5 : 0.8;
 
-    // Create multiple wave layers for depth
-    _paintWaveLayer(canvas, size, 0.7 * intensityMultiplier * scale, primaryColor.withValues(alpha: 0.8), 1.0);
-    _paintWaveLayer(canvas, size, 0.5 * intensityMultiplier * scale, secondaryColor.withValues(alpha: 0.6), 1.5);
-    _paintWaveLayer(canvas, size, 0.3 * intensityMultiplier * scale, tertiaryColor.withValues(alpha: 0.4), 2.0);
+    // Create multiple wave layers for depth (DevFest order: Blue, Yellow, Green, Red)
+    _paintWaveLayer(canvas, size, 0.8 * intensityMultiplier * scale, primaryColor.withValues(alpha: 0.8), 1.0);
+    _paintWaveLayer(canvas, size, 0.6 * intensityMultiplier * scale, secondaryColor.withValues(alpha: 0.7), 1.3);
+    _paintWaveLayer(canvas, size, 0.45 * intensityMultiplier * scale, tertiaryColor.withValues(alpha: 0.6), 1.7);
+    _paintWaveLayer(canvas, size, 0.3 * intensityMultiplier * scale, quaternaryColor.withValues(alpha: 0.5), 2.2);
 
     // Add glow effect when recording
     if (isRecording) {
@@ -521,11 +527,12 @@ class AdvancedAudioPainter extends CustomPainter {
     final height = size.height;
     final centerY = height / 2;
 
-    // Create a subtle gradient line when static
+    // Create a subtle gradient line when static (DevFest colors: Blue, Yellow, Green, Red)
     final gradient = ui.Gradient.linear(Offset(0, centerY), Offset(width, centerY), [
       primaryColor.withValues(alpha: 0.5),
       secondaryColor.withValues(alpha: 0.4),
-      tertiaryColor.withValues(alpha: 0.3),
+      tertiaryColor.withValues(alpha: 0.35),
+      quaternaryColor.withValues(alpha: 0.3),
     ]);
 
     final paint = Paint()
