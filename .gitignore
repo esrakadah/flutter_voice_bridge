@@ -30,7 +30,8 @@ doc/api/
 # These files are too large for GitHub (>100MB limit)
 # Download instructions in SETUP.md
 *.bin
-assets/models/
+assets/models/*
+!assets/models/.gitkeep
 android/app/src/main/assets/models/
 ios/Runner/Models/
 macos/Runner/Models/
