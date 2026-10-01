@@ -1,3 +1,4 @@
+import 'voice_bridge_channels.dart';
 import 'package:flutter/services.dart';
 import 'dart:developer' as developer;
 
@@ -25,7 +26,7 @@ class PlatformChannels {
   // 📡 CHANNEL NAMING CONVENTION
   // Use reverse domain notation for uniqueness: [domain]/[feature]
   // This prevents conflicts with other plugins and follows platform conventions
-  static const String _audioChannelName = 'voice.bridge/audio';
+  static const String _audioChannelName = VoiceBridgeChannels.audio;
 
   // 🔌 METHOD CHANNEL INSTANCE
   // MethodChannel provides async request-response communication

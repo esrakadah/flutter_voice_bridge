@@ -21,6 +21,7 @@ class MainFlutterWindow: NSWindow {
     print("🔧 [macOS] Setting up audio method channel in MainFlutterWindow")
     print("🔧 [macOS] FlutterViewController: \(flutterViewController)")
     
+    // Must match VoiceBridgeChannels.audio in lib/core/platform/voice_bridge_channels.dart.
     let channel = FlutterMethodChannel(name: "voice.bridge/audio", binaryMessenger: flutterViewController.engine.binaryMessenger)
     
     channel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in

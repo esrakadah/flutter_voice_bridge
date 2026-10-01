@@ -6,6 +6,8 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/services.dart';
 
+import '../platform/voice_bridge_channels.dart';
+
 abstract class VoiceBridgeError implements Exception {
   const VoiceBridgeError();
 
@@ -28,9 +30,15 @@ class RecordingFailure extends VoiceBridgeError {
   factory RecordingFailure.fromPlatformException(PlatformException exception) {
     final details = exception.message ?? exception.code;
     final type = switch (exception.code) {
-      'PERMISSION_DENIED' || 'PERMISSION_UNKNOWN' => RecordingErrorType.permissionDenied,
-      'AUDIO_FOCUS_ERROR' || 'AUDIO_SESSION_ERROR' => RecordingErrorType.deviceBusy,
-      'RECORDING_ERROR' || 'RECORDING_FAILED' || 'INSTANCE_ERROR' => RecordingErrorType.hardwareFailure,
+      VoiceBridgeErrorCodes.permissionDenied ||
+      VoiceBridgeErrorCodes.permissionUnknown => RecordingErrorType.permissionDenied,
+      VoiceBridgeErrorCodes.alreadyRecording ||
+      VoiceBridgeErrorCodes.alreadyPending ||
+      VoiceBridgeErrorCodes.audioFocus ||
+      VoiceBridgeErrorCodes.audioSession => RecordingErrorType.deviceBusy,
+      VoiceBridgeErrorCodes.recordingError ||
+      VoiceBridgeErrorCodes.recordingFailed ||
+      VoiceBridgeErrorCodes.instanceError => RecordingErrorType.hardwareFailure,
       _ => RecordingErrorType.unknown,
     };
     return RecordingFailure(details: details, type: type);
