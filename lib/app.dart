@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'core/branding/branding_cubit.dart';
 import 'core/theme/theme_provider.dart';
 import 'ui/views/home_view.dart';
 import 'di.dart';
@@ -9,40 +10,26 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // .value: the DI container owns this singleton, so the widget tree must not close it.
-    return BlocProvider<ThemeCubit>.value(
-      value: getIt<ThemeCubit>(),
-      child: BlocBuilder<ThemeCubit, ThemeState>(
-        builder: (context, themeState) {
-          // Determine which theme to use based on app theme mode
-          ThemeData lightTheme;
-          ThemeData darkTheme;
-          ThemeMode flutterThemeMode;
-
-          if (themeState.themeMode == AppThemeMode.devfest) {
-            // DevFest mode uses Google Developer colors
-            lightTheme = AppTheme.getDevFestTheme();
-            darkTheme = AppTheme.getDevFestDarkTheme();
-            flutterThemeMode = ThemeMode.light; // Use light variant of DevFest theme
-          } else {
-            // Normal mode uses default themes
-            lightTheme = AppTheme.getLightTheme();
-            darkTheme = AppTheme.getDarkTheme();
-
-            // Convert AppThemeMode to ThemeMode
-            flutterThemeMode = switch (themeState.themeMode) {
-              AppThemeMode.light => ThemeMode.light,
-              AppThemeMode.dark => ThemeMode.dark,
-              AppThemeMode.system => ThemeMode.system,
-              AppThemeMode.devfest => ThemeMode.light,
-            };
-          }
+    // .value: the DI container owns these singletons, so the widget tree must not close them.
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<ThemeCubit>.value(value: getIt<ThemeCubit>()),
+        BlocProvider<BrandingCubit>.value(value: getIt<BrandingCubit>()),
+      ],
+      child: Builder(
+        builder: (context) {
+          final themeMode = context.select((ThemeCubit cubit) => cubit.state.themeMode);
+          final isEventMode = context.select((BrandingCubit cubit) => cubit.state.isEventMode);
 
           return MaterialApp(
             title: 'Flutter Voice Bridge',
-            theme: lightTheme,
-            darkTheme: darkTheme,
-            themeMode: flutterThemeMode,
+            theme: isEventMode ? AppTheme.getDevFestTheme() : AppTheme.getLightTheme(),
+            darkTheme: isEventMode ? AppTheme.getDevFestDarkTheme() : AppTheme.getDarkTheme(),
+            themeMode: switch (themeMode) {
+              AppThemeMode.light => ThemeMode.light,
+              AppThemeMode.dark => ThemeMode.dark,
+              AppThemeMode.system => ThemeMode.system,
+            },
             home: const HomeView(),
             debugShowCheckedModeBanner: false,
           );

@@ -51,6 +51,8 @@ Optional: `brew install ffmpeg` for the `Process.run` demo card (debug builds on
 ### 🎨 UI
 - **Custom painters**: 5 visualization modes (waveform, spectrum, particles, radial, hybrid)
 - **Live controls** for size and speed, plus an immersive fullscreen mode
+- **Event Mode** for talks and booths: Settings switches on the DevFest theme and an app bar with your event's
+  name, city, year and flag; the choice is saved across restarts
 
 ### 🧱 Architecture
 - **Cubits** (`flutter_bloc`) with immutable, `Equatable` states

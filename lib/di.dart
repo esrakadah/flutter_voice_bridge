@@ -5,6 +5,8 @@ import 'package:get_it/get_it.dart';
 import 'core/audio/audio_service.dart';
 import 'core/audio/platform_audio_service.dart';
 import 'core/transcription/transcription_service.dart';
+import 'core/branding/branding_cubit.dart';
+import 'core/branding/branding_repository.dart';
 import 'core/theme/theme_provider.dart';
 import 'data/services/voice_memo_service.dart';
 import 'ui/views/home/home_cubit.dart';
@@ -71,6 +73,13 @@ class DependencyInjection {
     // Singleton because theme state should be shared across entire app
     // Theme changes affect global UI state
     getIt.registerLazySingleton<ThemeCubit>(ThemeCubit.new, dispose: (cubit) => cubit.close());
+
+    // 🎭 EVENT BRANDING: shared by the theme, the app bar and the settings screen; restored from preferences.
+    getIt.registerLazySingleton<BrandingRepository>(BrandingRepository.new);
+    getIt.registerLazySingleton<BrandingCubit>(
+      () => BrandingCubit(repository: getIt<BrandingRepository>())..load(),
+      dispose: (cubit) => cubit.close(),
+    );
 
     // 🏠 UI STATE MANAGEMENT - FACTORY REGISTRATION
     // HomeCubit is registered as Factory because:

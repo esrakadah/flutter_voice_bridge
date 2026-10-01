@@ -15,7 +15,9 @@ import '../../core/audio/audio_converter.dart';
 import 'home/widgets/animation_controls_widget.dart';
 import 'home/widgets/recording_status_widget.dart';
 import '../../gemma/ui/gemma_chat_screen.dart';
-import '../components/devfest_app_bar.dart';
+import '../../core/branding/branding_cubit.dart';
+import '../components/dynamic_app_bar.dart';
+import 'settings/settings_view.dart';
 import '../components/confetti_overlay.dart';
 
 /// 🎓 **WORKSHOP MODULE 1.1: Clean Architecture UI Layer**
@@ -81,20 +83,18 @@ class _HomeViewContentState extends State<HomeViewContent> {
     // BlocBuilder automatically rebuilds UI when HomeCubit emits new states
     // This creates a reactive programming model where UI is a function of state
     final themeCubit = context.read<ThemeCubit>();
-    final isDevFestMode = themeCubit.isDevFestMode;
+    final branding = context.watch<BrandingCubit>().state;
 
     return ConfettiOverlay(
       controller: _confettiController,
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        appBar: isDevFestMode
-            ? DevFestAppBar(
+        appBar: branding.isEventMode
+            ? DynamicAppBar(
                 themeCubit: themeCubit,
                 confettiController: _confettiController,
-                eventName: 'DevFest',
-                location: 'Berlin',
-                year: '2025',
-                flag: '🇩🇪',
+                branding: branding,
+                onSettingsPressed: () => _openSettings(context),
               )
             : AppBar(
                 title: Text(
@@ -104,6 +104,11 @@ class _HomeViewContentState extends State<HomeViewContent> {
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 actions: [
+                  IconButton(
+                    icon: const Icon(Icons.settings),
+                    tooltip: 'Settings',
+                    onPressed: () => _openSettings(context),
+                  ),
                   // Confetti button
                   Padding(
                     padding: const EdgeInsets.only(right: 8.0),
@@ -177,6 +182,10 @@ class _HomeViewContentState extends State<HomeViewContent> {
         floatingActionButton: _buildFloatingActionButton(context),
       ),
     );
+  }
+
+  void _openSettings(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsView()));
   }
 
   Widget _buildHeroSection(BuildContext context, HomeState state) {
