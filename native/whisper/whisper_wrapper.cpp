@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
+#include <iterator>
 
 // Helper function to convert string to lowercase for case-insensitive comparison
 std::string to_lower(const std::string& str) {
@@ -24,190 +26,105 @@ std::string get_file_extension(const std::string& filename) {
     return to_lower(filename.substr(dot_pos + 1));
 }
 
-// Helper function to check if file exists and get size
-bool check_file_info(const std::string &fname, size_t& file_size) {
-    std::ifstream file(fname, std::ios::binary | std::ios::ate);
-    if (!file) {
-        std::cerr << "❌ Cannot open file: " << fname << std::endl;
-        return false;
-    }
-    
-    file_size = file.tellg();
-    std::cerr << "📁 File size: " << file_size << " bytes" << std::endl;
-    
-    if (file_size == 0) {
-        std::cerr << "❌ File is empty: " << fname << std::endl;
-        return false;
-    }
-    
-    return true;
+namespace {
+
+uint16_t read_le16(const std::vector<uint8_t>& bytes, size_t offset) {
+    return static_cast<uint16_t>(bytes[offset] | (bytes[offset + 1] << 8));
 }
 
-// Helper function to read audio file into float array
+uint32_t read_le32(const std::vector<uint8_t>& bytes, size_t offset) {
+    return static_cast<uint32_t>(bytes[offset]) | (static_cast<uint32_t>(bytes[offset + 1]) << 8) |
+           (static_cast<uint32_t>(bytes[offset + 2]) << 16) | (static_cast<uint32_t>(bytes[offset + 3]) << 24);
+}
+
+constexpr size_t kRiffHeaderBytes = 12;
+constexpr size_t kChunkHeaderBytes = 8;
+constexpr size_t kPcmFormatBytes = 16;
+constexpr uint16_t kPcmFormat = 1;
+constexpr uint16_t kExpectedChannels = 1;
+constexpr uint16_t kExpectedBitsPerSample = 16;
+constexpr uint32_t kExpectedSampleRate = 16000;
+constexpr float kInt16Scale = 32768.0f;
+
+}  // namespace
+
+// Reads a 16-bit mono PCM WAV into floats in [-1, 1]. Every size field is checked against the bytes actually
+// present, so a truncated or malformed file returns an empty vector instead of reading past the buffer.
 std::vector<float> read_audio_file(const std::string& filename) {
+    if (get_file_extension(filename) != "wav") {
+        std::cerr << "❌ Only WAV is supported: " << filename << std::endl;
+        return {};
+    }
+
     std::ifstream file(filename, std::ios::binary);
     if (!file.is_open()) {
         std::cerr << "❌ Could not open file: " << filename << std::endl;
         return {};
     }
-    
-    // Read file size
-    file.seekg(0, std::ios::end);
-    size_t file_size = file.tellg();
-    file.seekg(0, std::ios::beg);
-    
-    std::cout << "📁 File size: " << file_size << " bytes" << std::endl;
-    
-    std::string extension = get_file_extension(filename);
-    std::cout << "📄 File extension: " << extension << std::endl;
-    
-    if (extension != "wav") {
-        std::cerr << "❌ Unsupported file format: " << extension << " (only WAV supported)" << std::endl;
+    const std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    if (bytes.size() < kRiffHeaderBytes || std::memcmp(bytes.data(), "RIFF", 4) != 0 ||
+        std::memcmp(bytes.data() + 8, "WAVE", 4) != 0) {
+        std::cerr << "❌ Not a RIFF/WAVE file" << std::endl;
         return {};
     }
-    
-    // Read and validate RIFF header
-    char riff_header[12];
-    file.read(riff_header, 12);
-    
-    if (std::string(riff_header, 4) != "RIFF") {
-        std::cerr << "❌ Invalid RIFF header" << std::endl;
-        return {};
-    }
-    
-    if (std::string(riff_header + 8, 4) != "WAVE") {
-        std::cerr << "❌ Invalid WAVE header" << std::endl;
-        return {};
-    }
-    
-    // Search for fmt chunk (not at fixed offset due to possible JUNK chunks)
+
+    bool format_found = false;
     uint16_t audio_format = 0;
     uint16_t num_channels = 0;
     uint32_t sample_rate = 0;
     uint16_t bits_per_sample = 0;
-    bool fmt_found = false;
-    
-    while (file.tellg() < file_size - 8) {
-        char chunk_id[4];
-        uint32_t chunk_size;
-        
-        file.read(chunk_id, 4);
-        file.read(reinterpret_cast<char*>(&chunk_size), 4);
-        
-        std::string chunk_name(chunk_id, 4);
-        std::cout << "🔍 Found chunk: '" << chunk_name << "' size: " << chunk_size << std::endl;
-        
-        if (chunk_name == "fmt ") {
-            fmt_found = true;
-            
-            // Read format chunk
-            file.read(reinterpret_cast<char*>(&audio_format), 2);
-            file.read(reinterpret_cast<char*>(&num_channels), 2);
-            file.read(reinterpret_cast<char*>(&sample_rate), 4);
-            
-            // Skip byte rate and block align
-            file.seekg(6, std::ios::cur);
-            
-            file.read(reinterpret_cast<char*>(&bits_per_sample), 2);
-            
-            // Skip any remaining format chunk data
-            size_t remaining = chunk_size - 16;
-            if (remaining > 0) {
-                file.seekg(remaining, std::ios::cur);
+    size_t data_offset = 0;
+    size_t data_size = 0;
+
+    size_t offset = kRiffHeaderBytes;
+    while (offset + kChunkHeaderBytes <= bytes.size()) {
+        const uint32_t chunk_size = read_le32(bytes, offset + 4);
+        const size_t body = offset + kChunkHeaderBytes;
+        const size_t available = bytes.size() - body;
+
+        if (std::memcmp(bytes.data() + offset, "fmt ", 4) == 0) {
+            if (chunk_size < kPcmFormatBytes || chunk_size > available) {
+                std::cerr << "❌ Malformed fmt chunk" << std::endl;
+                return {};
             }
-            
+            audio_format = read_le16(bytes, body);
+            num_channels = read_le16(bytes, body + 2);
+            sample_rate = read_le32(bytes, body + 4);
+            bits_per_sample = read_le16(bytes, body + 14);
+            format_found = true;
+        } else if (std::memcmp(bytes.data() + offset, "data", 4) == 0) {
+            data_offset = body;
+            // Recorders that were stopped abruptly may leave a size larger than the file; use what is there.
+            data_size = std::min<size_t>(chunk_size, available);
             break;
-        } else if (chunk_name == "data") {
-            // Found data chunk but no fmt chunk yet - this shouldn't happen
-            std::cerr << "❌ Found data chunk before fmt chunk" << std::endl;
-            return {};
-        } else {
-            // Skip unknown chunk (like JUNK)
-            std::cout << "⏭️ Skipping chunk: " << chunk_name << std::endl;
-            file.seekg(chunk_size, std::ios::cur);
         }
+
+        if (chunk_size > available) break;
+        offset = body + chunk_size + (chunk_size % 2);  // chunks are padded to an even length
     }
-    
-    if (!fmt_found) {
-        std::cerr << "❌ No fmt chunk found in WAV file" << std::endl;
+
+    if (!format_found || data_offset == 0) {
+        std::cerr << "❌ WAV is missing its fmt or data chunk" << std::endl;
         return {};
     }
-    
-    std::cout << "📊 WAV Info:" << std::endl;
-    std::cout << "   - Format: " << audio_format << " (1=PCM)" << std::endl;
-    std::cout << "   - Channels: " << num_channels << std::endl;
-    std::cout << "   - Sample Rate: " << sample_rate << " Hz" << std::endl;
-    std::cout << "   - Bits per Sample: " << bits_per_sample << std::endl;
-    
-    // Validate audio format
-    if (audio_format != 1) {
-        std::cerr << "❌ Unsupported audio format: " << audio_format << " (only PCM format supported)" << std::endl;
+    if (audio_format != kPcmFormat || num_channels != kExpectedChannels || bits_per_sample != kExpectedBitsPerSample) {
+        std::cerr << "❌ Need 16-bit mono PCM, got format " << audio_format << ", " << num_channels << " channel(s), "
+                  << bits_per_sample << " bits" << std::endl;
         return {};
     }
-    
-    if (num_channels != 1) {
-        std::cerr << "❌ Whisper requires mono audio (1 channel), got: " << num_channels << std::endl;
-        return {};
+    if (sample_rate != kExpectedSampleRate) {
+        std::cerr << "⚠️ Sample rate is " << sample_rate << " Hz; Whisper expects 16 kHz" << std::endl;
     }
-    
-    if (sample_rate != 16000) {
-        std::cout << "⚠️ Sample rate is " << sample_rate << "Hz, Whisper expects 16kHz. Audio may not transcribe optimally." << std::endl;
+
+    const size_t sample_count = data_size / sizeof(int16_t);
+    std::vector<float> audio(sample_count);
+    for (size_t index = 0; index < sample_count; ++index) {
+        const auto sample = static_cast<int16_t>(read_le16(bytes, data_offset + index * sizeof(int16_t)));
+        audio[index] = sample / kInt16Scale;
     }
-    
-    if (bits_per_sample != 16) {
-        std::cout << "⚠️ Bit depth is " << bits_per_sample << " bits, expected 16 bits." << std::endl;
-    }
-    
-    // Now search for data chunk
-    bool data_found = false;
-    uint32_t data_size = 0;
-    
-    while (file.tellg() < file_size - 8) {
-        char chunk_id[4];
-        uint32_t chunk_size;
-        
-        file.read(chunk_id, 4);
-        file.read(reinterpret_cast<char*>(&chunk_size), 4);
-        
-        std::string chunk_name(chunk_id, 4);
-        
-        if (chunk_name == "data") {
-            data_found = true;
-            data_size = chunk_size;
-            std::cout << "💾 Found data chunk, size: " << data_size << " bytes" << std::endl;
-            break;
-        } else {
-            // Skip chunk
-            file.seekg(chunk_size, std::ios::cur);
-        }
-    }
-    
-    if (!data_found) {
-        std::cerr << "❌ No data chunk found in WAV file" << std::endl;
-        return {};
-    }
-    
-    // Read audio data
-    size_t num_samples = data_size / (bits_per_sample / 8);
-    std::cout << "🎵 Number of samples: " << num_samples << std::endl;
-    
-    std::vector<float> audio_data;
-    audio_data.reserve(num_samples);
-    
-    if (bits_per_sample == 16) {
-        for (size_t i = 0; i < num_samples; ++i) {
-            int16_t sample;
-            file.read(reinterpret_cast<char*>(&sample), 2);
-            // Convert to float [-1.0, 1.0]
-            audio_data.push_back(sample / 32768.0f);
-        }
-    } else {
-        std::cerr << "❌ Unsupported bit depth: " << bits_per_sample << std::endl;
-        return {};
-    }
-    
-    std::cout << "✅ Successfully read " << audio_data.size() << " audio samples" << std::endl;
-    return audio_data;
+    std::cout << "✅ Read " << sample_count << " samples (" << sample_rate << " Hz)" << std::endl;
+    return audio;
 }
 
 extern "C" {
