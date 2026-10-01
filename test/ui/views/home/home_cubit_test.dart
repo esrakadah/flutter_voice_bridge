@@ -21,7 +21,7 @@
 //
 // 📋 TODO - Integration Tests Required:
 //   Integration tests should be added to verify end-to-end flows on real devices.
-//   See: integration_test/README.md for implementation plan
+//   See: integration_test/app_test.dart for the on-device smoke test
 //   Priority scenarios to test:
 //   1. Complete recording flow (tap → record → stop → save)
 //   2. Permission denial handling on real device
