@@ -66,6 +66,16 @@ class _HomeViewContentState extends State<HomeViewContent> {
   AudioVisualizationMode _currentMode = AudioVisualizationMode.waveform;
   final ConfettiController _confettiController = ConfettiController();
 
+  /// Started on demand so a rebuild never spawns another ffmpeg process.
+  Future<String?>? _ffmpegVersionProbe;
+
+  /// Returns the ffmpeg version, or null when ffmpeg is not reachable.
+  Future<String?> _probeFfmpeg() async {
+    final isAvailable = await AudioConverter.isFFmpegAvailable();
+    if (!isAvailable) return null;
+    return AudioConverter.getFFmpegVersion();
+  }
+
   @override
   Widget build(BuildContext context) {
     // 🎨 REACTIVE UI PATTERN
@@ -1247,67 +1257,69 @@ class _HomeViewContentState extends State<HomeViewContent> {
               ),
               const SizedBox(height: 16),
 
-              // FFmpeg availability check
-              FutureBuilder<bool>(
-                future: AudioConverter.isFFmpegAvailable(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Row(
-                      children: [
-                        SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                        SizedBox(width: 12),
-                        Text('Checking FFmpeg availability...'),
-                      ],
-                    );
-                  }
+              // FFmpeg availability check, run only when asked
+              if (_ffmpegVersionProbe == null)
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _ffmpegVersionProbe = _probeFfmpeg()),
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Run ffmpeg -version'),
+                )
+              else
+                FutureBuilder<String?>(
+                  future: _ffmpegVersionProbe,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Row(
+                        children: [
+                          SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                          SizedBox(width: 12),
+                          Text('Checking FFmpeg availability...'),
+                        ],
+                      );
+                    }
 
-                  final isAvailable = snapshot.data ?? false;
-                  final icon = isAvailable ? Icons.check_circle : Icons.error;
-                  final color = isAvailable ? Colors.green : Colors.orange;
-                  final message = isAvailable
-                      ? 'FFmpeg is available for audio processing'
-                      : 'FFmpeg not found - install for audio conversion features';
+                    final version = snapshot.data;
+                    final isAvailable = version != null;
+                    final icon = isAvailable ? Icons.check_circle : Icons.error;
+                    final color = isAvailable ? Colors.green : Colors.orange;
+                    final message = isAvailable
+                        ? 'FFmpeg is available for audio processing'
+                        : 'FFmpeg not found - install for audio conversion features';
 
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: color.withAlpha(20),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: color.withAlpha(50)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(icon, color: color, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                message,
-                                style: textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
-                              ),
-                              if (isAvailable) ...[
-                                const SizedBox(height: 4),
-                                FutureBuilder<String>(
-                                  future: AudioConverter.getFFmpegVersion(),
-                                  builder: (context, versionSnapshot) {
-                                    final version = versionSnapshot.data ?? 'Loading...';
-                                    return Text(
-                                      'Version: $version',
-                                      style: textTheme.bodySmall?.copyWith(color: color.withValues(alpha: 0.8)),
-                                    );
-                                  },
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: color.withAlpha(20),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: color.withAlpha(50)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(icon, color: color, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message,
+                                  style: textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
                                 ),
+                                if (isAvailable) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Version: $version',
+                                    style: textTheme.bodySmall?.copyWith(color: color.withValues(alpha: 0.8)),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
 
               const SizedBox(height: 16),
 
