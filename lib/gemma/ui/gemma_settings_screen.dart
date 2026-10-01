@@ -145,7 +145,7 @@ class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
 
   Future<void> _deleteModel(AvailableModel model) async {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

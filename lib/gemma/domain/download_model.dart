@@ -14,4 +14,3 @@ class DownloadModel {
     required this.modelFilename,
   });
 }
-

@@ -25,14 +25,14 @@ class WebTranscriptionService implements TranscriptionService {
     }
 
     developer.log('🌐 [WebTranscription] Transcription requested for: $audioFilePath', name: _logName);
-    
+
     // Simulate processing time
     await Future.delayed(const Duration(seconds: 1));
 
     // Return a friendly message explaining limitation
     return "Transcription is not available on the web version of this app. "
-           "The Whisper AI model requires native device capabilities (FFI) "
-           "which are not supported in the browser environment.";
+        "The Whisper AI model requires native device capabilities (FFI) "
+        "which are not supported in the browser environment.";
   }
 
   @override

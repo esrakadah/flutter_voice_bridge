@@ -249,7 +249,7 @@ class WhisperFFIService {
       }
 
       developer.log('📥 [WhisperFFI] Model not found in cache. Extracting from assets...', name: _logName);
-      
+
       // Load the model file from assets
       final ByteData assetData = await rootBundle.load(modelAssetPath);
 

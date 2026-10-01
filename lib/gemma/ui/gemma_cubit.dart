@@ -7,48 +7,56 @@ import 'gemma_state.dart';
 class GemmaCubit extends Cubit<GemmaState> {
   final GemmaService _gemmaService;
 
-  GemmaCubit({required GemmaService gemmaService})
-      : _gemmaService = gemmaService,
-        super(const GemmaState());
+  GemmaCubit({required GemmaService gemmaService}) : _gemmaService = gemmaService, super(const GemmaState());
 
   Future<void> initialize() async {
-    emit(state.copyWith(
-      status: GemmaStatus.loading,
-      loadingMessage: 'Initializing...',
-    ));
+    emit(
+      state.copyWith(
+        status: GemmaStatus.loading,
+        loadingMessage: 'Initializing...',
+      ),
+    );
 
     try {
       final selectedModel = await _gemmaService.getSelectedModel();
-      
+
       // Check if download is needed (only relevant for non-web)
       final isDownloaded = await _gemmaService.isModelDownloaded(selectedModel);
-      
+
       if (!isDownloaded) {
-        emit(state.copyWith(
-          loadingMessage: 'Downloading ${selectedModel.displayName}...',
-        ));
-        
+        emit(
+          state.copyWith(
+            loadingMessage: 'Downloading ${selectedModel.displayName}...',
+          ),
+        );
+
         await _gemmaService.downloadModel(selectedModel, (progress) {
           emit(state.copyWith(downloadProgress: progress));
         });
       }
 
-      emit(state.copyWith(
-        loadingMessage: 'Loading model...',
-        downloadProgress: null,
-      ));
+      emit(
+        state.copyWith(
+          loadingMessage: 'Loading model...',
+          downloadProgress: null,
+        ),
+      );
 
       await _gemmaService.initializeChat();
 
-      emit(state.copyWith(
-        status: GemmaStatus.ready,
-        modelSupportsImages: selectedModel.supportsImages,
-      ));
+      emit(
+        state.copyWith(
+          status: GemmaStatus.ready,
+          modelSupportsImages: selectedModel.supportsImages,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(
-        status: GemmaStatus.error,
-        errorMessage: e.toString(),
-      ));
+      emit(
+        state.copyWith(
+          status: GemmaStatus.error,
+          errorMessage: e.toString(),
+        ),
+      );
     }
   }
 
@@ -76,49 +84,53 @@ class GemmaCubit extends Cubit<GemmaState> {
     }
 
     currentMessages.add(userMessage);
-    
+
     // Add placeholder for response
     currentMessages.add(Message(text: '', isUser: false));
 
-    emit(state.copyWith(
-      messages: currentMessages,
-      isAwaitingResponse: true,
-      clearSelectedImage: true,
-    ));
+    emit(
+      state.copyWith(
+        messages: currentMessages,
+        isAwaitingResponse: true,
+        clearSelectedImage: true,
+      ),
+    );
 
     try {
       final stream = _gemmaService.sendMessage(text, imageBytes: image);
-      
+
       String fullResponse = '';
-      
+
       await for (final chunk in stream) {
         fullResponse += chunk;
-        
+
         // Update the last message (which is the bot response placeholder)
         final updatedMessages = List<Message>.from(state.messages);
         if (updatedMessages.isNotEmpty && !updatedMessages.last.isUser) {
-           updatedMessages.last = Message(text: fullResponse, isUser: false);
+          updatedMessages.last = Message(text: fullResponse, isUser: false);
         }
-        
+
         emit(state.copyWith(messages: updatedMessages));
       }
     } catch (e) {
       // Remove the placeholder if it failed completely or show error
       final updatedMessages = List<Message>.from(state.messages);
       if (updatedMessages.isNotEmpty && !updatedMessages.last.isUser) {
-         // Optionally remove or mark as error
-         updatedMessages.removeLast();
+        // Optionally remove or mark as error
+        updatedMessages.removeLast();
       }
-      
-      emit(state.copyWith(
-        messages: updatedMessages,
-        errorMessage: 'Failed to generate response: $e',
-      ));
+
+      emit(
+        state.copyWith(
+          messages: updatedMessages,
+          errorMessage: 'Failed to generate response: $e',
+        ),
+      );
     } finally {
       emit(state.copyWith(isAwaitingResponse: false));
     }
   }
-  
+
   void resetChat() {
     emit(const GemmaState());
     initialize();

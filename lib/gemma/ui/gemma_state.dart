@@ -50,13 +50,13 @@ class GemmaState extends Equatable {
 
   @override
   List<Object?> get props => [
-        status,
-        messages,
-        loadingMessage,
-        downloadProgress,
-        isAwaitingResponse,
-        errorMessage,
-        selectedImage,
-        modelSupportsImages,
-      ];
+    status,
+    messages,
+    loadingMessage,
+    downloadProgress,
+    isAwaitingResponse,
+    errorMessage,
+    selectedImage,
+    modelSupportsImages,
+  ];
 }

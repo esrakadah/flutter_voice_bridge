@@ -38,7 +38,7 @@ class GemmaService {
   // Check if a model is downloaded and valid
   Future<bool> isModelDownloaded(AvailableModel model) async {
     if (kIsWeb) return true; // Web doesn't need local download in the same way
-    
+
     final datasource = GemmaDownloaderDataSource(model: model.toDownloadModel());
     return await datasource.checkModelExistence();
   }
@@ -62,7 +62,7 @@ class GemmaService {
     // We need to manually implement delete since datasource only has deleteOldModels
     // But we can reuse the logic or add a method to datasource.
     // For now, let's implement it here using the path logic from datasource
-    
+
     // Ideally, we should add deleteModel to GemmaDownloaderDataSource.
     // I will add a TODO and implement a basic deletion here for now.
     // Or better, let's just use the file API directly as we know the path.
@@ -71,7 +71,7 @@ class GemmaService {
     if (file.existsSync()) {
       await file.delete();
     }
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('${GemmaConstants.prefsModelDownloadedPrefix}${model.filename}');
   }
@@ -84,10 +84,10 @@ class GemmaService {
 
       if (!kIsWeb) {
         final datasource = GemmaDownloaderDataSource(model: selectedModel.toDownloadModel());
-        
+
         // Ensure old models are cleaned up
         await datasource.deleteOldModels();
-        
+
         final isInstalled = await datasource.checkModelExistence();
         if (!isInstalled) {
           throw Exception('Model not downloaded: ${selectedModel.displayName}');
@@ -128,10 +128,10 @@ class GemmaService {
     }
 
     await _chat!.addQueryChunk(userMessage);
-    
+
     // Yield empty string to signal start? Not strictly needed but good for UI
     yield* _chat!.generateChatResponseAsync();
   }
-  
+
   bool get isInitialized => _isInitialized;
 }

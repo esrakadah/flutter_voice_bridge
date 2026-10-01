@@ -57,7 +57,9 @@ class GemmaDownloaderDataSource {
       final filePath = await getFilePath();
       final file = File(filePath);
 
-      final Map<String, String> headers = GemmaConstants.huggingFaceAccessToken.isNotEmpty ? {'Authorization': 'Bearer ${GemmaConstants.huggingFaceAccessToken}'} : {};
+      final Map<String, String> headers = GemmaConstants.huggingFaceAccessToken.isNotEmpty
+          ? {'Authorization': 'Bearer ${GemmaConstants.huggingFaceAccessToken}'}
+          : {};
 
       final headResponse = await http.head(Uri.parse(model.modelUrl), headers: headers);
 

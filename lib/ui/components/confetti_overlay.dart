@@ -183,8 +183,7 @@ class ConfettiOverlay extends StatefulWidget {
   State<ConfettiOverlay> createState() => _ConfettiOverlayState();
 }
 
-class _ConfettiOverlayState extends State<ConfettiOverlay>
-    with SingleTickerProviderStateMixin {
+class _ConfettiOverlayState extends State<ConfettiOverlay> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   final List<ConfettiParticle> _particles = [];
   DateTime? _lastFrameTime;
@@ -265,17 +264,19 @@ class _ConfettiOverlayState extends State<ConfettiOverlay>
       final velocityX = speed * cos(angle);
       final velocityY = speed * sin(angle);
 
-      _particles.add(ConfettiParticle(
-        x: spawnX,
-        y: spawnY,
-        velocityX: velocityX,
-        velocityY: velocityY,
-        rotation: random.nextDouble() * 2 * pi,
-        rotationSpeed: (random.nextDouble() - 0.5) * 10,
-        color: colors[random.nextInt(colors.length)],
-        size: 8 + random.nextDouble() * 8,
-        shape: ConfettiShape.values[random.nextInt(ConfettiShape.values.length)],
-      ));
+      _particles.add(
+        ConfettiParticle(
+          x: spawnX,
+          y: spawnY,
+          velocityX: velocityX,
+          velocityY: velocityY,
+          rotation: random.nextDouble() * 2 * pi,
+          rotationSpeed: (random.nextDouble() - 0.5) * 10,
+          color: colors[random.nextInt(colors.length)],
+          size: 8 + random.nextDouble() * 8,
+          shape: ConfettiShape.values[random.nextInt(ConfettiShape.values.length)],
+        ),
+      );
     }
     dev.log('ConfettiOverlay: Created ${_particles.length} particles');
 
@@ -359,8 +360,7 @@ class ConfettiButton extends StatefulWidget {
   State<ConfettiButton> createState() => _ConfettiButtonState();
 }
 
-class _ConfettiButtonState extends State<ConfettiButton>
-    with TickerProviderStateMixin {
+class _ConfettiButtonState extends State<ConfettiButton> with TickerProviderStateMixin {
   late AnimationController _bounceController;
   late AnimationController _glowController;
   late Animation<double> _scaleAnimation;

@@ -55,17 +55,17 @@ void main() async {
 }
 
 /// 🎓 **LEARNING NOTES: Initialization Order**
-/// 
+///
 /// **Critical Sequence:**
 /// 1. WidgetsFlutterBinding.ensureInitialized() - Platform ready
-/// 2. DependencyInjection.init() - Services ready  
+/// 2. DependencyInjection.init() - Services ready
 /// 3. runApp(App()) - UI starts rendering
-/// 
+///
 /// **Why Async Main?**
 /// - Allows setup operations before UI renders
 /// - Prevents "service not found" errors
 /// - Ensures clean app startup state
-/// 
+///
 /// **Common Mistakes:**
 /// ❌ Calling platform channels before ensureInitialized()
 /// ❌ Starting UI before dependency injection

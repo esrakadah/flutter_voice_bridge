@@ -237,7 +237,6 @@ class _AnimationFullscreenViewState extends State<AnimationFullscreenView> {
                     ),
 
                     const SizedBox(width: 16), // Add spacing between groups
-
                     // Play/Pause
                     _buildControlButton(
                       icon: _isAnimationPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
@@ -248,12 +247,10 @@ class _AnimationFullscreenViewState extends State<AnimationFullscreenView> {
                     ),
 
                     const SizedBox(width: 16), // Add spacing between groups
-
                     // Speed control
                     _buildSpeedButton(),
 
                     const SizedBox(width: 16), // Add spacing between groups
-
                     // Mode switcher
                     _buildModeButton(),
                   ],

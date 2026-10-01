@@ -115,9 +115,9 @@ void main() {
         act: (cubit) => cubit.startRecording(),
         expect: () => [
           isA<RecordingError>().having(
-            (s) => s.errorMessage, 
-            'errorMessage', 
-            'Microphone permission is required to record audio',  // User-friendly message from VoiceBridgeError
+            (s) => s.errorMessage,
+            'errorMessage',
+            'Microphone permission is required to record audio', // User-friendly message from VoiceBridgeError
           ),
         ],
       );

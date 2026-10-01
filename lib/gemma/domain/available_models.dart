@@ -11,8 +11,7 @@ enum AvailableModel {
   gemma270m(
     displayName: 'Gemma 3 270M (Tiny)',
     size: '300MB',
-    url:
-        'https://huggingface.co/litert-community/gemma-3-270m-it/resolve/main/gemma3-270m-it-q8.task',
+    url: 'https://huggingface.co/litert-community/gemma-3-270m-it/resolve/main/gemma3-270m-it-q8.task',
     filename: 'gemma3-270m-it-q8.task',
     description: 'Ultra-compact, limited capabilities (not recommended)',
     supportsImages: false,
@@ -22,8 +21,7 @@ enum AvailableModel {
   gemma1b(
     displayName: 'Gemma 3 1B ⭐ Recommended',
     size: '500MB',
-    url:
-        'https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1b-it-int4.task',
+    url: 'https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1b-it-int4.task',
     filename: 'gemma3-1b-it-int4.task',
     description: 'Best balance: good quality, fits iPhone memory, fast',
     supportsImages: false,
@@ -33,8 +31,7 @@ enum AvailableModel {
   gemma2b(
     displayName: 'Gemma 3N E2B (Multimodal)',
     size: '3.1GB',
-    url:
-        'https://huggingface.co/google/gemma-3n-E2B-it-litert-preview/resolve/main/gemma-3n-E2B-it-int4.task',
+    url: 'https://huggingface.co/google/gemma-3n-E2B-it-litert-preview/resolve/main/gemma-3n-E2B-it-int4.task',
     filename: 'gemma-3n-E2B-it-int4.task',
     description: 'Supports images, high quality (requires more memory)',
     supportsImages: true,
@@ -75,4 +72,3 @@ enum AvailableModel {
     );
   }
 }
-

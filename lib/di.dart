@@ -127,12 +127,12 @@ class DependencyInjection {
 }
 
 /// 🎓 **LEARNING EXERCISE: Service Registration Types**
-/// 
+///
 /// **Question**: Why is HomeCubit registered as Factory while AudioService is Singleton?
-/// 
-/// **Answer**: 
+///
+/// **Answer**:
 /// - AudioService: Hardware interface, stateless, should be shared
 /// - HomeCubit: Contains UI state, should be unique per screen instance
-/// 
+///
 /// **Try This**: What would happen if we registered HomeCubit as Singleton?
 /// **Result**: State would be shared across all HomeView instances, causing UI bugs

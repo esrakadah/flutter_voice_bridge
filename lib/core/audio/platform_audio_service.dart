@@ -44,10 +44,13 @@ class PlatformAudioService implements AudioService {
       developer.log('🔐 [PlatformAudioService] Microphone permission status: $status', name: 'VoiceBridge.Audio');
       return status.isGranted;
     } catch (e) {
-      // Fallback: If permission_handler plugin is missing, assume true 
+      // Fallback: If permission_handler plugin is missing, assume true
       // and let the native recording method handle the permission request/error.
       if (e.toString().contains('MissingPluginException')) {
-        developer.log('⚠️ [PlatformAudioService] Permission plugin missing, assuming permission granted for fallback', name: 'VoiceBridge.Audio');
+        developer.log(
+          '⚠️ [PlatformAudioService] Permission plugin missing, assuming permission granted for fallback',
+          name: 'VoiceBridge.Audio',
+        );
         return true;
       }
       developer.log('❌ [PlatformAudioService] Error checking permission: $e', name: 'VoiceBridge.Audio', error: e);
@@ -61,12 +64,15 @@ class PlatformAudioService implements AudioService {
     try {
       developer.log('🔐 [PlatformAudioService] Requesting microphone permission...', name: 'VoiceBridge.Audio');
       final status = await Permission.microphone.request();
-      
+
       developer.log('🔐 [PlatformAudioService] Permission status: $status', name: 'VoiceBridge.Audio');
-      
+
       if (!status.isGranted) {
         if (status.isPermanentlyDenied) {
-          developer.log('🚫 [PlatformAudioService] Permission permanently denied. User must enable in settings.', name: 'VoiceBridge.Audio');
+          developer.log(
+            '🚫 [PlatformAudioService] Permission permanently denied. User must enable in settings.',
+            name: 'VoiceBridge.Audio',
+          );
         }
         throw Exception('Microphone permission denied (Status: $status)');
       }
@@ -74,10 +80,13 @@ class PlatformAudioService implements AudioService {
       // Fallback: If permission_handler plugin is missing (common in dev),
       // let the native recording attempt trigger the OS dialog.
       if (e.toString().contains('MissingPluginException')) {
-        developer.log('⚠️ [PlatformAudioService] Permission plugin missing, falling back to native OS handling', name: 'VoiceBridge.Audio');
+        developer.log(
+          '⚠️ [PlatformAudioService] Permission plugin missing, falling back to native OS handling',
+          name: 'VoiceBridge.Audio',
+        );
         return;
       }
-      
+
       developer.log('❌ [PlatformAudioService] Error requesting permission: $e', name: 'VoiceBridge.Audio', error: e);
       rethrow;
     }
