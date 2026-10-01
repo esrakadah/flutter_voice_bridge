@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The native library embedded absolute build paths and was copied into the iOS project, where it cannot load.
 - README and guides claimed iOS transcription, 4 visualization modes and a 2-3x GPU speedup; they now match
   the code.
+- Transcription ran on the UI isolate and froze the app; it now runs in `Isolate.run`.
+- Home state bugs: lost recordings list, errors that never cleared, a "completed" state never shown, crashes
+  when leaving a screen mid-task.
+- Gemma: send errors were invisible, the error snackbar repeated, model downloads could corrupt on resume.
+- Native: the WAV reader trusted header sizes; Android's activity braces were wrong; iOS allowed a second
+  recording to replace the first.
 
 ## [1.0.1] - 2025-10-22
 
