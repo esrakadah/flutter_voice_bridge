@@ -9,8 +9,9 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<ThemeCubit>(
-      create: (_) => getIt<ThemeCubit>(),
+    // .value: the DI container owns this singleton, so the widget tree must not close it.
+    return BlocProvider<ThemeCubit>.value(
+      value: getIt<ThemeCubit>(),
       child: BlocBuilder<ThemeCubit, ThemeState>(
         builder: (context, themeState) {
           // Determine which theme to use based on app theme mode

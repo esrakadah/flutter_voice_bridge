@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -160,8 +159,8 @@ class _HomeViewContentState extends State<HomeViewContent> {
                 // Recordings list
                 _buildRecordingsList(context, state),
 
-                // Gemma AI Chat (iOS and Web)
-                if (Platform.isIOS || kIsWeb) SliverToBoxAdapter(child: _buildGemmaChatCard(context)),
+                // Gemma AI Chat (iOS)
+                if (Platform.isIOS) SliverToBoxAdapter(child: _buildGemmaChatCard(context)),
 
                 // Platform View demonstration
                 SliverToBoxAdapter(child: _buildPlatformViewDemo(context)),
