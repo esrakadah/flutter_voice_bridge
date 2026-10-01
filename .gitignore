@@ -93,3 +93,6 @@ Thumbs.db
 *~
 .tmp/
 .temp/
+
+# Whisper FFI build output (scripts/build_whisper.sh)
+native/whisper/build/

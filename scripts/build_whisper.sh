@@ -1,364 +1,98 @@
 #!/bin/bash
+# Builds the Whisper FFI library for macOS and downloads the base.en model.
+# Re-runnable: a second run reuses the pinned checkout and the downloaded model.
 
-# Whisper.cpp Build Script for Flutter Voice Bridge
-# Downloads, compiles, and installs Whisper.cpp native library for FFI usage
+set -euo pipefail
 
-set -e
+WHISPER_CPP_TAG="v1.7.6"
+WHISPER_CPP_REPO="https://github.com/ggml-org/whisper.cpp.git"
+MODEL_NAME="base.en"
+MACOS_DEPLOYMENT_TARGET="13.3"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-WHISPER_DIR="$PROJECT_ROOT/native/whisper"
+NATIVE_DIR="$PROJECT_ROOT/native/whisper"
+WHISPER_CPP_DIR="$NATIVE_DIR/whisper.cpp"
+BUILD_DIR="$NATIVE_DIR/build"
 MODEL_DIR="$PROJECT_ROOT/assets/models"
+MODEL_FILE="ggml-$MODEL_NAME.bin"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+log_info() { echo "ℹ️  [Whisper Build] $1"; }
+log_success() { echo "✅ [Whisper Build] $1"; }
+log_error() { echo "❌ [Whisper Build] $1" >&2; }
 
-log_info() {
-    echo -e "${BLUE}ℹ️  [Whisper Build] $1${NC}"
+usage() {
+    cat <<USAGE
+Builds libwhisper_ffi.dylib (whisper.cpp $WHISPER_CPP_TAG) and downloads the $MODEL_NAME model.
+
+Usage: ./scripts/build_whisper.sh
+
+Requirements: macOS, git, cmake, Xcode command line tools, internet for the first run.
+Output: $BUILD_DIR (copied into the app by the macOS "Copy Native Libraries" build phase)
+        $MODEL_DIR/$MODEL_FILE
+USAGE
 }
 
-log_success() {
-    echo -e "${GREEN}✅ [Whisper Build] $1${NC}"
-}
-
-log_warning() {
-    echo -e "${YELLOW}⚠️  [Whisper Build] $1${NC}"
-}
-
-log_error() {
-    echo -e "${RED}❌ [Whisper Build] $1${NC}"
-}
-
-# Detect platform
-detect_platform() {
-    case "$(uname -s)" in
-        Darwin*) PLATFORM="macos" ;;
-        Linux*)  PLATFORM="linux" ;;
-        CYGWIN*|MINGW32*|MSYS*|MINGW*) PLATFORM="windows" ;;
-        *) 
-            log_error "Unsupported platform: $(uname -s)"
-            exit 1
-            ;;
-    esac
-    
-    log_info "Detected platform: $PLATFORM"
-}
-
-# Create necessary directories
-setup_directories() {
-    log_info "Setting up directories..."
-    mkdir -p "$WHISPER_DIR"
-    mkdir -p "$MODEL_DIR"
-    mkdir -p "$PROJECT_ROOT/ios/Runner/Models"
-    mkdir -p "$PROJECT_ROOT/android/app/src/main/assets/models"
-    mkdir -p "$PROJECT_ROOT/macos/Runner/Models"
-    log_success "Directories created"
-}
-
-# Download Whisper.cpp source
-download_whisper() {
-    log_info "Downloading Whisper.cpp..."
-    
-    if [ -d "$WHISPER_DIR/whisper.cpp" ]; then
-        log_warning "Whisper.cpp already exists. Updating..."
-        cd "$WHISPER_DIR/whisper.cpp"
-        git pull
-    else
-        cd "$WHISPER_DIR"
-        git clone https://github.com/ggerganov/whisper.cpp.git
-        cd whisper.cpp
+require_macos() {
+    if [[ "$(uname -s)" != "Darwin" ]]; then
+        log_error "Only macOS is supported. iOS and Android use a mock transcription service."
+        exit 1
     fi
-    
-    log_success "Whisper.cpp downloaded"
+    for tool in git cmake; do
+        command -v "$tool" >/dev/null || { log_error "Missing $tool (brew install $tool)"; exit 1; }
+    done
 }
 
-# Compile Whisper.cpp
-compile_whisper() {
-    log_info "Compiling Whisper.cpp for $PLATFORM..."
-    
-    cd "$WHISPER_DIR/whisper.cpp"
-    
-    case $PLATFORM in
-        "macos")
-            compile_macos
-            ;;
-        "linux")
-            compile_linux
-            ;;
-        "windows")
-            compile_windows
-            ;;
-    esac
+checkout_whisper_cpp() {
+    if [[ -d "$WHISPER_CPP_DIR/.git" ]]; then
+        local current_tag
+        current_tag="$(git -C "$WHISPER_CPP_DIR" describe --tags --exact-match 2>/dev/null || true)"
+        if [[ "$current_tag" == "$WHISPER_CPP_TAG" ]]; then
+            log_info "whisper.cpp $WHISPER_CPP_TAG already checked out"
+            return
+        fi
+        log_info "Switching whisper.cpp from ${current_tag:-an untagged commit} to $WHISPER_CPP_TAG"
+        git -C "$WHISPER_CPP_DIR" fetch --depth 1 origin tag "$WHISPER_CPP_TAG"
+        git -C "$WHISPER_CPP_DIR" checkout --force --quiet "$WHISPER_CPP_TAG"
+    else
+        log_info "Cloning whisper.cpp $WHISPER_CPP_TAG"
+        git clone --quiet --depth 1 --branch "$WHISPER_CPP_TAG" "$WHISPER_CPP_REPO" "$WHISPER_CPP_DIR"
+    fi
 }
 
-compile_macos() {
-    log_info "Compiling for macOS (dylib)..."
-    
-    # Build with CMake for better control
-    mkdir -p build
-    cd build
-    
-    cmake .. \
+build_library() {
+    log_info "Compiling libwhisper_ffi.dylib (macOS $MACOS_DEPLOYMENT_TARGET+, $(uname -m))"
+    cmake -S "$NATIVE_DIR" -B "$BUILD_DIR" \
         -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_SHARED_LIBS=ON \
-        -DWHISPER_BUILD_TESTS=OFF \
-        -DWHISPER_BUILD_EXAMPLES=OFF
-    
-    make -j$(sysctl -n hw.ncpu)
-    
-    # Copy the dynamic library (our FFI wrapper library)
-    cp libwhisper_ffi.dylib "$PROJECT_ROOT/ios/Runner/"
-    cp libwhisper_ffi.dylib "$PROJECT_ROOT/macos/Runner/"
-    
-    log_success "macOS compilation complete"
+        -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_DEPLOYMENT_TARGET" \
+        -DCMAKE_INSTALL_RPATH="@loader_path" \
+        -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+        >/dev/null
+    cmake --build "$BUILD_DIR" --config Release --parallel "$(sysctl -n hw.ncpu)" >/dev/null
+    log_success "Built $BUILD_DIR/libwhisper_ffi.dylib"
 }
 
-compile_linux() {
-    log_info "Compiling for Linux (shared library)..."
-    
-    mkdir -p build
-    cd build
-    
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_SHARED_LIBS=ON \
-        -DWHISPER_BUILD_TESTS=OFF \
-        -DWHISPER_BUILD_EXAMPLES=OFF
-    
-    make -j$(nproc)
-    
-    # Copy the shared library (our FFI wrapper library)
-    cp libwhisper_ffi.so "$PROJECT_ROOT/linux/"
-    
-    log_success "Linux compilation complete"
-}
-
-compile_windows() {
-    log_info "Compiling for Windows (DLL)..."
-    log_warning "Windows compilation requires Visual Studio or MinGW"
-    
-    mkdir -p build
-    cd build
-    
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_SHARED_LIBS=ON \
-        -DWHISPER_BUILD_TESTS=OFF \
-        -DWHISPER_BUILD_EXAMPLES=OFF
-    
-    cmake --build . --config Release
-    
-    # Copy the DLL (our FFI wrapper library)
-    cp Release/whisper_ffi.dll "$PROJECT_ROOT/windows/"
-    
-    log_success "Windows compilation complete"
-}
-
-# Download default model
 download_model() {
-    log_info "Downloading default Whisper model (base.en)..."
-    
-    cd "$WHISPER_DIR/whisper.cpp"
-    
-    # Download the base English model (smaller for development)
-    MODEL_URL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin"
-    MODEL_FILE="ggml-base.en.bin"
-    
-    if [ ! -f "models/$MODEL_FILE" ]; then
-        ./models/download-ggml-model.sh base.en
-    else
-        log_warning "Model already exists: $MODEL_FILE"
+    mkdir -p "$MODEL_DIR"
+    if [[ -s "$MODEL_DIR/$MODEL_FILE" ]]; then
+        log_info "Model already present: $MODEL_DIR/$MODEL_FILE"
+        return
     fi
-    
-    # Copy model to Flutter assets
-    cp "models/$MODEL_FILE" "$MODEL_DIR/"
-    cp "models/$MODEL_FILE" "$PROJECT_ROOT/ios/Runner/Models/"
-    cp "models/$MODEL_FILE" "$PROJECT_ROOT/android/app/src/main/assets/models/"
-    cp "models/$MODEL_FILE" "$PROJECT_ROOT/macos/Runner/Models/"
-    
-    log_success "Model downloaded and copied to Flutter assets"
+    log_info "Downloading $MODEL_FILE (~147 MB)"
+    bash "$WHISPER_CPP_DIR/models/download-ggml-model.sh" "$MODEL_NAME" "$MODEL_DIR"
+    log_success "Model saved to $MODEL_DIR/$MODEL_FILE"
 }
 
-# Create C wrapper for simplified FFI
-create_c_wrapper() {
-    log_info "Creating C wrapper for FFI..."
-    
-    # The wrapper files need to go in the whisper.cpp source directory for compilation
-    WHISPER_SRC_DIR="$WHISPER_DIR/whisper.cpp"
-    
-    # Copy our updated wrapper files instead of creating inline content
-    if [ -f "$PROJECT_ROOT/native/whisper/whisper_wrapper.h" ] && [ -f "$PROJECT_ROOT/native/whisper/whisper_wrapper.cpp" ]; then
-        log_info "Using existing wrapper files..."
-        cp "$PROJECT_ROOT/native/whisper/whisper_wrapper.h" "$WHISPER_SRC_DIR/"
-        cp "$PROJECT_ROOT/native/whisper/whisper_wrapper.cpp" "$WHISPER_SRC_DIR/"
-    else
-        log_warning "Wrapper files not found, creating default ones..."
-        # Fallback: create basic wrapper with updated function names
-        cat > "$WHISPER_SRC_DIR/whisper_wrapper.h" << 'EOF'
-#ifndef WHISPER_WRAPPER_H
-#define WHISPER_WRAPPER_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// Simplified C API for Dart FFI
-typedef struct whisper_context whisper_context;
-
-// Initialize Whisper with model file
-whisper_context* whisper_ffi_init(const char* model_path);
-
-// Transcribe audio file
-char* whisper_ffi_transcribe(whisper_context* ctx, const char* audio_path);
-
-// Free Whisper context
-void whisper_ffi_free(whisper_context* ctx);
-
-// Free string returned by whisper_transcribe
-void whisper_ffi_free_string(char* str);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // WHISPER_WRAPPER_H
-EOF
-
-        cat > "$WHISPER_SRC_DIR/whisper_wrapper.cpp" << 'EOF'
-#include "whisper_wrapper.h"
-#include "whisper.h"
-#include <cstring>
-#include <vector>
-#include <iostream>
-#include <cstdlib>
-
-extern "C" {
-
-whisper_context* whisper_ffi_init(const char* model_path) {
-    try {
-        // Use the modern API with default parameters
-        struct whisper_context_params cparams = whisper_context_default_params();
-        struct whisper_context* ctx = whisper_init_from_file_with_params(model_path, cparams);
-        return ctx;
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-char* whisper_ffi_transcribe(whisper_context* ctx, const char* audio_path) {
-    if (!ctx || !audio_path) return nullptr;
-    
-    try {
-        // For now, return a placeholder to test the FFI integration
-        const char* result = "Whisper FFI integration working! Real audio transcription requires audio loading implementation.";
-        size_t len = strlen(result);
-        char* copy = (char*)malloc(len + 1);
-        if (copy) {
-            strcpy(copy, result);
-        }
-        return copy;
-        
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-void whisper_ffi_free(whisper_context* ctx) {
-    if (ctx) {
-        whisper_free(ctx);
-    }
-}
-
-void whisper_ffi_free_string(char* str) {
-    if (str) {
-        free(str);
-    }
-}
-
-}
-EOF
-    fi
-    
-    log_success "C wrapper created"
-}
-
-# Update CMakeLists.txt to include wrapper
-update_cmake() {
-    log_info "Updating CMakeLists.txt to include wrapper..."
-    
-    cd "$WHISPER_DIR/whisper.cpp"
-    
-    # Add wrapper to CMakeLists.txt if not already present
-    if ! grep -q "whisper_wrapper" CMakeLists.txt; then
-        cat >> CMakeLists.txt << 'EOF'
-
-# Flutter FFI Wrapper
-add_library(whisper_ffi SHARED
-    ../whisper_wrapper.cpp
-)
-
-target_link_libraries(whisper_ffi whisper)
-target_include_directories(whisper_ffi PRIVATE .)
-target_include_directories(whisper_ffi PRIVATE ..)
-EOF
-    fi
-    
-    log_success "CMakeLists.txt updated"
-}
-
-# Print next steps
-print_next_steps() {
-    log_success "Whisper.cpp build complete!"
-    echo
-    log_info "Next steps:"
-    echo "  1. Test the FFI integration: flutter test"
-    echo "  2. Run the app: flutter run"
-    echo "  3. Record audio and check logs for transcription results"
-    echo
-    log_info "Model location: $MODEL_DIR/ggml-base.en.bin"
-    log_info "Library location: Platform-specific directories"
-    echo
-    log_warning "Note: This uses MockTranscriptionService by default."
-    log_warning "Update lib/di.dart to use WhisperTranscriptionService() for real FFI."
-}
-
-# Main execution
 main() {
-    log_info "Starting Whisper.cpp build process..."
-    
-    detect_platform
-    setup_directories
-    download_whisper
-    create_c_wrapper
-    update_cmake
-    compile_whisper
+    if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+        usage
+        exit 0
+    fi
+    require_macos
+    checkout_whisper_cpp
+    build_library
     download_model
-    print_next_steps
-    
-    log_success "Build process completed successfully!"
+    log_success "Done. Run: flutter run -d macos"
 }
 
-# Check for help flag
-if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-    echo "Whisper.cpp Build Script for Flutter Voice Bridge"
-    echo
-    echo "This script downloads, compiles, and sets up Whisper.cpp for FFI usage."
-    echo
-    echo "Usage:"
-    echo "  ./scripts/build_whisper.sh"
-    echo
-    echo "Requirements:"
-    echo "  - Git"
-    echo "  - CMake"
-    echo "  - C++ compiler (gcc/clang/MSVC)"
-    echo "  - Internet connection for downloads"
-    echo
-    exit 0
-fi
-
-# Run main function
-main "$@" 
+main "$@"

@@ -358,7 +358,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "NATIVE_LIB_DIR=\"${PROJECT_DIR}/../native/whisper/whisper.cpp/build\"\nFRAMEWORKS_DIR=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\n\necho \"Copying native libraries from $NATIVE_LIB_DIR to $FRAMEWORKS_DIR\"\n\nmkdir -p \"$FRAMEWORKS_DIR\"\n\nfind \"$NATIVE_LIB_DIR\" -name '*.dylib' -exec cp -v {} \"$FRAMEWORKS_DIR\" \\;\n\necho \"Signing native libraries in $FRAMEWORKS_DIR\"\n\nfind \"$FRAMEWORKS_DIR\" -name '*.dylib' -exec codesign --force --sign - --timestamp --options runtime {} \\;\n";
+			shellScript = "NATIVE_LIB_DIR=\"${PROJECT_DIR}/../native/whisper/build\"\nFRAMEWORKS_DIR=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\nSIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY:--}\"\n\nif [ ! -f \"$NATIVE_LIB_DIR/libwhisper_ffi.dylib\" ]; then\n  echo \"error: $NATIVE_LIB_DIR/libwhisper_ffi.dylib not found. Run ./scripts/build_whisper.sh first.\" >&2\n  exit 1\nfi\n\nmkdir -p \"$FRAMEWORKS_DIR\"\nfind \"$NATIVE_LIB_DIR\" -name '*.dylib' -exec cp -a {} \"$FRAMEWORKS_DIR\" \\;\nfind \"$FRAMEWORKS_DIR\" -name '*.dylib' -type f -exec codesign --force --sign \"$SIGN_IDENTITY\" --timestamp=none --options runtime {} \\;\n";
 			showEnvVarsInLog = 0;
 		};
 		33CC111E2044C6BF0003C045 /* ShellScript */ = {
@@ -577,7 +577,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -659,7 +659,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
@@ -709,7 +709,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.15;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
