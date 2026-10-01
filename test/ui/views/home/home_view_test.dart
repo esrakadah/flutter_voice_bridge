@@ -17,7 +17,7 @@ void main() {
   setUp(() {
     homeCubit = MockHomeCubit();
     themeCubit = ThemeCubit();
-    when(() => homeCubit.state).thenReturn(const HomeInitial());
+    when(() => homeCubit.state).thenReturn(const HomeState());
     when(() => homeCubit.startRecording()).thenAnswer((_) async {});
   });
 

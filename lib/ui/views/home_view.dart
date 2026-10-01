@@ -181,7 +181,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
   }
 
   Widget _buildHeroSection(BuildContext context, HomeState state) {
-    final isRecording = state is RecordingInProgress || state is RecordingStarted;
+    final isRecording = state.isRecording;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -495,7 +495,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
   }
 
   Widget _buildRecordingTile(BuildContext context, VoiceMemo recording, HomeState state) {
-    final isPlaying = state is PlaybackInProgress && state.filePath == recording.filePath;
+    final isPlaying = state.playingFilePath == recording.filePath;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -686,7 +686,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
   Widget _buildFloatingActionButton(BuildContext context) {
     return BlocBuilder<HomeCubit, HomeState>(
       builder: (context, state) {
-        final isRecording = state is RecordingInProgress || state is RecordingStarted;
+        final isRecording = state.isRecording;
 
         return Container(
           decoration: BoxDecoration(
@@ -862,49 +862,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
   }
 
   void _retryTranscription(BuildContext context) {
-    // Get the most recent recording file path for retry
-    final state = context.read<HomeCubit>().state;
-    if (state.recordings.isNotEmpty) {
-      final latestRecording = state.recordings.first;
-      // Add null safety check for file path
-      if (latestRecording.filePath.isNotEmpty) {
-        context.read<HomeCubit>().transcribeRecording(latestRecording.filePath);
-      } else {
-        // Show error if no valid file path
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.error, color: Colors.white, size: 20),
-                SizedBox(width: 12),
-                Text('No valid recording file found to transcribe'),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
-      }
-    } else {
-      // Show error if no recordings available
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.warning, color: Colors.white, size: 20),
-              SizedBox(width: 12),
-              Text('No recordings available to transcribe'),
-            ],
-          ),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
-    }
+    context.read<HomeCubit>().retryLastTranscription();
   }
 
   Widget _buildTranscriptionProgressCard(BuildContext context, HomeState state) {
