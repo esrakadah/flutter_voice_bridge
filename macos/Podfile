@@ -46,6 +46,9 @@ target 'Runner' do
           '$(inherited)',
           'PERMISSION_MICROPHONE=1',
         ]
+
+        # Match the app's minimum; whisper.cpp's BLAS backend needs macOS 13.3
+        config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '13.3'
       end
     end
   end
