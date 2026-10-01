@@ -1,138 +1,108 @@
 import 'dart:typed_data';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
+
 import '../data/gemma_service.dart';
 import 'gemma_state.dart';
 
 class GemmaCubit extends Cubit<GemmaState> {
-  final GemmaService _gemmaService;
-
   GemmaCubit({required GemmaService gemmaService}) : _gemmaService = gemmaService, super(const GemmaState());
+
+  static const String defaultImagePrompt = "What's in this image?";
+
+  final GemmaService _gemmaService;
 
   Future<void> initialize() async {
     emit(
       state.copyWith(
         status: GemmaStatus.loading,
         loadingMessage: 'Initializing...',
+        errorMessage: () => null,
+        downloadProgress: () => null,
       ),
     );
 
     try {
       final selectedModel = await _gemmaService.getSelectedModel();
-
-      // Check if download is needed (only relevant for non-web)
-      final isDownloaded = await _gemmaService.isModelDownloaded(selectedModel);
-
-      if (!isDownloaded) {
-        emit(
-          state.copyWith(
-            loadingMessage: 'Downloading ${selectedModel.displayName}...',
-          ),
-        );
-
+      if (!await _gemmaService.isModelDownloaded(selectedModel)) {
+        emit(state.copyWith(loadingMessage: 'Downloading ${selectedModel.displayName}...'));
         await _gemmaService.downloadModel(selectedModel, (progress) {
-          emit(state.copyWith(downloadProgress: progress));
+          emit(state.copyWith(downloadProgress: () => progress));
         });
       }
 
-      emit(
-        state.copyWith(
-          loadingMessage: 'Loading model...',
-          downloadProgress: null,
-        ),
-      );
-
+      emit(state.copyWith(loadingMessage: 'Loading model...', downloadProgress: () => null));
       await _gemmaService.initializeChat();
-
-      emit(
-        state.copyWith(
-          status: GemmaStatus.ready,
-          modelSupportsImages: selectedModel.supportsImages,
-        ),
-      );
-    } catch (e) {
-      emit(
-        state.copyWith(
-          status: GemmaStatus.error,
-          errorMessage: e.toString(),
-        ),
-      );
+      emit(state.copyWith(status: GemmaStatus.ready, modelSupportsImages: selectedModel.supportsImages));
+    } catch (error) {
+      emit(state.copyWith(status: GemmaStatus.error, errorMessage: () => error.toString()));
     }
   }
 
-  void selectImage(Uint8List imageBytes) {
-    emit(state.copyWith(selectedImage: imageBytes));
-  }
+  void selectImage(Uint8List imageBytes) => emit(state.copyWith(selectedImage: () => imageBytes));
 
-  void clearImage() {
-    emit(state.copyWith(clearSelectedImage: true));
-  }
+  void clearImage() => emit(state.copyWith(selectedImage: () => null));
 
   Future<void> sendMessage(String text) async {
-    if (text.isEmpty && state.selectedImage == null) return;
+    final image = state.selectedImage;
+    if (text.isEmpty && image == null) return;
     if (state.isAwaitingResponse) return;
 
-    final image = state.selectedImage;
-    final currentMessages = List<Message>.from(state.messages);
-
-    final Message userMessage;
-    if (image != null) {
-      final prompt = text.isNotEmpty ? text : "What's in this image?";
-      userMessage = Message.withImage(text: prompt, imageBytes: image, isUser: true);
-    } else {
-      userMessage = Message(text: text, isUser: true);
-    }
-
-    currentMessages.add(userMessage);
-
-    // Add placeholder for response
-    currentMessages.add(Message(text: '', isUser: false));
+    final userMessage = image != null
+        ? Message.withImage(text: text.isNotEmpty ? text : defaultImagePrompt, imageBytes: image, isUser: true)
+        : Message(text: text, isUser: true);
+    final replyPlaceholder = Message(text: '', isUser: false);
 
     emit(
       state.copyWith(
-        messages: currentMessages,
+        messages: [...state.messages, userMessage, replyPlaceholder],
         isAwaitingResponse: true,
-        clearSelectedImage: true,
+        selectedImage: () => null,
+        sendError: () => null,
       ),
     );
 
     try {
-      final stream = _gemmaService.sendMessage(text, imageBytes: image);
-
-      String fullResponse = '';
-
-      await for (final chunk in stream) {
+      var fullResponse = '';
+      await for (final chunk in _gemmaService.sendMessage(userMessage)) {
         fullResponse += chunk;
-
-        // Update the last message (which is the bot response placeholder)
-        final updatedMessages = List<Message>.from(state.messages);
-        if (updatedMessages.isNotEmpty && !updatedMessages.last.isUser) {
-          updatedMessages.last = Message(text: fullResponse, isUser: false);
-        }
-
-        emit(state.copyWith(messages: updatedMessages));
+        emit(state.copyWith(messages: _withReply(Message(text: fullResponse, isUser: false))));
       }
-    } catch (e) {
-      // Remove the placeholder if it failed completely or show error
-      final updatedMessages = List<Message>.from(state.messages);
-      if (updatedMessages.isNotEmpty && !updatedMessages.last.isUser) {
-        // Optionally remove or mark as error
-        updatedMessages.removeLast();
-      }
-
+    } catch (error) {
       emit(
-        state.copyWith(
-          messages: updatedMessages,
-          errorMessage: 'Failed to generate response: $e',
-        ),
+        state.copyWith(messages: _withoutReplyPlaceholder(), sendError: () => 'Failed to generate response: $error'),
       );
     } finally {
       emit(state.copyWith(isAwaitingResponse: false));
     }
   }
 
-  void resetChat() {
+  Future<void> resetChat() async {
     emit(const GemmaState());
-    initialize();
+    await initialize();
+  }
+
+  /// A reply can still be streaming when the chat screen's owner closes the cubit; drop those late updates.
+  @override
+  void emit(GemmaState state) {
+    if (isClosed) return;
+    super.emit(state);
+  }
+
+  List<Message> _withReply(Message reply) {
+    final messages = List<Message>.from(state.messages);
+    if (messages.isNotEmpty && !messages.last.isUser) {
+      messages[messages.length - 1] = reply;
+    }
+    return messages;
+  }
+
+  List<Message> _withoutReplyPlaceholder() {
+    final messages = List<Message>.from(state.messages);
+    if (messages.isNotEmpty && !messages.last.isUser) {
+      messages.removeLast();
+    }
+    return messages;
   }
 }
