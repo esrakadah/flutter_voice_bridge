@@ -2,8 +2,8 @@
 
 Technical implementation guide for Voice Bridge AI's advanced Flutter integrations with **working offline AI transcription**.
 
-> **Current Status**: ✅ **PRODUCTION READY** - Transcription working on iOS/macOS with GPU acceleration  
-> **For Overview**: See [README.md](./README.md) for project setup and [FEATURE_STATUS.md](./FEATURE_STATUS.md) for implementation checklist
+> **Current Status**: Transcription works on macOS; iOS and Android use a mock transcription service.  
+> **For Overview**: See [README.md](../../README.md) for project setup and [feature status](./feature_status.md) for implementation checklist
 
 ## 🎯 Technical Architecture
 

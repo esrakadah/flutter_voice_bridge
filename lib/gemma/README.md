@@ -35,24 +35,19 @@ lib/gemma/
 2. Create a new access token with read permissions
 3. Copy your token
 
-### 2. Configure Token
+### 2. Pass the Token at Build Time
 
-Open `lib/gemma/data/gemma_downloader_datasource.dart` and replace:
+Never paste the token into source code. `GemmaConstants.huggingFaceAccessToken` reads it from a dart-define and
+is empty by default, so public models download without an `Authorization` header:
 
-```dart
-const String accessToken = 'YOUR_HUGGING_FACE_TOKEN_HERE';
-```
-
-with your actual token:
-
-```dart
-const String accessToken = 'hf_YourActualTokenHere';
+```bash
+flutter run -d <ios-device> --dart-define=HF_TOKEN=hf_your_token
 ```
 
 ### 3. Platform Requirements
 
 **iOS**: Requires iOS 16.0 or later ⚠️
-- **Minimum deployment target: iOS 16.0** (already configured in Podfile)
+- **Minimum deployment target: iOS 16.0** (set in the Podfile and the Runner target)
 - The integration automatically checks platform and only shows on iOS
 - Models are optimized for Apple's Neural Engine
 - Supports iPhone 8 and newer with iOS 16+

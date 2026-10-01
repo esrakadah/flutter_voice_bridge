@@ -209,14 +209,14 @@ ios/, macos/, android/     # Platform-specific code
 ## 📞 Getting Help
 
 ### **For Contributors**
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/esrakadah/flutter_voice_bridge/discussions)
+- 💬 **Questions**: open an [issue](https://github.com/esrakadah/flutter_voice_bridge/issues)
 - 📧 **Direct Contact**: Create an issue for private questions
-- 🎓 **Learning**: Check [WORKSHOP_GUIDE.md](WORKSHOP_GUIDE.md)
+- 🎓 **Learning**: Start at the [documentation hub](docs/README.md)
 
 ### **For Maintainers**
-- 🔧 **Development Setup**: [SETUP.md](SETUP.md)
-- 🏗️ **Architecture**: [ARCHITECTURE.md](ARCHITECTURE.md)
-- 📊 **Status**: [FEATURE_STATUS.md](FEATURE_STATUS.md)
+- 🔧 **Development Setup**: [setup guide](docs/guides/setup.md)
+- 🏗️ **Architecture**: [architecture guide](docs/guides/architecture.md)
+- 📊 **Status**: [feature status](docs/guides/feature_status.md)
 
 ## 🎉 Recognition
 

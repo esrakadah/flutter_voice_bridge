@@ -1,6 +1,7 @@
 class GemmaConstants {
-  // TODO: Move this to a secure configuration or environment variable
-  static const String huggingFaceAccessToken = 'SET_YOUR_HUGGING_FACE_ACCESS_TOKEN_HERE';
+  /// Optional token for gated Hugging Face models: `flutter run --dart-define=HF_TOKEN=hf_...`.
+  /// Empty by default, so public models download without an Authorization header.
+  static const String huggingFaceAccessToken = String.fromEnvironment('HF_TOKEN');
 
   static const String prefsSelectedModelKey = 'selected_gemma_model';
   static const String prefsModelDownloadedPrefix = 'model_downloaded_';

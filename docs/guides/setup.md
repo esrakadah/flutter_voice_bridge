@@ -7,8 +7,8 @@ This guide helps you set up the Flutter Voice Bridge project locally with all re
 ## 🔍 System Requirements
 
 ### **Minimum Requirements**
-- **Flutter SDK**: 3.16.0 or later ([Download](https://docs.flutter.dev/get-started/install))
-- **Dart SDK**: 3.2.0 or later (included with Flutter)
+- **Flutter SDK**: 3.38.0 or later ([Download](https://docs.flutter.dev/get-started/install))
+- **Dart SDK**: 3.10.0 or later (included with Flutter)
 - **RAM**: 8GB minimum, 16GB recommended
 - **Storage**: 2GB free space (for dependencies and AI models)
 - **Internet**: Required for initial setup and model download
@@ -16,7 +16,7 @@ This guide helps you set up the Flutter Voice Bridge project locally with all re
 ### **Platform-Specific Requirements**
 
 #### **macOS (Recommended Platform)**
-- **macOS**: 12.0 (Monterey) or later
+- **macOS**: 13.3 or later (whisper.cpp's BLAS backend needs it)
 - **Xcode**: 15.0 or later ([Download from App Store](https://apps.apple.com/app/xcode/id497799835))
 - **Command Line Tools**: `xcode-select --install`
 - **CMake**: `brew install cmake` ([Install Homebrew](https://brew.sh/))
@@ -24,9 +24,9 @@ This guide helps you set up the Flutter Voice Bridge project locally with all re
 
 #### **iOS Development**
 - **Xcode**: 15.0 or later
-- **iOS Simulator**: iOS 15.0+ target
+- **iOS Simulator**: iOS 16.0+ target (required by flutter_gemma)
 - **Apple Developer Account**: For device deployment (optional)
-- **Features**: Full audio recording + AI transcription
+- **Features**: Full audio recording; transcription uses a mock service
 
 #### **Android Development**
 - **Android Studio**: 2023.1.1 (Flamingo) or later
@@ -55,12 +55,12 @@ flutter run -d ios      # iOS Simulator
 flutter run -d android  # Android - audio recording only
 ```
 
-**🎉 That's it!** The app will be fully functional with offline transcription on iOS/macOS.
+**🎉 That's it!** The app records on every platform and transcribes offline on macOS.
 
 ## Prerequisites
 
-- **Flutter SDK** (3.16.0 or later)
-- **Dart SDK** (3.2.0 or later)
+- **Flutter SDK** (3.38.0 or later)
+- **Dart SDK** (3.10.0 or later)
 - **Xcode** (for iOS/macOS development)
 - **Android Studio** (for Android development)
 - **CMake** (for building native Whisper.cpp)
@@ -290,9 +290,9 @@ The `.gitignore` excludes:
 
 ## Support & Documentation
 
-- **[README.md](./README.md)** - Project overview and features
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical deep dive
-- **[FEATURE_STATUS.md](./FEATURE_STATUS.md)** - Current capabilities
+- **[README.md](../README.md)** - Project overview and features
+- **[ARCHITECTURE.md](./architecture.md)** - Technical deep dive
+- **[FEATURE_STATUS.md](./feature_status.md)** - Current capabilities
 - **[ai_integration.md](./ai_integration.md)** - AI transcription details
 
 ---
@@ -473,7 +473,7 @@ fvm install stable
 If you encounter issues not covered here:
 
 1. **Check our Issues**: [GitHub Issues](https://github.com/esrakadah/flutter_voice_bridge/issues)
-2. **Read the Docs**: [Complete Documentation](./README.md)
+2. **Read the Docs**: [Complete Documentation](../README.md)
 3. **Create an Issue**: Describe your problem with:
    - Your operating system and version
    - Flutter doctor output

@@ -3,6 +3,9 @@
 **Welcome to the complete documentation for Flutter Voice Bridge** - your comprehensive guide to advanced Flutter development with native integrations and AI capabilities.
 
 **Last Updated**: 29 July 2025  
+> These guides describe the July 2025 workshop version. For current platform support, minimum versions and
+> setup, the [root README](../README.md) is authoritative.
+
 **Documentation Version**: 2.0
 
 ---

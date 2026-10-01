@@ -158,7 +158,7 @@ static void _isolateEntry(SendPort sendPort) async {
 }
 ```
 
-**File Reference:** [lib/core/transcription/whisper_ffi_service.dart](lib/core/transcription/whisper_ffi_service.dart)
+**File Reference:** [lib/core/transcription/whisper_ffi_service.dart](../../../lib/core/transcription/whisper_ffi_service.dart)
 </details>
 
 ---
@@ -287,8 +287,8 @@ let settings: [String: Any] = [
 ```
 
 **File References:**
-- Dart: [lib/core/platform/platform_channels.dart](lib/core/platform/platform_channels.dart)
-- Swift: [ios/Runner/AppDelegate.swift](ios/Runner/AppDelegate.swift)
+- Dart: [lib/core/platform/platform_channels.dart](../../../lib/core/platform/platform_channels.dart)
+- Swift: [ios/Runner/AppDelegate.swift](../../../ios/Runner/AppDelegate.swift)
 </details>
 
 ---
@@ -588,7 +588,7 @@ bool shouldRepaint(AdvancedAudioPainter oldDelegate) {
 }
 ```
 
-**File Reference:** [lib/ui/components/audio_visualizer.dart](lib/ui/components/audio_visualizer.dart)
+**File Reference:** [lib/ui/components/audio_visualizer.dart](../../../lib/ui/components/audio_visualizer.dart)
 
 ### 🎉 Confetti Physics Simulation
 
@@ -643,7 +643,7 @@ class ConfettiPainter extends CustomPainter {
 - Watch 300 particles explode across screen
 - Particles fall naturally with gravity and rotation
 
-**File Reference:** [lib/ui/components/confetti_overlay.dart](lib/ui/components/confetti_overlay.dart)
+**File Reference:** [lib/ui/components/confetti_overlay.dart](../../../lib/ui/components/confetti_overlay.dart)
 </details>
 
 ---

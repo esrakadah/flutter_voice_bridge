@@ -87,7 +87,7 @@ sequenceDiagram
 
 Every C function requires two typedef declarations:
 
-**Dart Side** ([whisper_ffi_service.dart](lib/core/transcription/whisper_ffi_service.dart:33-51)):
+**Dart Side** ([whisper_ffi_service.dart](../../../lib/core/transcription/whisper_ffi_service.dart#L33-L51)):
 ```dart
 // C: whisper_context* whisper_ffi_init(const char* model_path)
 typedef WhisperInitNative = Pointer<Void> Function(Pointer<Utf8> modelPath);  // Native C signature
@@ -100,7 +100,7 @@ typedef WhisperTranscribe = Pointer<Utf8> Function(Pointer<Void> ctx, Pointer<Ut
 
 ### Dynamic Library Loading
 
-Platform-specific search paths ([whisper_ffi_service.dart](lib/core/transcription/whisper_ffi_service.dart:299-339)):
+Platform-specific search paths ([whisper_ffi_service.dart](../../../lib/core/transcription/whisper_ffi_service.dart#L299-L339)):
 
 ```dart
 void _loadAppleLibrary() {
@@ -126,7 +126,7 @@ void _loadAppleLibrary() {
 
 ### Function Binding
 
-Lookup native functions and bind them to Dart ([whisper_ffi_service.dart](lib/core/transcription/whisper_ffi_service.dart:397-429)):
+Lookup native functions and bind them to Dart ([whisper_ffi_service.dart](../../../lib/core/transcription/whisper_ffi_service.dart#L397-L429)):
 
 ```dart
 void _bindFunctions() {
@@ -149,7 +149,7 @@ void _bindFunctions() {
 
 ### Memory Management Pattern
 
-Critical: Proper allocation and cleanup ([whisper_ffi_service.dart](lib/core/transcription/whisper_ffi_service.dart:127-146)):
+Critical: Proper allocation and cleanup ([whisper_ffi_service.dart](../../../lib/core/transcription/whisper_ffi_service.dart#L127-L146)):
 
 ```dart
 // Convert Dart string to native C string
@@ -170,7 +170,7 @@ try {
 
 ### Native C++ Implementation
 
-**WAV File Parsing** ([whisper_wrapper.cpp](native/whisper/whisper.cpp/whisper_wrapper.cpp:46-100)):
+**WAV File Parsing** ([whisper_wrapper.cpp](../../../native/whisper/whisper_wrapper.cpp#L46-L100)):
 
 ```cpp
 std::vector<float> read_audio_file(const std::string& filename) {
@@ -278,7 +278,7 @@ sequenceDiagram
 
 ### Dart Implementation
 
-**Channel Definition** ([platform_channels.dart](lib/core/platform/platform_channels.dart:24-33)):
+**Channel Definition** ([platform_channels.dart](../../../lib/core/platform/platform_channels.dart#L24-L33)):
 
 ```dart
 class PlatformChannels {
@@ -290,7 +290,7 @@ class PlatformChannels {
 }
 ```
 
-**Method Call with Error Handling** ([platform_channels.dart](lib/core/platform/platform_channels.dart:50-80)):
+**Method Call with Error Handling** ([platform_channels.dart](../../../lib/core/platform/platform_channels.dart#L50-L80)):
 
 ```dart
 static Future<String> startRecording() async {
@@ -321,7 +321,7 @@ static Future<String> startRecording() async {
 
 ### iOS Native Implementation
 
-**Method Handler Setup** ([AppDelegate.swift](ios/Runner/AppDelegate.swift:14-44)):
+**Method Handler Setup** ([AppDelegate.swift](../../../ios/Runner/AppDelegate.swift#L14-L44)):
 
 ```swift
 override func application(
@@ -357,7 +357,7 @@ override func application(
 }
 ```
 
-**Permission Handling** ([AppDelegate.swift](ios/Runner/AppDelegate.swift:54-88)):
+**Permission Handling** ([AppDelegate.swift](../../../ios/Runner/AppDelegate.swift#L54-L88)):
 
 ```swift
 private func startRecording(result: @escaping FlutterResult) {
@@ -395,7 +395,7 @@ private func startRecording(result: @escaping FlutterResult) {
 }
 ```
 
-**Audio Recording with AVAudioRecorder** ([AppDelegate.swift](ios/Runner/AppDelegate.swift:90-149)):
+**Audio Recording with AVAudioRecorder** ([AppDelegate.swift](../../../ios/Runner/AppDelegate.swift#L90-L149)):
 
 ```swift
 private func beginRecording(result: @escaping FlutterResult) {
@@ -624,7 +624,7 @@ class PlatformService {
 }
 ```
 
-**Usage in flutter_gemma** ([gemma_service.dart](lib/gemma/data/gemma_service.dart:79-114)):
+**Usage in flutter_gemma** ([gemma_service.dart](../../../lib/gemma/data/gemma_service.dart#L79-L114)):
 
 ```dart
 import 'package:flutter_gemma/pigeon.g.dart';
@@ -800,7 +800,7 @@ graph LR
 
 ### Architecture
 
-**Widget Structure** ([audio_visualizer.dart](lib/ui/components/audio_visualizer.dart:7-41)):
+**Widget Structure** ([audio_visualizer.dart](../../../lib/ui/components/audio_visualizer.dart#L7-L41)):
 
 ```dart
 class AdvancedAudioVisualizer extends StatefulWidget {
@@ -820,7 +820,7 @@ class AdvancedAudioVisualizer extends StatefulWidget {
 
 ### Animation System
 
-**Single Master Controller** ([audio_visualizer.dart](lib/ui/components/audio_visualizer.dart:122-138)):
+**Single Master Controller** ([audio_visualizer.dart](../../../lib/ui/components/audio_visualizer.dart#L122-L138)):
 
 ```dart
 void _initializeAnimations() {
@@ -842,7 +842,7 @@ void _startAnimations() {
 }
 ```
 
-**Derived Phases** ([audio_visualizer.dart](lib/ui/components/audio_visualizer.dart:180-188)):
+**Derived Phases** ([audio_visualizer.dart](../../../lib/ui/components/audio_visualizer.dart#L180-L188)):
 
 ```dart
 // All derived from single master animation
@@ -858,7 +858,7 @@ double get _pulseAmplitude =>
 
 ### Visualization Modes
 
-**Mode 1: Waveform with Harmonics** ([audio_visualizer.dart](lib/ui/components/audio_visualizer.dart:460-517)):
+**Mode 1: Waveform with Harmonics** ([audio_visualizer.dart](../../../lib/ui/components/audio_visualizer.dart#L460-L517)):
 
 ```dart
 void _paintWaveLayer(Canvas canvas, Size size, double amplitudeMultiplier,
@@ -915,7 +915,7 @@ void _paintWaveLayer(Canvas canvas, Size size, double amplitudeMultiplier,
 }
 ```
 
-**Mode 2: Spectrum Analyzer** ([audio_visualizer.dart](lib/ui/components/audio_visualizer.dart:544-606)):
+**Mode 2: Spectrum Analyzer** ([audio_visualizer.dart](../../../lib/ui/components/audio_visualizer.dart#L544-L606)):
 
 ```dart
 void _paintSpectrum(Canvas canvas, Size size) {
@@ -961,7 +961,7 @@ void _paintSpectrum(Canvas canvas, Size size) {
 }
 ```
 
-**Mode 3: Particle System** ([audio_visualizer.dart](lib/ui/components/audio_visualizer.dart:608-663)):
+**Mode 3: Particle System** ([audio_visualizer.dart](../../../lib/ui/components/audio_visualizer.dart#L608-L663)):
 
 ```dart
 void _paintParticles(Canvas canvas, Size size) {
@@ -1001,7 +1001,7 @@ void _paintParticles(Canvas canvas, Size size) {
 
 ### Advanced Effects
 
-**Gradient Shaders** ([audio_visualizer.dart](lib/ui/components/audio_visualizer.dart:524-542)):
+**Gradient Shaders** ([audio_visualizer.dart](../../../lib/ui/components/audio_visualizer.dart#L524-L542)):
 
 ```dart
 void _paintStaticWave(Canvas canvas, Size size) {
@@ -1022,7 +1022,7 @@ void _paintStaticWave(Canvas canvas, Size size) {
 }
 ```
 
-**Blur Effects** ([audio_visualizer.dart](lib/ui/components/audio_visualizer.dart:776-789)):
+**Blur Effects** ([audio_visualizer.dart](../../../lib/ui/components/audio_visualizer.dart#L776-L789)):
 
 ```dart
 void _paintGlowEffect(Canvas canvas, Size size) {
@@ -1038,7 +1038,7 @@ void _paintGlowEffect(Canvas canvas, Size size) {
 }
 ```
 
-**Performance Optimization** ([audio_visualizer.dart](lib/ui/components/audio_visualizer.dart:792-799)):
+**Performance Optimization** ([audio_visualizer.dart](../../../lib/ui/components/audio_visualizer.dart#L792-L799)):
 
 ```dart
 @override
@@ -1089,7 +1089,7 @@ graph TB
 
 ### How It Works
 
-**1. Model Management** ([gemma_service.dart](lib/gemma/data/gemma_service.dart:37-77)):
+**1. Model Management** ([gemma_service.dart](../../../lib/gemma/data/gemma_service.dart#L37-L77)):
 
 ```dart
 class GemmaService {
@@ -1123,7 +1123,7 @@ class GemmaService {
 }
 ```
 
-**2. Model Initialization** ([gemma_service.dart](lib/gemma/data/gemma_service.dart:79-114)):
+**2. Model Initialization** ([gemma_service.dart](../../../lib/gemma/data/gemma_service.dart#L79-L114)):
 
 ```dart
 Future<void> initializeChat() async {
@@ -1160,7 +1160,7 @@ Future<void> initializeChat() async {
 }
 ```
 
-**3. Streaming Inference** ([gemma_service.dart](lib/gemma/data/gemma_service.dart:116-134)):
+**3. Streaming Inference** ([gemma_service.dart](../../../lib/gemma/data/gemma_service.dart#L116-L134)):
 
 ```dart
 Stream<String> sendMessage(String text, {Uint8List? imageBytes}) async* {
@@ -1367,7 +1367,7 @@ flutter_voice_bridge/
 
 ### Dependency Injection
 
-**Service Locator Pattern** ([di.dart](lib/di.dart)):
+**Service Locator Pattern** ([di.dart](../../../lib/di.dart)):
 
 ```dart
 final getIt = GetIt.instance;
@@ -1433,7 +1433,7 @@ Platform Views allow embedding **native UIKit/Android Views** directly in the Fl
 
 ### iOS Implementation
 
-**Factory Registration** ([AppDelegate.swift](ios/Runner/AppDelegate.swift:46-48)):
+**Factory Registration** ([AppDelegate.swift](../../../ios/Runner/AppDelegate.swift#L46-L48)):
 
 ```swift
 // Register Platform View factory
@@ -1442,7 +1442,7 @@ self.registrar(forPlugin: "NativeTextView")?
   .register(nativeTextViewFactory, withId: "native-text-view")
 ```
 
-**Native View Creation** ([AppDelegate.swift](ios/Runner/AppDelegate.swift:322-379)):
+**Native View Creation** ([AppDelegate.swift](../../../ios/Runner/AppDelegate.swift#L322-L379)):
 
 ```swift
 class NativeTextView: NSObject, FlutterPlatformView {
@@ -1631,12 +1631,12 @@ class NativeTextView extends StatelessWidget {
 ## Resources
 
 ### Code References
-- **FFI Service**: [lib/core/transcription/whisper_ffi_service.dart](lib/core/transcription/whisper_ffi_service.dart)
-- **Platform Channels**: [lib/core/platform/platform_channels.dart](lib/core/platform/platform_channels.dart)
-- **iOS Native**: [ios/Runner/AppDelegate.swift](ios/Runner/AppDelegate.swift)
-- **CustomPainter**: [lib/ui/components/audio_visualizer.dart](lib/ui/components/audio_visualizer.dart)
-- **Gemma Service**: [lib/gemma/data/gemma_service.dart](lib/gemma/data/gemma_service.dart)
-- **C++ Wrapper**: [native/whisper/whisper.cpp/whisper_wrapper.cpp](native/whisper/whisper.cpp/whisper_wrapper.cpp)
+- **FFI Service**: [lib/core/transcription/whisper_ffi_service.dart](../../../lib/core/transcription/whisper_ffi_service.dart)
+- **Platform Channels**: [lib/core/platform/platform_channels.dart](../../../lib/core/platform/platform_channels.dart)
+- **iOS Native**: [ios/Runner/AppDelegate.swift](../../../ios/Runner/AppDelegate.swift)
+- **CustomPainter**: [lib/ui/components/audio_visualizer.dart](../../../lib/ui/components/audio_visualizer.dart)
+- **Gemma Service**: [lib/gemma/data/gemma_service.dart](../../../lib/gemma/data/gemma_service.dart)
+- **C++ Wrapper**: [native/whisper/whisper.cpp/whisper_wrapper.cpp](../../../native/whisper/whisper_wrapper.cpp)
 
 ### Technologies
 - **Whisper.cpp**: https://github.com/ggerganov/whisper.cpp

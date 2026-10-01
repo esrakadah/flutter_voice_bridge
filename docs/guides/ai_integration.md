@@ -2,7 +2,7 @@
 
 This document explains the **fully working** Whisper.cpp integration with Dart FFI for offline speech-to-text transcription in the Flutter Voice Bridge app.
 
-## 🎯 Current Status: PRODUCTION READY
+## 🎯 Current Status: working on macOS
 
 The Whisper FFI integration provides:
 - **✅ Offline speech recognition** using OpenAI's Whisper models
@@ -205,7 +205,7 @@ await transcriptionService.initialize('/path/to/custom-model.bin');
 ✅ GPU family: MTLGPUFamilyApple9 (1009)
 ✅ Unified memory: 18GB
 ✅ Simdgroup operations: Enabled
-✅ Performance boost: ~2-3x faster than CPU
+✅ Metal backend enabled by whisper.cpp defaults (no benchmark in this repo)
 ```
 
 ### Console Output Example:
@@ -308,7 +308,7 @@ The transcription service is **production-ready** and can be integrated into any
 ## 🏆 Key Achievements
 
 ✅ **Offline AI Integration**: Local Whisper.cpp with no internet dependency  
-✅ **GPU Acceleration**: Metal GPU support for 2-3x performance boost  
+✅ **GPU Acceleration**: Metal backend through whisper.cpp defaults  
 ✅ **Memory Safety**: Production-grade FFI memory management  
 ✅ **Cross-Platform**: Ready for iOS, macOS, Android deployment  
 ✅ **Developer Experience**: One-command setup with automated building  

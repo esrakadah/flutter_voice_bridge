@@ -109,7 +109,7 @@ _masterController.duration = newDuration;
 ```
 
 ### **🎨 Mode Controls**
-- **Modes**: 4 visualization modes (cycling)
+- **Modes**: 5 visualization modes (cycling)
 - **Transition**: Seamless visual switching
 - **Persistence**: Mode preference saved automatically
 
@@ -336,9 +336,9 @@ print('Effective Area: ${effectiveWidth}x${effectiveHeight}, Scale: $scale');
 
 ## 📚 Additional Resources
 
-- **[README.md](./README.md)** - Complete project overview
-- **[FEATURE_STATUS.md](./FEATURE_STATUS.md)** - Implementation status details
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical architecture deep dive
+- **[README.md](../README.md)** - Complete project overview
+- **[FEATURE_STATUS.md](./feature_status.md)** - Implementation status details
+- **[ARCHITECTURE.md](./architecture.md)** - Technical architecture deep dive
 
 ## 🏆 Best Practices
 
