@@ -220,8 +220,6 @@ class MockTranscriptionService implements TranscriptionService {
     // Simulate processing time
     await Future.delayed(const Duration(seconds: 2));
 
-    // Return mock transcription based on file name
-    final fileName = audioFilePath.split('/').last;
     final mockText =
         'To achieve Whisper transcription, please run this app on macOS. '
         'This is a mock transcription for mobile demonstration. '

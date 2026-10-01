@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../di.dart';
@@ -14,10 +14,7 @@ class GemmaChatScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: getIt<GemmaCubit>(),
-      child: const _GemmaChatView(),
-    );
+    return BlocProvider.value(value: getIt<GemmaCubit>(), child: const _GemmaChatView());
   }
 }
 
@@ -32,6 +29,11 @@ class _GemmaChatViewState extends State<_GemmaChatView> {
   final _textController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
 
+  // Constants
+  static const double _maxImageDimension = 1024;
+  static const int _imageQuality = 85;
+  static const double _messageMaxWidthFactor = 0.75;
+
   @override
   void dispose() {
     _textController.dispose();
@@ -42,14 +44,16 @@ class _GemmaChatViewState extends State<_GemmaChatView> {
     try {
       final pickedFile = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
+        maxWidth: _maxImageDimension,
+        maxHeight: _maxImageDimension,
+        imageQuality: _imageQuality,
       );
 
-      if (pickedFile != null && context.mounted) {
+      if (pickedFile != null) {
         final bytes = await pickedFile.readAsBytes();
-        context.read<GemmaCubit>().selectImage(bytes);
+        if (context.mounted) {
+          context.read<GemmaCubit>().selectImage(bytes);
+        }
       }
     } catch (e) {
       if (context.mounted) {
@@ -130,7 +134,12 @@ class _GemmaChatViewState extends State<_GemmaChatView> {
                         itemCount: state.messages.length,
                         itemBuilder: (context, index) {
                           final message = state.messages[state.messages.length - 1 - index];
-                          return ChatMessageWidget(message: message, colorScheme: colorScheme, textTheme: textTheme);
+                          return ChatMessageWidget(
+                            message: message,
+                            colorScheme: colorScheme,
+                            textTheme: textTheme,
+                            maxWidthFactor: _messageMaxWidthFactor,
+                          );
                         },
                       ),
               ),
@@ -185,22 +194,22 @@ class _GemmaChatViewState extends State<_GemmaChatView> {
   Widget _buildEmptyState(BuildContext context, GemmaState state, ColorScheme colorScheme, TextTheme textTheme) {
     return Center(
       child: Container(
-        margin: const EdgeInsets.all(32),
+        margin: const EdgeInsets.all(24),
         child: Card(
           child: Padding(
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(colors: [colorScheme.primary, colorScheme.secondary]),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Icon(Icons.chat_bubble_outline, size: 48, color: Colors.white),
+                  child: const Icon(Icons.chat_bubble_outline, size: 40, color: Colors.white),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 Text(
                   'Start a conversation',
                   style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: colorScheme.onSurface),
@@ -383,8 +392,15 @@ class ChatMessageWidget extends StatelessWidget {
   final Message message;
   final ColorScheme colorScheme;
   final TextTheme textTheme;
+  final double maxWidthFactor;
 
-  const ChatMessageWidget({super.key, required this.message, required this.colorScheme, required this.textTheme});
+  const ChatMessageWidget({
+    super.key,
+    required this.message,
+    required this.colorScheme,
+    required this.textTheme,
+    this.maxWidthFactor = 0.75,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -395,7 +411,7 @@ class ChatMessageWidget extends StatelessWidget {
       alignment: alignment,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * maxWidthFactor),
         child: Card(
           elevation: 2,
           shadowColor: colorScheme.shadow.withAlpha(13),

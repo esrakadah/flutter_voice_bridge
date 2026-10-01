@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:universal_io/io.dart';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;

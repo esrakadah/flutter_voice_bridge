@@ -4,7 +4,7 @@ import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_gemma/core/chat.dart';
 import 'package:flutter_gemma/core/model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:universal_io/io.dart';
+import 'dart:io';
 
 import '../domain/available_models.dart';
 import 'gemma_constants.dart';
