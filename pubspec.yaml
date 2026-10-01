@@ -90,6 +90,8 @@ dev_dependencies:
   # Testing tools for comprehensive test coverage
   mocktail: ^1.0.3      # Modern mocking library (simpler than mockito, no code generation)
   bloc_test: ^10.0.0    # Testing utilities specifically for BLoC/Cubit
+  path_provider_platform_interface: ^2.1.2
+  plugin_platform_interface: ^2.1.8
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

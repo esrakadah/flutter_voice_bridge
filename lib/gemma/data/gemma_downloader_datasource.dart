@@ -135,70 +135,74 @@ class GemmaDownloaderDataSource {
   /// - [onProgress]: Callback function that receives download progress (0.0 to 1.0)
   ///
   /// Throws an exception if the download fails.
+  /// Downloads to `<model>.part` and renames it only when complete, so an interrupted download is resumed
+  /// rather than mistaken for a finished model.
+  ///
+  /// Resume rules: 206 appends to the partial file; 200 means the server ignored `Range`, so the file is
+  /// rewritten from the start; 416 means the partial file already holds every byte.
   Future<void> downloadModel({required String token, required Function(double) onProgress}) async {
-    http.StreamedResponse? response;
-    IOSink? fileSink;
     final prefs = await SharedPreferences.getInstance();
+    final finalFile = File(await getFilePath());
+    final partialFile = File('${finalFile.path}.part');
+    IOSink? fileSink;
 
     try {
-      final filePath = await getFilePath();
-      final file = File(filePath);
-
-      // Check for existing partial download
-      int downloadedBytes = 0;
-      if (file.existsSync()) {
-        downloadedBytes = await file.length();
-      }
-
+      final resumeFrom = partialFile.existsSync() ? await partialFile.length() : 0;
       final request = http.Request('GET', Uri.parse(model.modelUrl));
       if (token.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $token';
       }
-
-      // Resume download if partially downloaded
-      if (downloadedBytes > 0) {
-        request.headers['Range'] = 'bytes=$downloadedBytes-';
+      if (resumeFrom > 0) {
+        request.headers['Range'] = 'bytes=$resumeFrom-';
       }
 
-      response = await request.send();
-
-      // HTTP 200 (full content) or 206 (partial content) are both valid
-      if (response.statusCode == 200 || response.statusCode == 206) {
-        final contentLength = response.contentLength ?? 0;
-        final totalBytes = downloadedBytes + contentLength;
-        fileSink = file.openWrite(mode: FileMode.append);
-
-        int received = downloadedBytes;
-
-        await for (final chunk in response.stream) {
-          fileSink.add(chunk);
-          received += chunk.length;
-          onProgress(totalBytes > 0 ? received / totalBytes : 0.0);
-        }
-
-        await prefs.setBool(_preferenceKey, true);
-      } else {
-        await prefs.setBool(_preferenceKey, false);
-        if (kDebugMode) {
-          print('Failed to download model. Status code: ${response.statusCode}');
-          print('Headers: ${response.headers}');
-          try {
-            final errorBody = await response.stream.bytesToString();
-            print('Error body: $errorBody');
-          } catch (e) {
-            print('Could not read error body: $e');
-          }
-        }
-        throw Exception('Failed to download the model. Status: ${response.statusCode}');
+      final response = await request.send();
+      final int alreadyHave;
+      switch (response.statusCode) {
+        case HttpStatus.partialContent:
+          alreadyHave = resumeFrom;
+          fileSink = partialFile.openWrite(mode: FileMode.append);
+        case HttpStatus.ok:
+          alreadyHave = 0;
+          fileSink = partialFile.openWrite();
+        case HttpStatus.requestedRangeNotSatisfiable when resumeFrom > 0:
+          await response.stream.drain<void>();
+          await _completeDownload(partialFile, finalFile, prefs);
+          onProgress(1);
+          return;
+        default:
+          await response.stream.drain<void>();
+          throw HttpException('Model download failed with status ${response.statusCode}', uri: request.url);
       }
-    } catch (e) {
+
+      final contentLength = response.contentLength;
+      final expectedTotal = contentLength == null ? null : alreadyHave + contentLength;
+      var received = alreadyHave;
+      await for (final chunk in response.stream) {
+        fileSink.add(chunk);
+        received += chunk.length;
+        onProgress(expectedTotal != null && expectedTotal > 0 ? received / expectedTotal : 0.0);
+      }
+      await fileSink.close();
+      fileSink = null;
+
+      if (expectedTotal != null && received != expectedTotal) {
+        throw HttpException('Model download ended early: $received of $expectedTotal bytes', uri: request.url);
+      }
+      await _completeDownload(partialFile, finalFile, prefs);
+    } catch (error) {
       await prefs.setBool(_preferenceKey, false);
       if (kDebugMode) {
-        print('Error downloading model: $e');
+        print('Error downloading model: $error');
       }
       rethrow;
     } finally {
-      if (fileSink != null) await fileSink.close();
+      await fileSink?.close();
     }
+  }
+
+  Future<void> _completeDownload(File partialFile, File finalFile, SharedPreferences prefs) async {
+    await partialFile.rename(finalFile.path);
+    await prefs.setBool(_preferenceKey, true);
   }
 }
