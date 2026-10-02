@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   switches the DevFest theme; saved across restarts. Replaces the hard-coded Berlin bar and the `devfest` theme mode.
 
 ### Changed
+- The 1,337-line home screen is split into eight widgets under `lib/ui/views/home/widgets/` (hero, transcript
+  card, status cards, recordings, record button, three demo cards); the screen itself is under 200 lines.
 - whisper.cpp is pinned to v1.7.6 and built from a project-owned `native/whisper/CMakeLists.txt`; the build
   script is re-runnable and no longer edits upstream files.
 - Minimum versions: Flutter 3.38, macOS 13.3, iOS 16.0. `pubspec.lock` is now committed.
