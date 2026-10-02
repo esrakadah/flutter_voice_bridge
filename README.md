@@ -108,14 +108,17 @@ graph TB
 |---|---|---|---|
 | 🎤 Recording | ✅ WAV 16 kHz | ✅ WAV 16 kHz | ✅ AAC (m4a) |
 | 🔊 Playback | ✅ | ✅ | ✅ |
-| 🤖 Transcription | ✅ whisper.cpp | ⚠️ mock text | ⚠️ mock text |
+| 🤖 Transcription | ✅ whisper.cpp | ⚠️ placeholder text | ⚠️ placeholder text |
 | 💬 Gemma chat | ❌ | 🧪 experimental | ❌ |
 | 🎨 Visualizations | ✅ | ✅ | ✅ |
 
 Minimum versions: macOS 13.3 (needed by whisper.cpp's BLAS backend), iOS 16.0 (needed by `flutter_gemma`).
 
-iOS and Android use a mock transcription service: shipping the native library there needs a signed
+iOS and Android use a placeholder transcription service: shipping the native library there needs a signed
 framework (iOS) and an NDK build (Android), which this project does not do yet.
+
+**Known limitation:** like other Whisper models, `base.en` sometimes "hears" a short word such as "you" in
+silence, so a silent recording can show that word instead of a "no speech" message.
 
 ### Gemma chat (experimental)
 
@@ -143,8 +146,9 @@ flutter test                              # unit and widget tests, also run in C
 flutter test integration_test -d macos    # on-device smoke test, needs ./scripts/build_whisper.sh first
 ```
 
-Covered today: every public method of the home and Gemma cubits, the Gemma model download's resume rules, event branding and its persistence, the home
-screen (empty state, record button, event app bar) and dependency registration. On a Mac with the native build,
+Covered today: every public method of the home and Gemma cubits (including double taps and stale results), the
+Gemma download's resume rules, event branding and its persistence, the home screen (empty state, record button,
+event app bar, status card) and dependency registration. On a Mac with the native build,
 `test/core/transcription/whisper_ffi_service_test.dart` also transcribes whisper.cpp's sample clip through the
 real library and checks that the calling isolate stayed responsive; CI skips it.
 
@@ -157,7 +161,9 @@ real library and checks that the calling isolate stayed responsive; CI skips it.
   **[AI integration](./docs/guides/ai_integration.md)**
 - **[Animations](./docs/guides/animations.md)** and **[feature status](./docs/guides/feature_status.md)**
 - **[Gemma module](./lib/gemma/README.md)**
-- **[DevFest Berlin 2025 talk material](./docs/talks/devfest-berlin-2025/PRESENTATION.md)**
+- **[DevFest Berlin 2025 talk material](./docs/talks/devfest-berlin-2025/PRESENTATION.md)**; the code as presented is tagged
+  [`devfest-berlin-2025`](https://github.com/esrakadah/flutter_voice_bridge/tree/devfest-berlin-2025)
+- **[Engineering review, 2 Oct 2026](./docs/reviews/2026-10-02-gbu.md)**: what was found, fixed and deliberately left
 
 The guides describe the July 2025 workshop version; where they disagree with this README, this README and the
 code win.
@@ -171,7 +177,7 @@ lib/
 ├── core/           # audio, transcription (FFI), platform channels, theme, errors
 ├── data/           # voice memo model and file-based service
 ├── gemma/          # experimental Gemma chat: data, domain, ui
-└── ui/             # views, cubits, widgets, painters
+└── ui/             # views, cubits, components, painters
 native/whisper/     # C wrapper + CMakeLists.txt around a pinned whisper.cpp
 scripts/            # build_whisper.sh
 ```

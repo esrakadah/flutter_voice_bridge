@@ -77,6 +77,13 @@
 - **[🎨 UI Patterns](./requirements/ui_patterns.md)** - Component specifications and interface design
 - **[🎭 Design System](./design/design_system.md)** - Visual language and component library
 
+### **🧪 Experimental Gemma chat**
+- **[Gemma module](../lib/gemma/README.md)** - On-device chat on iOS, model downloads, token setup
+
+### **🎤 Talks and reviews**
+- **[DevFest Berlin 2025](./talks/devfest-berlin-2025/PRESENTATION.md)** - Talk material; the code as presented is the `devfest-berlin-2025` tag
+- **[Engineering review, 2 Oct 2026](./reviews/2026-10-02-gbu.md)** - Findings, fixes, and what was deliberately left
+
 ---
 
 ## 🔍 Find What You Need
@@ -134,17 +141,6 @@ Found something unclear? Help us improve:
 3. **Add Examples**: More code examples are always welcome
 
 See **[Contributing Guidelines](../CONTRIBUTING.md)** for details.
-
----
-
-## 📊 Documentation Stats
-
-- **Total Guides**: 7 comprehensive guides
-- **Total Pages**: ~2,500 lines of documentation
-- **Code Examples**: 50+ working code snippets
-- **Diagrams**: 5 Mermaid architectural diagrams
-- **Complexity Levels**: Beginner to Advanced
-- **Estimated Reading Time**: 3-4 hours for complete documentation
 
 ---
 
