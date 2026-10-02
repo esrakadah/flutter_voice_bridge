@@ -59,13 +59,6 @@ class GemmaService {
     if (kIsWeb) return;
 
     final datasource = GemmaDownloaderDataSource(model: model.toDownloadModel());
-    // We need to manually implement delete since datasource only has deleteOldModels
-    // But we can reuse the logic or add a method to datasource.
-    // For now, let's implement it here using the path logic from datasource
-
-    // Ideally, we should add deleteModel to GemmaDownloaderDataSource.
-    // I will add a TODO and implement a basic deletion here for now.
-    // Or better, let's just use the file API directly as we know the path.
     final path = await datasource.getFilePath();
     for (final file in [File(path), File('$path.part')]) {
       if (file.existsSync()) {

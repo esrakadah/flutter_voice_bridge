@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_voice_bridge/gemma/data/gemma_downloader_datasource.dart';
+import 'package:flutter_voice_bridge/gemma/data/gemma_constants.dart';
+import 'package:flutter_voice_bridge/gemma/domain/available_models.dart';
 import 'package:flutter_voice_bridge/gemma/domain/download_model.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -108,5 +110,24 @@ void main() {
 
     expect(File('${documents.path}/model.task').existsSync(), isFalse);
     expect(File('${documents.path}/model.task.part').existsSync(), isFalse);
+  });
+
+  test('old-model cleanup never deletes a model the app still offers', () async {
+    for (final model in AvailableModel.values) {
+      File('${documents.path}/${model.filename}').writeAsBytesSync([1]);
+    }
+    final retired = File('${documents.path}/${GemmaConstants.oldModels.first}')..writeAsBytesSync([1]);
+
+    await GemmaDownloaderDataSource(model: AvailableModel.gemma1b.toDownloadModel()).deleteOldModels();
+
+    for (final model in AvailableModel.values) {
+      expect(File('${documents.path}/${model.filename}').existsSync(), isTrue, reason: model.filename);
+    }
+    expect(retired.existsSync(), isFalse);
+  });
+
+  test('the retired list holds no offered model', () {
+    final offered = AvailableModel.values.map((model) => model.filename).toSet();
+    expect(GemmaConstants.oldModels.where(offered.contains), isEmpty);
   });
 }

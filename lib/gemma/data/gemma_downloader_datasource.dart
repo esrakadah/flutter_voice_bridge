@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../domain/available_models.dart';
 import '../domain/download_model.dart';
 
 import 'gemma_constants.dart';
@@ -98,9 +99,10 @@ class GemmaDownloaderDataSource {
       // List of old/unused model files to potentially delete
       final oldModels = GemmaConstants.oldModels;
 
+      final offeredModels = AvailableModel.values.map((model) => model.filename).toSet();
       for (final filename in oldModels) {
-        // Skip if this is the currently selected model
-        if (filename == selectedFilename) {
+        // Never delete a model the app still offers, even if the retired list is edited carelessly.
+        if (filename == selectedFilename || offeredModels.contains(filename)) {
           if (kDebugMode) {
             print('Skipping deletion of selected model: $filename');
           }
