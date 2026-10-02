@@ -51,11 +51,12 @@ class WhisperTranscriptionService implements TranscriptionService {
 
       // Ensure model is loaded
       if (!_whisperFFI.isModelLoaded) {
-        if (_modelPath == null) {
+        final modelPath = _modelPath;
+        if (modelPath == null) {
           throw StateError('Service not initialized. Call initialize() first.');
         }
         developer.log('📥 [Transcription] Loading Whisper model...', name: _logName);
-        await _whisperFFI.initializeModel(_modelPath!);
+        await _whisperFFI.initializeModel(modelPath);
       }
 
       // Perform transcription directly on the audio file
@@ -199,9 +200,9 @@ class WhisperTranscriptionService implements TranscriptionService {
   };
 }
 
-/// Mock implementation for testing and development
-class MockTranscriptionService implements TranscriptionService {
-  static const String _logName = 'VoiceBridge.MockTranscription';
+/// Returns fixed text on platforms without the native Whisper build (iOS, Android).
+class PlaceholderTranscriptionService implements TranscriptionService {
+  static const String _logName = 'VoiceBridge.PlaceholderTranscription';
 
   bool _isInitialized = false;
 

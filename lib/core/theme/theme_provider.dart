@@ -7,24 +7,20 @@ enum AppThemeMode {
   light,
   dark,
   system,
-  devfest, // DevFest themed mode
 }
 
 // Theme management for the app with smooth transitions
 class ThemeCubit extends Cubit<ThemeState> {
-  ThemeCubit() : super(const ThemeState(themeMode: AppThemeMode.devfest));
+  ThemeCubit() : super(const ThemeState(themeMode: AppThemeMode.system));
 
+  /// Cycles light, dark, system. The DevFest look comes from event mode (BrandingCubit), not from here.
   void toggleTheme() {
-    if (state.themeMode == AppThemeMode.light) {
-      emit(state.copyWith(themeMode: AppThemeMode.dark));
-    } else if (state.themeMode == AppThemeMode.dark) {
-      emit(state.copyWith(themeMode: AppThemeMode.devfest));
-    } else if (state.themeMode == AppThemeMode.devfest) {
-      emit(state.copyWith(themeMode: AppThemeMode.light));
-    } else {
-      // If system mode, switch to light first
-      emit(state.copyWith(themeMode: AppThemeMode.light));
-    }
+    final next = switch (state.themeMode) {
+      AppThemeMode.light => AppThemeMode.dark,
+      AppThemeMode.dark => AppThemeMode.system,
+      AppThemeMode.system => AppThemeMode.light,
+    };
+    emit(state.copyWith(themeMode: next));
   }
 
   void setThemeMode(AppThemeMode mode) {
@@ -34,7 +30,6 @@ class ThemeCubit extends Cubit<ThemeState> {
   bool get isDarkMode => state.themeMode == AppThemeMode.dark;
   bool get isLightMode => state.themeMode == AppThemeMode.light;
   bool get isSystemMode => state.themeMode == AppThemeMode.system;
-  bool get isDevFestMode => state.themeMode == AppThemeMode.devfest;
 }
 
 class ThemeState extends Equatable {
@@ -169,8 +164,6 @@ class _ThemeToggleButtonState extends State<ThemeToggleButton> with TickerProvid
         return Icons.dark_mode_rounded;
       case AppThemeMode.system:
         return Icons.auto_mode_rounded;
-      case AppThemeMode.devfest:
-        return Icons.celebration_rounded; // DevFest icon
     }
   }
 
@@ -180,8 +173,6 @@ class _ThemeToggleButtonState extends State<ThemeToggleButton> with TickerProvid
         return widget.lightColor ?? Theme.of(context).colorScheme.primary;
       case AppThemeMode.dark:
         return widget.darkColor ?? Theme.of(context).colorScheme.secondary;
-      case AppThemeMode.devfest:
-        return const Color(0xFF4285F4); // Google Blue
       case AppThemeMode.system:
         return Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8);
     }

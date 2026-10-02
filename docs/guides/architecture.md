@@ -191,8 +191,6 @@ lib/
 │   │   ├── home_view.dart          # ✅ Working UI Component
 │   │   ├── home_cubit.dart         # ✅ Working Business Logic
 │   │   └── home_state.dart         # State Definitions
-│   ├── widgets/                    # Reusable components
-│   │   └── voice_recorder_button.dart # ✅ Working recording UI
 │   └── components/                 # Atomic UI elements
 │       ├── audio_visualizer.dart   # ✅ Working visualization
 │       └── native_text_view.dart   # ✅ Working platform view

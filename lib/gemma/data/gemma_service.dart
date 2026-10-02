@@ -99,6 +99,8 @@ class GemmaService {
 
       final supportsImages = selectedModel.supportsImages;
 
+      // Re-initialising (model switch, chat reset) must release the previous native model first.
+      await _inferenceModel?.close();
       _inferenceModel = await gemma.createModel(
         modelType: ModelType.gemmaIt,
         supportImage: supportsImages,
@@ -114,23 +116,17 @@ class GemmaService {
   }
 
   // Send a message and get a stream of response chunks
-  Stream<String> sendMessage(String text, {Uint8List? imageBytes}) async* {
+  /// Sends a message the cubit has already built (text, or image with prompt) and streams the reply.
+  Stream<String> sendMessage(Message userMessage) async* {
     if (!_isInitialized || _chat == null) {
       await initializeChat();
     }
-
-    final Message userMessage;
-    if (imageBytes != null) {
-      final prompt = text.isNotEmpty ? text : "What's in this image?";
-      userMessage = Message.withImage(text: prompt, imageBytes: imageBytes, isUser: true);
-    } else {
-      userMessage = Message(text: text, isUser: true);
+    final chat = _chat;
+    if (chat == null) {
+      throw StateError('Gemma chat could not be initialised');
     }
-
-    await _chat!.addQueryChunk(userMessage);
-
-    // Yield empty string to signal start? Not strictly needed but good for UI
-    yield* _chat!.generateChatResponseAsync();
+    await chat.addQueryChunk(userMessage);
+    yield* chat.generateChatResponseAsync();
   }
 
   bool get isInitialized => _isInitialized;

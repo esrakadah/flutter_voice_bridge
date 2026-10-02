@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   2025 talk material under `docs/talks/devfest-berlin-2025/`.
 - Delete all recordings.
 - CI workflow (format, analyze, test), issue templates, a home screen widget test and a macOS integration test.
+- Event Mode: a Settings screen sets the event name, city, year and flag shown in a DevFest-styled app bar, and
+  switches the DevFest theme; saved across restarts. Replaces the hard-coded Berlin bar and the `devfest` theme mode.
 
 ### Changed
 - whisper.cpp is pinned to v1.7.6 and built from a project-owned `native/whisper/CMakeLists.txt`; the build

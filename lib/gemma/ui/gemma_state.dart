@@ -1,19 +1,13 @@
-import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 
 enum GemmaStatus { initial, loading, ready, error }
 
+/// Nullable fields are cleared through [copyWith] by passing a getter that returns null,
+/// for example `state.copyWith(sendError: () => null)`. Omitting an argument keeps the value.
+@immutable
 class GemmaState extends Equatable {
-  final GemmaStatus status;
-  final List<Message> messages;
-  final String loadingMessage;
-  final double? downloadProgress;
-  final bool isAwaitingResponse;
-  final String? errorMessage;
-  final Uint8List? selectedImage;
-  final bool modelSupportsImages;
-
   const GemmaState({
     this.status = GemmaStatus.initial,
     this.messages = const [],
@@ -21,29 +15,45 @@ class GemmaState extends Equatable {
     this.downloadProgress,
     this.isAwaitingResponse = false,
     this.errorMessage,
+    this.sendError,
     this.selectedImage,
     this.modelSupportsImages = false,
   });
+
+  final GemmaStatus status;
+  final List<Message> messages;
+  final String loadingMessage;
+  final double? downloadProgress;
+  final bool isAwaitingResponse;
+
+  /// Why the model could not be prepared; shown instead of the chat.
+  final String? errorMessage;
+
+  /// Why the last message got no reply; shown once as a snackbar while the chat stays usable.
+  final String? sendError;
+  final Uint8List? selectedImage;
+  final bool modelSupportsImages;
 
   GemmaState copyWith({
     GemmaStatus? status,
     List<Message>? messages,
     String? loadingMessage,
-    double? downloadProgress,
+    ValueGetter<double?>? downloadProgress,
     bool? isAwaitingResponse,
-    String? errorMessage,
-    Uint8List? selectedImage,
+    ValueGetter<String?>? errorMessage,
+    ValueGetter<String?>? sendError,
+    ValueGetter<Uint8List?>? selectedImage,
     bool? modelSupportsImages,
-    bool clearSelectedImage = false,
   }) {
     return GemmaState(
       status: status ?? this.status,
       messages: messages ?? this.messages,
       loadingMessage: loadingMessage ?? this.loadingMessage,
-      downloadProgress: downloadProgress ?? this.downloadProgress,
+      downloadProgress: downloadProgress != null ? downloadProgress() : this.downloadProgress,
       isAwaitingResponse: isAwaitingResponse ?? this.isAwaitingResponse,
-      errorMessage: errorMessage ?? this.errorMessage,
-      selectedImage: clearSelectedImage ? null : (selectedImage ?? this.selectedImage),
+      errorMessage: errorMessage != null ? errorMessage() : this.errorMessage,
+      sendError: sendError != null ? sendError() : this.sendError,
+      selectedImage: selectedImage != null ? selectedImage() : this.selectedImage,
       modelSupportsImages: modelSupportsImages ?? this.modelSupportsImages,
     );
   }
@@ -56,6 +66,7 @@ class GemmaState extends Equatable {
     downloadProgress,
     isAwaitingResponse,
     errorMessage,
+    sendError,
     selectedImage,
     modelSupportsImages,
   ];

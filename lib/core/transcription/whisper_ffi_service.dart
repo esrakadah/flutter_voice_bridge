@@ -1,439 +1,199 @@
+import 'dart:developer' as developer;
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:isolate';
+
 import 'package:ffi/ffi.dart';
-import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
-import 'dart:developer' as developer;
 
 /// 🎓 **WORKSHOP MODULE 3: Dart FFI Deep Dive**
 ///
 /// **Learning Objectives:**
 /// - Master direct C/C++ library integration in Flutter
 /// - Understand memory management between Dart and native code
-/// - Learn function signature mapping and type safety
+/// - Keep long native calls off the UI isolate with [Isolate.run]
 /// - Practice resource cleanup and error handling in FFI context
 ///
-/// **Key Concepts Demonstrated:**
-/// - Function Signatures: Mapping C functions to Dart
-/// - Memory Management: Proper allocation and cleanup
-/// - Dynamic Library Loading: Platform-specific library loading
-/// - Pointer Handling: Safe manipulation of native memory
-///
-/// **Performance Focus:** This demonstrates the fastest possible integration method
+/// **How the isolate part works:** native memory belongs to the process, not to an isolate. The Whisper model is
+/// loaded once and its context pointer travels between isolates as a plain integer address. Each heavy call
+/// (`whisper_ffi_init`, `whisper_ffi_transcribe`) runs in [Isolate.run], which reopens the already-loaded library
+/// (a cheap `dlopen`), rebuilds the pointer from the address, and returns a Dart value. The UI isolate never
+/// blocks, so the recording timer and animations keep running during a transcription.
 
-// ⚡ FFI PATTERN: Direct C Library Integration
-// FFI (Foreign Function Interface) allows direct calls to C/C++ libraries
-// This is the most performant way to integrate native libraries (faster than Platform Channels)
-// 🔗 FFI FUNCTION SIGNATURE MAPPING
-// Every C function needs two typedef declarations:
-// 1. Native signature (what the C library exports)
-// 2. Dart signature (what we call from Dart code)
+typedef WhisperInitNative = Pointer<Void> Function(Pointer<Utf8> modelPath);
+typedef WhisperInit = Pointer<Void> Function(Pointer<Utf8> modelPath);
 
-// 🚀 WHISPER INITIALIZATION FUNCTION
-// C: whisper_context* whisper_ffi_init(const char* model_path)
-typedef WhisperInitNative = Pointer<Void> Function(Pointer<Utf8> modelPath); // Native C signature
-typedef WhisperInit = Pointer<Void> Function(Pointer<Utf8> modelPath); // Dart function signature
+typedef WhisperTranscribeNative = Pointer<Utf8> Function(Pointer<Void> context, Pointer<Utf8> audioPath);
+typedef WhisperTranscribe = Pointer<Utf8> Function(Pointer<Void> context, Pointer<Utf8> audioPath);
 
-// 🎤 AUDIO TRANSCRIPTION FUNCTION
-// C: char* whisper_ffi_transcribe(whisper_context* ctx, const char* audio_path)
-typedef WhisperTranscribeNative = Pointer<Utf8> Function(Pointer<Void> ctx, Pointer<Utf8> audioPath);
-typedef WhisperTranscribe = Pointer<Utf8> Function(Pointer<Void> ctx, Pointer<Utf8> audioPath);
+typedef WhisperFreeNative = Void Function(Pointer<Void> context);
+typedef WhisperFree = void Function(Pointer<Void> context);
 
-// 🧹 CONTEXT CLEANUP FUNCTION
-// C: void whisper_ffi_free(whisper_context* ctx)
-typedef WhisperFreeNative = Void Function(Pointer<Void> ctx);
-typedef WhisperFree = void Function(Pointer<Void> ctx);
+typedef WhisperFreeStringNative = Void Function(Pointer<Utf8> text);
+typedef WhisperFreeString = void Function(Pointer<Utf8> text);
 
-// 🧹 STRING MEMORY CLEANUP FUNCTION
-// C: void whisper_ffi_free_string(char* str)
-typedef WhisperFreeStringNative = Void Function(Pointer<Utf8> str);
-typedef WhisperFreeString = void Function(Pointer<Utf8> str);
-
-/// 🤖 WHISPER FFI SERVICE
-/// This class demonstrates advanced FFI patterns for AI library integration
-///
-/// **Memory Management Strategy:**
-/// - Native library holds AI model in memory
-/// - Audio processing happens in native code (C++)
-/// - Results are returned as C strings, converted to Dart, then freed
-///
-/// **Performance Characteristics:**
-/// - Direct C library calls (no serialization overhead)
-/// - GPU acceleration available on supported platforms
-/// - Model loaded once, reused for multiple transcriptions
 class WhisperFFIService {
   static const String _logName = 'VoiceBridge.WhisperFFI';
+  static const String _libraryName = 'libwhisper_ffi.dylib';
+  static const String modelFileName = 'ggml-base.en.bin';
+  static const String _modelAssetPath = 'assets/models/$modelFileName';
 
-  // 📚 DYNAMIC LIBRARY AND FUNCTION POINTERS
-  // DynamicLibrary: Handle to the loaded native library
-  // Function pointers: Direct references to C functions for fast calls
-  late final DynamicLibrary _whisperLib; // 📖 Loaded native library
-  late final WhisperInit _whisperInit; // 🚀 Model initialization function
-  late final WhisperTranscribe _whisperTranscribe; // 🎤 Audio processing function
-  late final WhisperFree _whisperFree; // 🧹 Context cleanup function
-  late final WhisperFreeString _whisperFreeString; // 🧹 String memory cleanup
+  String? _libraryPath;
+  int? _contextAddress;
 
-  // 💾 NATIVE RESOURCE MANAGEMENT
-  // _whisperContext: Opaque pointer to native AI model context
-  // _isInitialized: Prevents double initialization and resource leaks
-  Pointer<Void>? _whisperContext; // 🧠 Native AI model context
-  bool _isInitialized = false; // 🔒 Initialization state guard
+  /// Serialises native calls: one whisper context must not run two transcriptions at once.
+  Future<void> _pendingCall = Future<void>.value();
 
-  /// Initialize the Whisper FFI service and load the native library
+  bool get isInitialized => _libraryPath != null;
+  bool get isModelLoaded => _contextAddress != null;
+
+  /// Finds and loads the native library; cheap, runs on the calling isolate.
   Future<void> initialize() async {
-    if (_isInitialized) {
-      developer.log('✅ [WhisperFFI] Already initialized', name: _logName);
-      return;
+    if (isInitialized) return;
+    if (!Platform.isMacOS && !Platform.isIOS) {
+      throw UnsupportedError('Whisper FFI is only built for macOS (platform: ${Platform.operatingSystem})');
     }
-
-    try {
-      developer.log('🔧 [WhisperFFI] Initializing Whisper FFI service...', name: _logName);
-
-      // Load the dynamic library
-      _loadLibrary();
-
-      // Bind native functions
-      _bindFunctions();
-
-      developer.log('✅ [WhisperFFI] Service initialized successfully', name: _logName);
-      _isInitialized = true;
-    } catch (e) {
-      developer.log('❌ [WhisperFFI] Initialization failed: $e', name: _logName, error: e);
-      rethrow;
-    }
+    _libraryPath = _resolveLibraryPath();
+    developer.log('✅ [WhisperFFI] Native library loaded from $_libraryPath', name: _logName);
   }
 
-  /// Initialize Whisper context with model file
+  /// Loads the model in a background isolate; the context stays alive until [dispose].
   Future<void> initializeModel(String modelPath) async {
-    if (!_isInitialized) {
+    final libraryPath = _libraryPath;
+    if (libraryPath == null) {
       throw StateError('WhisperFFI service not initialized. Call initialize() first.');
     }
-
-    if (_whisperContext != null) {
-      developer.log('⚠️ [WhisperFFI] Model already loaded, cleaning up first', name: _logName);
-      await dispose();
+    if (!File(modelPath).existsSync()) {
+      throw FileSystemException('Whisper model file not found', modelPath);
     }
+    await dispose();
 
-    try {
-      developer.log('🤖 [WhisperFFI] Loading Whisper model: $modelPath', name: _logName);
-
-      // Check if model file exists
-      final modelFile = File(modelPath);
-      if (!await modelFile.exists()) {
-        throw FileSystemException('Whisper model file not found', modelPath);
-      }
-
-      // Convert path to native string
-      final modelPathPtr = modelPath.toNativeUtf8();
-
-      try {
-        // Initialize Whisper context
-        _whisperContext = _whisperInit(modelPathPtr);
-
-        if (_whisperContext == nullptr) {
-          throw Exception('Failed to initialize Whisper context');
-        }
-
-        developer.log('✅ [WhisperFFI] Model loaded successfully', name: _logName);
-      } finally {
-        // Free the native string
-        malloc.free(modelPathPtr);
-      }
-    } catch (e) {
-      developer.log('❌ [WhisperFFI] Model initialization failed: $e', name: _logName, error: e);
-      rethrow;
+    final contextAddress = await _serialised(() => Isolate.run(() => _loadModel(libraryPath, modelPath)));
+    if (contextAddress == 0) {
+      throw StateError('whisper_ffi_init returned null for $modelPath');
     }
+    _contextAddress = contextAddress;
+    developer.log('✅ [WhisperFFI] Model loaded: $modelPath', name: _logName);
   }
 
-  /// Transcribe audio file to text
+  /// Transcribes a 16 kHz mono WAV file in a background isolate.
   Future<String> transcribeAudio(String audioFilePath) async {
-    if (_whisperContext == null) {
+    final libraryPath = _libraryPath;
+    final contextAddress = _contextAddress;
+    if (libraryPath == null || contextAddress == null) {
       throw StateError('Whisper model not loaded. Call initializeModel() first.');
     }
-
-    try {
-      developer.log('🎵 [WhisperFFI] Transcribing audio: $audioFilePath', name: _logName);
-
-      // Validate input parameters
-      if (audioFilePath.isEmpty) {
-        throw ArgumentError('Audio file path cannot be empty');
-      }
-
-      // Check if audio file exists
-      final audioFile = File(audioFilePath);
-      if (!await audioFile.exists()) {
-        throw FileSystemException('Audio file not found', audioFilePath);
-      }
-
-      // Check file size (0 bytes indicates a problem)
-      final fileSize = await audioFile.length();
-      if (fileSize == 0) {
-        throw Exception('Audio file is empty (0 bytes)');
-      }
-
-      developer.log('📊 [WhisperFFI] Audio file size: $fileSize bytes', name: _logName);
-
-      // Convert path to native string
-      final audioPathPtr = audioFilePath.toNativeUtf8();
-      Pointer<Utf8> resultPtr = nullptr;
-
-      try {
-        // Call native transcription function
-        developer.log('🔄 [WhisperFFI] Calling native transcribe function...', name: _logName);
-        resultPtr = _whisperTranscribe(_whisperContext!, audioPathPtr);
-
-        if (resultPtr == nullptr) {
-          throw Exception(
-            'Transcription failed - native function returned null result. '
-            'This could indicate:\n'
-            '• Audio format not supported by Whisper\n'
-            '• Insufficient memory\n'
-            '• Model initialization issue\n'
-            '• Silent audio with no speech',
-          );
-        }
-
-        // Convert result to Dart string
-        final transcription = resultPtr.toDartString();
-
-        // Validate the transcription result
-        if (transcription.isEmpty) {
-          developer.log('⚠️ [WhisperFFI] Transcription returned empty string', name: _logName);
-          return ''; // Return empty string instead of throwing
-        }
-
-        developer.log('✅ [WhisperFFI] Transcription completed: ${transcription.length} characters', name: _logName);
-        developer.log(
-          '📝 [WhisperFFI] Result: ${transcription.substring(0, transcription.length.clamp(0, 100))}${transcription.length > 100 ? '...' : ''}',
-          name: _logName,
-        );
-
-        return transcription.trim(); // Trim whitespace
-      } finally {
-        // Free native strings
-        malloc.free(audioPathPtr);
-        if (resultPtr != nullptr) {
-          _whisperFreeString(resultPtr);
-        }
-      }
-    } catch (e) {
-      developer.log('❌ [WhisperFFI] Transcription failed: $e', name: _logName, error: e);
-      rethrow;
+    final audioFile = File(audioFilePath);
+    if (!audioFile.existsSync()) {
+      throw FileSystemException('Audio file not found', audioFilePath);
     }
+    if (audioFile.lengthSync() == 0) {
+      throw FileSystemException('Audio file is empty', audioFilePath);
+    }
+
+    final transcription = await _serialised(
+      () => Isolate.run(() => _transcribe(libraryPath, contextAddress, audioFilePath)),
+    );
+    if (transcription == null) {
+      throw StateError('whisper_ffi_transcribe returned null for $audioFilePath');
+    }
+    developer.log('✅ [WhisperFFI] Transcribed ${transcription.length} characters', name: _logName);
+    return transcription.trim();
   }
 
-  /// Check if the service is initialized
-  bool get isInitialized => _isInitialized;
-
-  /// Check if model is loaded
-  bool get isModelLoaded => _whisperContext != null;
-
-  /// Get model file path by extracting from Flutter assets to temporary location
-  static Future<String> getDefaultModelPath() async {
-    const String modelAssetPath = 'assets/models/ggml-base.en.bin';
-    developer.log('📁 [WhisperFFI] Getting model path, asset path: "$modelAssetPath"', name: _logName);
-
-    try {
-      // Get temporary directory
-      final Directory tempDir = await getApplicationCacheDirectory();
-      final String modelTempPath = path.join(tempDir.path, 'ggml-base.en.bin');
-      final File tempModelFile = File(modelTempPath);
-
-      developer.log('ℹ️ [WhisperFFI] Temp model path: "$modelTempPath"', name: _logName);
-
-      // Check if the model file already exists in the temporary directory
-      if (await tempModelFile.exists()) {
-        developer.log('✅ [WhisperFFI] Model already exists in cache. Using existing file.', name: _logName);
-        return modelTempPath;
-      }
-
-      developer.log('📥 [WhisperFFI] Model not found in cache. Extracting from assets...', name: _logName);
-
-      // Load the model file from assets
-      final ByteData assetData = await rootBundle.load(modelAssetPath);
-
-      // Write asset data to temporary file
-      await tempModelFile.writeAsBytes(assetData.buffer.asUint8List());
-
-      developer.log('✅ [WhisperFFI] Model extracted to: $modelTempPath', name: _logName);
-      developer.log('📊 [WhisperFFI] Model file size: ${assetData.lengthInBytes} bytes', name: _logName);
-
-      return modelTempPath;
-    } catch (e, s) {
-      developer.log(
-        '❌ [WhisperFFI] Critical error: Failed to extract model from assets.',
-        name: _logName,
-        error: e,
-        stackTrace: s,
-      );
-      // In a production app, you might want to inform the user or try a fallback.
-      // For this workshop, we throw to make the issue visible.
-      throw Exception('Failed to provide a valid model path. Asset: "$modelAssetPath". Error: $e');
-    }
-  }
-
-  /// Dispose resources and clean up
+  /// Frees the native model context; waits for any running transcription first.
   Future<void> dispose() async {
+    final libraryPath = _libraryPath;
+    final contextAddress = _contextAddress;
+    if (libraryPath == null || contextAddress == null) return;
+    _contextAddress = null;
+    await _serialised(() async => _freeModel(libraryPath, contextAddress));
+    developer.log('🧹 [WhisperFFI] Model context freed', name: _logName);
+  }
+
+  Future<T> _serialised<T>(Future<T> Function() call) {
+    final result = _pendingCall.then((_) => call());
+    _pendingCall = result.then((_) {}, onError: (_) {});
+    return result;
+  }
+
+  /// Copies the bundled model to the cache once. The copy is written to a `.part` file and renamed, so a crash
+  /// mid-copy can never leave a truncated model that later launches would reuse.
+  static Future<String> getDefaultModelPath() async {
+    final cacheDirectory = await getApplicationCacheDirectory();
+    final modelPath = path.join(cacheDirectory.path, modelFileName);
+    if (File(modelPath).existsSync()) return modelPath;
+
+    developer.log('📥 [WhisperFFI] Extracting $_modelAssetPath to the cache', name: _logName);
+    final assetData = await rootBundle.load(_modelAssetPath);
+    final partialFile = File('$modelPath.part');
+    await partialFile.writeAsBytes(assetData.buffer.asUint8List(assetData.offsetInBytes, assetData.lengthInBytes));
+    await partialFile.rename(modelPath);
+    return modelPath;
+  }
+
+  static String _resolveLibraryPath() {
+    final candidates = [
+      _libraryName, // app bundle: Contents/Frameworks via @rpath
+      path.join(
+        Directory.current.path,
+        'native',
+        'whisper',
+        'build',
+        'lib',
+        _libraryName,
+      ), // `flutter test` from repo root
+    ];
+    final failures = <String>[];
+    for (final candidate in candidates) {
+      try {
+        DynamicLibrary.open(candidate);
+        return candidate;
+      } on ArgumentError catch (error) {
+        failures.add('  • $candidate: ${error.message}');
+      }
+    }
+    throw StateError(
+      'Could not load $_libraryName. Run ./scripts/build_whisper.sh first.\n${failures.join('\n')}',
+    );
+  }
+}
+
+int _loadModel(String libraryPath, String modelPath) {
+  final init = DynamicLibrary.open(
+    libraryPath,
+  ).lookupFunction<WhisperInitNative, WhisperInit>('whisper_ffi_init');
+  final modelPathPointer = modelPath.toNativeUtf8();
+  try {
+    return init(modelPathPointer).address;
+  } finally {
+    malloc.free(modelPathPointer);
+  }
+}
+
+String? _transcribe(String libraryPath, int contextAddress, String audioFilePath) {
+  final library = DynamicLibrary.open(libraryPath);
+  final transcribe = library.lookupFunction<WhisperTranscribeNative, WhisperTranscribe>('whisper_ffi_transcribe');
+  final freeString = library.lookupFunction<WhisperFreeStringNative, WhisperFreeString>('whisper_ffi_free_string');
+
+  final audioPathPointer = audioFilePath.toNativeUtf8();
+  try {
+    final resultPointer = transcribe(Pointer<Void>.fromAddress(contextAddress), audioPathPointer);
+    if (resultPointer == nullptr) return null;
     try {
-      if (_whisperContext != null) {
-        developer.log('🧹 [WhisperFFI] Cleaning up Whisper context', name: _logName);
-        _whisperFree(_whisperContext!);
-        _whisperContext = null;
-      }
-
-      developer.log('✅ [WhisperFFI] Resources cleaned up', name: _logName);
-    } catch (e) {
-      developer.log('⚠️ [WhisperFFI] Error during cleanup: $e', name: _logName, error: e);
+      return resultPointer.toDartString();
+    } finally {
+      freeString(resultPointer);
     }
+  } finally {
+    malloc.free(audioPathPointer);
   }
+}
 
-  // Private helper methods
-
-  void _loadLibrary() {
-    if (Platform.isIOS || Platform.isMacOS) {
-      _loadAppleLibrary();
-    } else if (Platform.isAndroid || Platform.isLinux) {
-      _loadLinuxLibrary();
-    } else if (Platform.isWindows) {
-      _loadWindowsLibrary();
-    } else {
-      throw UnsupportedError('Platform ${Platform.operatingSystem} is not supported');
-    }
-
-    developer.log('✅ [WhisperFFI] Native library loaded for ${Platform.operatingSystem}', name: _logName);
-  }
-
-  void _loadAppleLibrary() {
-    final List<String> libraryPaths = [
-      // App bundle paths (runtime)
-      'libwhisper_ffi.dylib', // Standard @rpath lookup
-      '@rpath/libwhisper_ffi.dylib', // Explicit @rpath
-      'Frameworks/libwhisper_ffi.dylib', // App bundle Frameworks
-      // Development paths (when running from Xcode/IDE)
-      'macos/Runner/libwhisper_ffi.dylib',
-      './macos/Runner/libwhisper_ffi.dylib',
-      path.join(Directory.current.path, 'macos', 'Runner', 'libwhisper_ffi.dylib'),
-
-      // Build output paths
-      'native/whisper/whisper.cpp/build/libwhisper_ffi.dylib',
-      './native/whisper/whisper.cpp/build/libwhisper_ffi.dylib',
-      path.join(Directory.current.path, 'native', 'whisper', 'whisper.cpp', 'build', 'libwhisper_ffi.dylib'),
-    ];
-
-    Exception? lastError;
-
-    for (final libraryPath in libraryPaths) {
-      try {
-        developer.log('🔍 [WhisperFFI] Trying to load library from: $libraryPath', name: _logName);
-        _whisperLib = DynamicLibrary.open(libraryPath);
-        developer.log('✅ [WhisperFFI] Successfully loaded library from: $libraryPath', name: _logName);
-        return;
-      } catch (e) {
-        developer.log('⚠️ [WhisperFFI] Failed to load from $libraryPath: $e', name: _logName);
-        lastError = e is Exception ? e : Exception(e.toString());
-        continue;
-      }
-    }
-
-    // If we get here, all paths failed
-    throw Exception(
-      'Failed to load Whisper native library (libwhisper_ffi.dylib) from any of the expected locations:\n'
-      '${libraryPaths.map((path) => '  • $path').join('\n')}\n\n'
-      'Please ensure the library is built and accessible. Try running:\n'
-      '  ./scripts/build_whisper.sh\n\n'
-      'Last error: $lastError',
-    );
-  }
-
-  void _loadLinuxLibrary() {
-    final List<String> libraryPaths = [
-      'libwhisper_ffi.so',
-      './libwhisper_ffi.so',
-      'linux/libwhisper_ffi.so',
-      './linux/libwhisper_ffi.so',
-    ];
-
-    Exception? lastError;
-
-    for (final libraryPath in libraryPaths) {
-      try {
-        _whisperLib = DynamicLibrary.open(libraryPath);
-        developer.log('✅ [WhisperFFI] Successfully loaded library from: $libraryPath', name: _logName);
-        return;
-      } catch (e) {
-        lastError = e is Exception ? e : Exception(e.toString());
-        continue;
-      }
-    }
-
-    throw Exception(
-      'Failed to load Whisper native library (libwhisper_ffi.so). '
-      'Please ensure the library is built and accessible. '
-      'Last error: $lastError',
-    );
-  }
-
-  void _loadWindowsLibrary() {
-    final List<String> libraryPaths = [
-      'whisper_ffi.dll',
-      './whisper_ffi.dll',
-      'windows/whisper_ffi.dll',
-      './windows/whisper_ffi.dll',
-    ];
-
-    Exception? lastError;
-
-    for (final libraryPath in libraryPaths) {
-      try {
-        _whisperLib = DynamicLibrary.open(libraryPath);
-        developer.log('✅ [WhisperFFI] Successfully loaded library from: $libraryPath', name: _logName);
-        return;
-      } catch (e) {
-        lastError = e is Exception ? e : Exception(e.toString());
-        continue;
-      }
-    }
-
-    throw Exception(
-      'Failed to load Whisper native library (whisper_ffi.dll). '
-      'Please ensure the library is built and accessible. '
-      'Last error: $lastError',
-    );
-  }
-
-  void _bindFunctions() {
-    try {
-      // Bind whisper_ffi_init function
-      _whisperInit = _whisperLib
-          .lookup<NativeFunction<WhisperInitNative>>('whisper_ffi_init')
-          .asFunction<WhisperInit>();
-
-      // Bind whisper_ffi_transcribe function
-      _whisperTranscribe = _whisperLib
-          .lookup<NativeFunction<WhisperTranscribeNative>>('whisper_ffi_transcribe')
-          .asFunction<WhisperTranscribe>();
-
-      // Bind whisper_ffi_free function
-      _whisperFree = _whisperLib
-          .lookup<NativeFunction<WhisperFreeNative>>('whisper_ffi_free')
-          .asFunction<WhisperFree>();
-
-      // Bind whisper_ffi_free_string function
-      _whisperFreeString = _whisperLib
-          .lookup<NativeFunction<WhisperFreeStringNative>>('whisper_ffi_free_string')
-          .asFunction<WhisperFreeString>();
-
-      developer.log('✅ [WhisperFFI] Native functions bound successfully', name: _logName);
-    } catch (e) {
-      developer.log('❌ [WhisperFFI] Failed to bind native functions: $e', name: _logName, error: e);
-
-      throw Exception(
-        'Failed to bind Whisper native functions. '
-        'Make sure the library exports the required functions: '
-        'whisper_ffi_init, whisper_ffi_transcribe, whisper_ffi_free, whisper_ffi_free_string. '
-        'Original error: $e',
-      );
-    }
-  }
+void _freeModel(String libraryPath, int contextAddress) {
+  DynamicLibrary.open(
+    libraryPath,
+  ).lookupFunction<WhisperFreeNative, WhisperFree>('whisper_ffi_free')(Pointer<Void>.fromAddress(contextAddress));
 }

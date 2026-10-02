@@ -9,7 +9,7 @@
 [![AI](https://img.shields.io/badge/AI-whisper.cpp%201.7.6-purple.svg)](https://github.com/ggml-org/whisper.cpp)
 
 > An educational voice memo app. You record on any platform through native audio APIs; on macOS the recording is
-> transcribed fully offline by whisper.cpp, called from Dart through FFI.
+> transcribed fully offline by whisper.cpp, called from Dart through FFI on a background isolate.
 
 ---
 
@@ -40,6 +40,7 @@ Optional: `brew install ffmpeg` for the `Process.run` demo card (debug builds on
 ### 🔧 Flutter and native integration
 - **Platform Channels**: recording and playback through AVAudioRecorder (iOS, macOS) and MediaRecorder (Android)
 - **Dart FFI**: a small C wrapper around whisper.cpp, with explicit memory ownership on both sides
+- **Isolates**: each native transcription runs in `Isolate.run`, so the UI keeps animating while Whisper works
 - **Platform Views**: a native text view embedded in the Flutter tree
 - **Process.run**: calling an external tool (ffmpeg) with an allowlist and graceful failure
 
@@ -51,6 +52,8 @@ Optional: `brew install ffmpeg` for the `Process.run` demo card (debug builds on
 ### 🎨 UI
 - **Custom painters**: 5 visualization modes (waveform, spectrum, particles, radial, hybrid)
 - **Live controls** for size and speed, plus an immersive fullscreen mode
+- **Event Mode** for talks and booths: Settings switches on the DevFest theme and an app bar with your event's
+  name, city, year and flag; the choice is saved across restarts
 
 ### 🧱 Architecture
 - **Cubits** (`flutter_bloc`) with immutable, `Equatable` states
@@ -69,7 +72,7 @@ graph TB
 
     subgraph "🔧 Integration"
         PC[Platform Channels<br/>voice.bridge/audio]
-        FFI[Dart FFI<br/>C wrapper]
+        FFI[Dart FFI<br/>Isolate.run]
         GemmaPlugin[flutter_gemma plugin]
     end
 
@@ -140,8 +143,10 @@ flutter test                              # unit and widget tests, also run in C
 flutter test integration_test -d macos    # on-device smoke test, needs ./scripts/build_whisper.sh first
 ```
 
-Covered today: the home cubit's recording start and error mapping, the home screen's empty state and record
-button, and dependency registration. Native code (FFI, channels) is exercised by the integration test only.
+Covered today: every public method of the home and Gemma cubits, event branding and its persistence, the home
+screen (empty state, record button, event app bar) and dependency registration. On a Mac with the native build,
+`test/core/transcription/whisper_ffi_service_test.dart` also transcribes whisper.cpp's sample clip through the
+real library and checks that the calling isolate stayed responsive; CI skips it.
 
 ---
 

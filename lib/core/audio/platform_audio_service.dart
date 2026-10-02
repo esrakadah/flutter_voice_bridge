@@ -1,3 +1,6 @@
+import 'package:flutter/services.dart';
+
+import '../errors/voice_bridge_error.dart';
 import 'audio_service.dart';
 import '../platform/platform_channels.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -12,8 +15,8 @@ class PlatformAudioService implements AudioService {
     try {
       final String filePath = await PlatformChannels.startRecording();
       return filePath;
-    } catch (e) {
-      throw Exception('Failed to start recording: $e');
+    } on PlatformException catch (exception) {
+      throw RecordingFailure.fromPlatformException(exception);
     }
   }
 
@@ -22,8 +25,8 @@ class PlatformAudioService implements AudioService {
     try {
       final String filePath = await PlatformChannels.stopRecording();
       return filePath;
-    } catch (e) {
-      throw Exception('Failed to stop recording: $e');
+    } on PlatformException catch (exception) {
+      throw RecordingFailure.fromPlatformException(exception);
     }
   }
 
@@ -32,8 +35,8 @@ class PlatformAudioService implements AudioService {
     try {
       final String result = await PlatformChannels.playRecording(filePath);
       return result;
-    } catch (e) {
-      throw Exception('Failed to play recording: $e');
+    } on PlatformException catch (exception) {
+      throw RecordingFailure.fromPlatformException(exception);
     }
   }
 
@@ -74,7 +77,7 @@ class PlatformAudioService implements AudioService {
             name: 'VoiceBridge.Audio',
           );
         }
-        throw Exception('Microphone permission denied (Status: $status)');
+        throw RecordingFailure(details: 'Microphone permission $status', type: RecordingErrorType.permissionDenied);
       }
     } catch (e) {
       // Fallback: If permission_handler plugin is missing (common in dev),

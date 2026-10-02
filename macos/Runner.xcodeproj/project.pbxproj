@@ -385,7 +385,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "NATIVE_LIB_DIR=\"${PROJECT_DIR}/../native/whisper/build\"\nFRAMEWORKS_DIR=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\nSIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY:--}\"\n\nif [ ! -f \"$NATIVE_LIB_DIR/libwhisper_ffi.dylib\" ]; then\n  echo \"error: $NATIVE_LIB_DIR/libwhisper_ffi.dylib not found. Run ./scripts/build_whisper.sh first.\" >&2\n  exit 1\nfi\n\nmkdir -p \"$FRAMEWORKS_DIR\"\nfind \"$NATIVE_LIB_DIR\" -name '*.dylib' -exec cp -a {} \"$FRAMEWORKS_DIR\" \\;\nfind \"$FRAMEWORKS_DIR\" -name '*.dylib' -type f -exec codesign --force --sign \"$SIGN_IDENTITY\" --timestamp=none --options runtime {} \\;\n";
+			shellScript = "NATIVE_LIB_DIR=\"${PROJECT_DIR}/../native/whisper/build/lib\"\nFRAMEWORKS_DIR=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\nSIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY:--}\"\n\nif [ ! -f \"$NATIVE_LIB_DIR/libwhisper_ffi.dylib\" ]; then\n  echo \"error: $NATIVE_LIB_DIR/libwhisper_ffi.dylib not found. Run ./scripts/build_whisper.sh first.\" >&2\n  exit 1\nfi\n\nmkdir -p \"$FRAMEWORKS_DIR\"\nfind \"$NATIVE_LIB_DIR\" -name '*.dylib' -exec cp -a {} \"$FRAMEWORKS_DIR\" \\;\nfind \"$FRAMEWORKS_DIR\" -name '*.dylib' -type f -exec codesign --force --sign \"$SIGN_IDENTITY\" --timestamp=none --options runtime {} \\;\n";
 			showEnvVarsInLog = 0;
 		};
 		B12184B17DE5CD4212174AD6 /* [CP] Check Pods Manifest.lock */ = {

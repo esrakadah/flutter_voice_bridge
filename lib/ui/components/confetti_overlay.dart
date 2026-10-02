@@ -184,9 +184,11 @@ class ConfettiOverlay extends StatefulWidget {
 }
 
 class _ConfettiOverlayState extends State<ConfettiOverlay> with SingleTickerProviderStateMixin {
+  static const double _firstFrameSeconds = 1 / 60;
+
   late AnimationController _animationController;
   final List<ConfettiParticle> _particles = [];
-  DateTime? _lastFrameTime;
+  Duration? _lastElapsed;
 
   @override
   void initState() {
@@ -234,7 +236,7 @@ class _ConfettiOverlayState extends State<ConfettiOverlay> with SingleTickerProv
     }
 
     _particles.clear();
-    _lastFrameTime = null;
+    _lastElapsed = null;
 
     // Create particles
     final size = MediaQuery.of(context).size;
@@ -284,11 +286,13 @@ class _ConfettiOverlayState extends State<ConfettiOverlay> with SingleTickerProv
   }
 
   void _updateParticles() {
-    final now = DateTime.now();
-    final dt = _lastFrameTime == null
-        ? 0.016 // First frame, assume 60fps
-        : now.difference(_lastFrameTime!).inMilliseconds / 1000.0;
-    _lastFrameTime = now;
+    // The controller's own clock follows timeDilation and fake time in tests, unlike the wall clock.
+    final elapsed = _animationController.lastElapsedDuration ?? Duration.zero;
+    final previous = _lastElapsed;
+    final dt = previous == null
+        ? _firstFrameSeconds
+        : (elapsed - previous).inMicroseconds / Duration.microsecondsPerSecond;
+    _lastElapsed = elapsed;
 
     if (!mounted) return;
 

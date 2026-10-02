@@ -1,11 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../data/gemma_constants.dart';
-import '../data/gemma_downloader_datasource.dart';
+import '../../di.dart';
+import '../data/gemma_service.dart';
 import '../domain/available_models.dart';
 
 class GemmaSettingsScreen extends StatefulWidget {
@@ -16,6 +12,7 @@ class GemmaSettingsScreen extends StatefulWidget {
 }
 
 class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
+  final GemmaService _gemmaService = getIt<GemmaService>();
   AvailableModel? _selectedModel;
   final Map<AvailableModel, bool> _modelExistence = {};
   final Map<AvailableModel, double?> _downloadProgress = {};
@@ -30,35 +27,23 @@ class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
   Future<void> _loadSettings() async {
     setState(() => _loading = true);
 
-    final prefs = await SharedPreferences.getInstance();
-    final selectedFilename = prefs.getString('selected_gemma_model');
+    final selectedModel = await _gemmaService.getSelectedModel();
+    final existence = <AvailableModel, bool>{
+      for (final model in AvailableModel.values) model: await _gemmaService.isModelDownloaded(model),
+    };
 
-    if (selectedFilename != null) {
-      _selectedModel = AvailableModel.values.firstWhere(
-        (m) => m.filename == selectedFilename,
-        orElse: () => AvailableModel.gemma1b,
-      );
-    } else {
-      _selectedModel = AvailableModel.gemma1b;
-    }
-
-    for (final model in AvailableModel.values) {
-      final datasource = GemmaDownloaderDataSource(
-        model: model.toDownloadModel(),
-      );
-      final exists = await datasource.checkModelExistence();
-      _modelExistence[model] = exists;
-    }
-
-    setState(() => _loading = false);
+    if (!mounted) return;
+    setState(() {
+      _selectedModel = selectedModel;
+      _modelExistence.addAll(existence);
+      _loading = false;
+    });
   }
 
   Future<void> _selectModel(AvailableModel model) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('selected_gemma_model', model.filename);
-    setState(() => _selectedModel = model);
-
+    await _gemmaService.setSelectedModel(model);
     if (mounted) {
+      setState(() => _selectedModel = model);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -83,25 +68,15 @@ class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
     });
 
     try {
-      final datasource = GemmaDownloaderDataSource(
-        model: model.toDownloadModel(),
-      );
-
-      await datasource.downloadModel(
-        token: GemmaConstants.huggingFaceAccessToken,
-        onProgress: (progress) {
-          setState(() {
-            _downloadProgress[model] = progress;
-          });
-        },
-      );
-
-      setState(() {
-        _modelExistence[model] = true;
-        _downloadProgress[model] = null;
+      await _gemmaService.downloadModel(model, (progress) {
+        if (mounted) setState(() => _downloadProgress[model] = progress);
       });
 
       if (mounted) {
+        setState(() {
+          _modelExistence[model] = true;
+          _downloadProgress[model] = null;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -119,11 +94,8 @@ class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
         );
       }
     } catch (e) {
-      setState(() {
-        _downloadProgress[model] = null;
-      });
-
       if (mounted) {
+        setState(() => _downloadProgress[model] = null);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -169,21 +141,10 @@ class _GemmaSettingsScreenState extends State<GemmaSettingsScreen> {
     if (confirmed != true) return;
 
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/${model.filename}');
-
-      if (file.existsSync()) {
-        await file.delete();
-      }
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('model_downloaded_${model.filename}');
-
-      setState(() {
-        _modelExistence[model] = false;
-      });
+      await _gemmaService.deleteModel(model);
 
       if (mounted) {
+        setState(() => _modelExistence[model] = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(

@@ -3,11 +3,8 @@ import '../../home/home_state.dart';
 
 /// Widget that displays the current recording status
 ///
-/// Shows different UI based on the recording state:
-/// - RecordingInProgress: Shows recording indicator with duration
-/// - RecordingCompleted: Shows success message with final duration
-/// - RecordingError: Shows error message
-/// - HomeInitial: Shows nothing (hidden)
+/// Shows a card for the recorder's phase (recording, completed, failed) and for playback errors;
+/// shows nothing while idle.
 class RecordingStatusWidget extends StatelessWidget {
   final HomeState state;
 
@@ -15,7 +12,8 @@ class RecordingStatusWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (state is HomeInitial) {
+    final hasStatus = state.recordingPhase != RecordingPhase.idle || state.playbackError != null;
+    if (!hasStatus) {
       return const SizedBox.shrink();
     }
 
@@ -31,8 +29,7 @@ class RecordingStatusWidget extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    if (state is RecordingInProgress) {
-      final recordingState = state as RecordingInProgress;
+    if (state.isRecording) {
       return Column(
         children: [
           Row(
@@ -52,7 +49,7 @@ class RecordingStatusWidget extends StatelessWidget {
               Icon(Icons.timer_outlined, size: 20, color: colorScheme.primary),
               const SizedBox(width: 8),
               Text(
-                _formatDuration(recordingState.recordingDuration),
+                _formatDuration(state.recordingDuration),
                 style: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.primary),
               ),
             ],
@@ -61,8 +58,7 @@ class RecordingStatusWidget extends StatelessWidget {
       );
     }
 
-    if (state is RecordingCompleted) {
-      final completedState = state as RecordingCompleted;
+    if (state.recordingPhase == RecordingPhase.completed) {
       return Row(
         children: [
           Container(
@@ -79,7 +75,7 @@ class RecordingStatusWidget extends StatelessWidget {
                   'Recording completed',
                   style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: Colors.green),
                 ),
-                Text('Duration: ${_formatDuration(completedState.recordingDuration)}', style: textTheme.bodyMedium),
+                Text('Duration: ${_formatDuration(state.recordingDuration)}', style: textTheme.bodyMedium),
               ],
             ),
           ),
@@ -87,8 +83,9 @@ class RecordingStatusWidget extends StatelessWidget {
       );
     }
 
-    if (state is RecordingError) {
-      final errorState = state as RecordingError;
+    final errorMessage = state.recordingPhase == RecordingPhase.failed ? state.recordingError : state.playbackError;
+    if (errorMessage != null) {
+      final errorTitle = state.recordingPhase == RecordingPhase.failed ? 'Recording Error' : 'Playback Error';
       return Row(
         children: [
           Container(
@@ -102,10 +99,10 @@ class RecordingStatusWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Recording Error',
+                  errorTitle,
                   style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.error),
                 ),
-                Text(errorState.errorMessage, style: textTheme.bodyMedium),
+                Text(errorMessage, style: textTheme.bodyMedium),
               ],
             ),
           ),

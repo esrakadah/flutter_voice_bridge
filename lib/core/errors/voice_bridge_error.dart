@@ -4,6 +4,8 @@ library;
 
 import 'dart:developer' as developer;
 
+import 'package:flutter/services.dart';
+
 abstract class VoiceBridgeError implements Exception {
   const VoiceBridgeError();
 
@@ -16,11 +18,23 @@ abstract class VoiceBridgeError implements Exception {
 enum ErrorSeverity { low, medium, high, critical }
 
 /// Audio Recording Errors
-class RecordingError extends VoiceBridgeError {
+class RecordingFailure extends VoiceBridgeError {
   final String details;
   final RecordingErrorType type;
 
-  const RecordingError({required this.details, required this.type});
+  const RecordingFailure({required this.details, required this.type});
+
+  /// Maps the error codes sent by the native recorders (iOS, macOS, Android) to a typed failure.
+  factory RecordingFailure.fromPlatformException(PlatformException exception) {
+    final details = exception.message ?? exception.code;
+    final type = switch (exception.code) {
+      'PERMISSION_DENIED' || 'PERMISSION_UNKNOWN' => RecordingErrorType.permissionDenied,
+      'AUDIO_FOCUS_ERROR' || 'AUDIO_SESSION_ERROR' => RecordingErrorType.deviceBusy,
+      'RECORDING_ERROR' || 'RECORDING_FAILED' || 'INSTANCE_ERROR' => RecordingErrorType.hardwareFailure,
+      _ => RecordingErrorType.unknown,
+    };
+    return RecordingFailure(details: details, type: type);
+  }
 
   @override
   String get message => 'Recording failed: $details';
@@ -77,11 +91,11 @@ class RecordingError extends VoiceBridgeError {
 enum RecordingErrorType { permissionDenied, deviceBusy, insufficientStorage, hardwareFailure, unknown }
 
 /// Transcription Errors
-class TranscriptionError extends VoiceBridgeError {
+class TranscriptionFailure extends VoiceBridgeError {
   final String details;
   final TranscriptionErrorType type;
 
-  const TranscriptionError({required this.details, required this.type});
+  const TranscriptionFailure({required this.details, required this.type});
 
   @override
   String get message => 'Transcription failed: $details';
@@ -151,11 +165,11 @@ enum TranscriptionErrorType {
 }
 
 /// Platform Errors
-class PlatformError extends VoiceBridgeError {
+class PlatformFailure extends VoiceBridgeError {
   final String details;
   final PlatformErrorType type;
 
-  const PlatformError({required this.details, required this.type});
+  const PlatformFailure({required this.details, required this.type});
 
   @override
   String get message => 'Platform error: $details';
@@ -202,22 +216,25 @@ class ErrorHelpers {
 
     // Recording permission errors
     if (message.contains('permission') || message.contains('denied')) {
-      return const RecordingError(details: 'Microphone permission denied', type: RecordingErrorType.permissionDenied);
+      return const RecordingFailure(details: 'Microphone permission denied', type: RecordingErrorType.permissionDenied);
     }
 
     // Device busy errors
     if (message.contains('busy') || message.contains('in use')) {
-      return const RecordingError(details: 'Audio device is busy', type: RecordingErrorType.deviceBusy);
+      return const RecordingFailure(details: 'Audio device is busy', type: RecordingErrorType.deviceBusy);
     }
 
     // Storage errors
     if (message.contains('storage') || message.contains('space')) {
-      return const RecordingError(details: 'Insufficient storage space', type: RecordingErrorType.insufficientStorage);
+      return const RecordingFailure(
+        details: 'Insufficient storage space',
+        type: RecordingErrorType.insufficientStorage,
+      );
     }
 
     // FFI/Transcription errors
     if (message.contains('whisper') || message.contains('transcription')) {
-      return const TranscriptionError(
+      return const TranscriptionFailure(
         details: 'Transcription processing failed',
         type: TranscriptionErrorType.processingFailed,
       );
@@ -225,14 +242,14 @@ class ErrorHelpers {
 
     // Platform channel errors
     if (message.contains('methodchannel') || message.contains('platform')) {
-      return const PlatformError(
+      return const PlatformFailure(
         details: 'Platform communication failed',
         type: PlatformErrorType.communicationFailure,
       );
     }
 
     // Default to unknown recording error
-    return RecordingError(details: exception.toString(), type: RecordingErrorType.unknown);
+    return RecordingFailure(details: exception.toString(), type: RecordingErrorType.unknown);
   }
 
   /// Logs error with appropriate level based on severity

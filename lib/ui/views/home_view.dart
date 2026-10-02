@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,7 +15,9 @@ import '../../core/audio/audio_converter.dart';
 import 'home/widgets/animation_controls_widget.dart';
 import 'home/widgets/recording_status_widget.dart';
 import '../../gemma/ui/gemma_chat_screen.dart';
-import '../components/devfest_app_bar.dart';
+import '../../core/branding/branding_cubit.dart';
+import '../components/dynamic_app_bar.dart';
+import 'settings/settings_view.dart';
 import '../components/confetti_overlay.dart';
 
 /// 🎓 **WORKSHOP MODULE 1.1: Clean Architecture UI Layer**
@@ -82,20 +83,18 @@ class _HomeViewContentState extends State<HomeViewContent> {
     // BlocBuilder automatically rebuilds UI when HomeCubit emits new states
     // This creates a reactive programming model where UI is a function of state
     final themeCubit = context.read<ThemeCubit>();
-    final isDevFestMode = themeCubit.isDevFestMode;
+    final branding = context.watch<BrandingCubit>().state;
 
     return ConfettiOverlay(
       controller: _confettiController,
       child: Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        appBar: isDevFestMode
-            ? DevFestAppBar(
+        appBar: branding.isEventMode
+            ? DynamicAppBar(
                 themeCubit: themeCubit,
                 confettiController: _confettiController,
-                eventName: 'DevFest',
-                location: 'Berlin',
-                year: '2025',
-                flag: '🇩🇪',
+                branding: branding,
+                onSettingsPressed: () => _openSettings(context),
               )
             : AppBar(
                 title: Text(
@@ -105,6 +104,11 @@ class _HomeViewContentState extends State<HomeViewContent> {
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 actions: [
+                  IconButton(
+                    icon: const Icon(Icons.settings),
+                    tooltip: 'Settings',
+                    onPressed: () => _openSettings(context),
+                  ),
                   // Confetti button
                   Padding(
                     padding: const EdgeInsets.only(right: 8.0),
@@ -160,8 +164,8 @@ class _HomeViewContentState extends State<HomeViewContent> {
                 // Recordings list
                 _buildRecordingsList(context, state),
 
-                // Gemma AI Chat (iOS and Web)
-                if (Platform.isIOS || kIsWeb) SliverToBoxAdapter(child: _buildGemmaChatCard(context)),
+                // Gemma AI Chat (iOS)
+                if (Platform.isIOS) SliverToBoxAdapter(child: _buildGemmaChatCard(context)),
 
                 // Platform View demonstration
                 SliverToBoxAdapter(child: _buildPlatformViewDemo(context)),
@@ -180,8 +184,12 @@ class _HomeViewContentState extends State<HomeViewContent> {
     );
   }
 
+  void _openSettings(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsView()));
+  }
+
   Widget _buildHeroSection(BuildContext context, HomeState state) {
-    final isRecording = state is RecordingInProgress || state is RecordingStarted;
+    final isRecording = state.isRecording;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -495,7 +503,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
   }
 
   Widget _buildRecordingTile(BuildContext context, VoiceMemo recording, HomeState state) {
-    final isPlaying = state is PlaybackInProgress && state.filePath == recording.filePath;
+    final isPlaying = state.playingFilePath == recording.filePath;
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -686,7 +694,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
   Widget _buildFloatingActionButton(BuildContext context) {
     return BlocBuilder<HomeCubit, HomeState>(
       builder: (context, state) {
-        final isRecording = state is RecordingInProgress || state is RecordingStarted;
+        final isRecording = state.isRecording;
 
         return Container(
           decoration: BoxDecoration(
@@ -862,49 +870,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
   }
 
   void _retryTranscription(BuildContext context) {
-    // Get the most recent recording file path for retry
-    final state = context.read<HomeCubit>().state;
-    if (state.recordings.isNotEmpty) {
-      final latestRecording = state.recordings.first;
-      // Add null safety check for file path
-      if (latestRecording.filePath.isNotEmpty) {
-        context.read<HomeCubit>().transcribeRecording(latestRecording.filePath);
-      } else {
-        // Show error if no valid file path
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.error, color: Colors.white, size: 20),
-                SizedBox(width: 12),
-                Text('No valid recording file found to transcribe'),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
-      }
-    } else {
-      // Show error if no recordings available
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.warning, color: Colors.white, size: 20),
-              SizedBox(width: 12),
-              Text('No recordings available to transcribe'),
-            ],
-          ),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
-    }
+    context.read<HomeCubit>().retryLastTranscription();
   }
 
   Widget _buildTranscriptionProgressCard(BuildContext context, HomeState state) {

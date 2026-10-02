@@ -99,15 +99,19 @@ class _GemmaChatViewState extends State<_GemmaChatView> {
         ),
       ),
       body: BlocConsumer<GemmaCubit, GemmaState>(
+        listenWhen: (previous, current) =>
+            (current.errorMessage != null && current.errorMessage != previous.errorMessage) ||
+            (current.sendError != null && current.sendError != previous.sendError),
         listener: (context, state) {
-          if (state.status == GemmaStatus.error && state.errorMessage != null) {
+          final message = state.sendError ?? state.errorMessage;
+          if (message != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Row(
                   children: [
                     const Icon(Icons.error, color: Colors.white, size: 20),
                     const SizedBox(width: 12),
-                    Expanded(child: Text('Failed: ${state.errorMessage}')),
+                    Expanded(child: Text('Failed: $message')),
                   ],
                 ),
                 backgroundColor: Colors.red,

@@ -28,7 +28,7 @@ Builds libwhisper_ffi.dylib (whisper.cpp $WHISPER_CPP_TAG) and downloads the $MO
 Usage: ./scripts/build_whisper.sh
 
 Requirements: macOS, git, cmake, Xcode command line tools, internet for the first run.
-Output: $BUILD_DIR (copied into the app by the macOS "Copy Native Libraries" build phase)
+Output: $BUILD_DIR/lib (copied into the app by the macOS "Copy Native Libraries" build phase)
         $MODEL_DIR/$MODEL_FILE
 USAGE
 }
@@ -62,14 +62,16 @@ checkout_whisper_cpp() {
 
 build_library() {
     log_info "Compiling libwhisper_ffi.dylib (macOS $MACOS_DEPLOYMENT_TARGET+, $(uname -m))"
-    cmake -S "$NATIVE_DIR" -B "$BUILD_DIR" \
+    cmake -S "$NATIVE_DIR" -B "$BUILD_DIR" -Wno-dev \
         -DCMAKE_BUILD_TYPE=Release \
+        -DGGML_CCACHE=OFF \
+        -DGGML_OPENMP=OFF \
         -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_DEPLOYMENT_TARGET" \
         -DCMAKE_INSTALL_RPATH="@loader_path" \
         -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
         >/dev/null
     cmake --build "$BUILD_DIR" --config Release --parallel "$(sysctl -n hw.ncpu)" >/dev/null
-    log_success "Built $BUILD_DIR/libwhisper_ffi.dylib"
+    log_success "Built $BUILD_DIR/lib/libwhisper_ffi.dylib"
 }
 
 download_model() {

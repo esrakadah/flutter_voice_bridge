@@ -5,9 +5,9 @@ import 'package:get_it/get_it.dart';
 import 'core/audio/audio_service.dart';
 import 'core/audio/platform_audio_service.dart';
 import 'core/transcription/transcription_service.dart';
-import 'core/transcription/web_transcription_service.dart';
+import 'core/branding/branding_cubit.dart';
+import 'core/branding/branding_repository.dart';
 import 'core/theme/theme_provider.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'data/services/voice_memo_service.dart';
 import 'ui/views/home/home_cubit.dart';
 import 'gemma/data/gemma_service.dart';
@@ -62,27 +62,24 @@ class DependencyInjection {
     // 🤖 TRANSCRIPTION SERVICE - PLATFORM CONDITIONAL REGISTRATION
     // This demonstrates intelligent service selection based on platform capabilities
     // Shows how to handle platform-specific features gracefully
-    getIt.registerLazySingleton<TranscriptionService>(() {
-      // 🍎 APPLE PLATFORMS: Full Whisper.cpp FFI integration
-      // Currently only enabled for macOS as iOS requires signed dylibs and complex setup
-      if (kIsWeb) {
-        // 🌐 WEB PLATFORM: Mock service
-        // FFI is not supported on web, so we use a placeholder
-        return WebTranscriptionService();
-      } else if (Platform.isMacOS) {
-        return WhisperTranscriptionService();
-      } else {
-        // 🤖 OTHER PLATFORMS: Mock service for development
-        // Android and iOS use mock until native library is properly configured
-        // This allows development to continue on all platforms
-        return MockTranscriptionService();
-      }
-    });
+    // 🤖 TRANSCRIPTION: real whisper.cpp on macOS; placeholder text on iOS and Android, where the native library
+    // is not built. Owned by the container: disposed in [dispose], never by a cubit.
+    getIt.registerLazySingleton<TranscriptionService>(
+      () => Platform.isMacOS ? WhisperTranscriptionService() : PlaceholderTranscriptionService(),
+      dispose: (service) => service.dispose(),
+    );
 
     // 🎨 THEME MANAGEMENT
     // Singleton because theme state should be shared across entire app
     // Theme changes affect global UI state
-    getIt.registerLazySingleton<ThemeCubit>(() => ThemeCubit());
+    getIt.registerLazySingleton<ThemeCubit>(ThemeCubit.new, dispose: (cubit) => cubit.close());
+
+    // 🎭 EVENT BRANDING: shared by the theme, the app bar and the settings screen; restored from preferences.
+    getIt.registerLazySingleton<BrandingRepository>(BrandingRepository.new);
+    getIt.registerLazySingleton<BrandingCubit>(
+      () => BrandingCubit(repository: getIt<BrandingRepository>())..load(),
+      dispose: (cubit) => cubit.close(),
+    );
 
     // 🏠 UI STATE MANAGEMENT - FACTORY REGISTRATION
     // HomeCubit is registered as Factory because:
@@ -105,15 +102,14 @@ class DependencyInjection {
     // This prevents re-initialization when navigating back to the chat screen.
     getIt.registerLazySingleton<GemmaCubit>(
       () => GemmaCubit(gemmaService: getIt<GemmaService>())..initialize(),
+      dispose: (cubit) => cubit.close(),
     );
   }
 
   /// 🧹 CLEANUP METHOD
   /// Important for testing - allows resetting the service locator
   /// In production apps, you might also use this during app restart
-  static void reset() {
-    getIt.reset();
-  }
+  static Future<void> reset() => getIt.reset();
 
   /// 🔍 DEBUGGING HELPER
   /// Useful during development to see what services are registered
