@@ -25,7 +25,7 @@ void main() {
     expect(find.byIcon(Icons.mic_rounded), findsWidgets);
   });
 
-  testWidgets('macOS: the bundled library transcribes on a background isolate without the old placeholder', (
+  testWidgets('macOS: the bundled library transcribes silence to empty text on a background isolate', (
     tester,
   ) async {
     final service = WhisperFFIService();
@@ -36,8 +36,7 @@ void main() {
     await silence.writeAsBytes(_silentWav(sampleRate: 16000, seconds: 1));
     final transcription = await service.transcribeAudio(silence.path);
 
-    // Whisper may hallucinate a short word ("you") on silence; what must never come back is the old placeholder.
-    expect(transcription, isNot(contains('No speech detected')));
+    expect(transcription, isEmpty, reason: 'silence must not come back as a hallucinated word or a marker');
     await service.dispose();
   }, skip: !Platform.isMacOS);
 }

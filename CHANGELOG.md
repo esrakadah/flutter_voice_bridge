@@ -48,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   newer one; retry transcribed the newest file instead of the one that failed.
 - Gemma's cleanup deleted models the user could still select, and two downloads of one model could corrupt it.
 - `scripts/build_whisper.sh` accepted a truncated model download; it now checks the exact size.
+- Whisper turned silence into a word ("you"); segments above whisper.cpp's no-speech threshold are now dropped,
+  measured on silence (0.91-0.94) against real speech (0.01-0.15).
 - A quiet recording showed whisper.cpp's `[BLANK_AUDIO]` marker as the transcript, and transcription errors
   repeated their "Transcription failed:" prefix. Found in a live microphone test on macOS.
 

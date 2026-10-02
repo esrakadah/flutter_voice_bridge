@@ -36,6 +36,30 @@ void main() {
     timeout: const Timeout(Duration(minutes: 2)),
   );
 
+  test(
+    'three seconds of silence transcribe to empty text, not a hallucinated word',
+    () async {
+      final service = WhisperFFIService();
+      await service.initialize();
+      await service.initializeModel(modelPath);
+      const sampleRate = 16000;
+      const seconds = 3;
+      final dataBytes = sampleRate * 2 * seconds;
+      final silence = File('${Directory.systemTemp.createTempSync('silence').path}/silence.wav')
+        ..writeAsBytesSync([
+          ..._wavHeader(channels: 1, dataBytes: dataBytes).buffer.asUint8List(),
+          ...List.filled(dataBytes, 0),
+        ]);
+
+      expect(await service.transcribeAudio(silence.path), isEmpty);
+
+      await service.dispose();
+      silence.parent.deleteSync(recursive: true);
+    },
+    skip: skipReason,
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
+
   group('malformed WAV files fail cleanly instead of reading out of bounds', () {
     final service = WhisperFFIService();
     late Directory scratch;

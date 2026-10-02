@@ -180,6 +180,13 @@ char* whisper_ffi_transcribe(whisper_context* ctx, const char* audio_path) {
         
         std::string result_text = "";
         for (int i = 0; i < n_segments; ++i) {
+            // whisper.cpp keeps a confident hallucination ("you") even when the window is almost surely silence,
+            // because it also requires a low log-probability. Measured: silence 0.91-0.94, speech 0.01-0.15.
+            const float no_speech_prob = whisper_full_get_segment_no_speech_prob(ctx, i);
+            if (no_speech_prob > wparams.no_speech_thold) {
+                std::cerr << "🔇 Dropping a segment with no-speech probability " << no_speech_prob << std::endl;
+                continue;
+            }
             const char* text = whisper_full_get_segment_text(ctx, i);
             if (text) {
                 result_text += text;
