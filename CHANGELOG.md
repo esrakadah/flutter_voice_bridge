@@ -30,8 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - The macOS app did not build on current Xcode (deployment target 10.15).
 - The native library embedded absolute build paths and was copied into the iOS project, where it cannot load.
-- README and guides claimed iOS transcription, 4 visualization modes and a 2-3x GPU speedup; they now match
-  the code.
+- README claimed iOS transcription, 4 visualization modes and a 2-3x GPU speedup; it now matches the code. The
+  guides' platform, version and speed claims are corrected; otherwise they still describe the July 2025 version.
 - Transcription ran on the UI isolate and froze the app; it now runs in `Isolate.run`.
 - Home state bugs: lost recordings list, errors that never cleared, a "completed" state never shown, crashes
   when leaving a screen mid-task.

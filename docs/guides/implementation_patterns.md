@@ -1,4 +1,8 @@
 # 🔧 Technical Implementation Guide
+
+> **Snapshot of the July 2025 workshop version.** Class names and file trees below may be out of date; the
+> [root README](../../README.md) and the code are authoritative for platform support, versions and architecture.
+
 # Flutter Voice Bridge - Advanced Integration Patterns
 
 **Last Updated**: 29 July 2025

@@ -1,5 +1,8 @@
 # 📊 Voice Bridge AI - Feature Implementation Status
 
+> **Snapshot of the July 2025 workshop version.** Class names and file trees below may be out of date; the
+> [root README](../../README.md) and the code are authoritative for platform support, versions and architecture.
+
 > **Last Updated**: 29 July 2025  
 > **Version**: 1.1.0  
 > **Platform Support**: iOS ✅ | macOS ✅ | Android ⚠️
@@ -114,7 +117,7 @@
 
 ## 🎯 **Working Demo Features**
 
-### ✅ **Fully Functional on iOS/macOS**
+### ✅ **Fully Functional on macOS** (iOS and Android: recording with placeholder transcription)
 - **Audio Recording**: High-quality 16kHz WAV format
 - **Speech Recognition**: Real-time offline transcription
 - **Immersive Animations**: Fullscreen experience with 5 visualization modes

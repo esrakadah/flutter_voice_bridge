@@ -1,5 +1,8 @@
 # 🏗️ Architecture Deep Dive
 
+> **Snapshot of the July 2025 workshop version.** Class names and file trees below may be out of date; the
+> [root README](../../README.md) and the code are authoritative for platform support, versions and architecture.
+
 Technical implementation guide for Voice Bridge AI's advanced Flutter integrations with **working offline AI transcription**.
 
 > **Current Status**: Transcription works on macOS; iOS and Android use a mock transcription service.  
@@ -76,7 +79,7 @@ graph TB
     subgraph "macOS/iOS Native Layer"
         Swift["🍎 Swift Implementation<br/>• AVAudioRecorder<br/>• Audio Session Config<br/>• WAV Format (16kHz)<br/>• Permission Handling"]
         
-        Metal["🚀 Metal GPU<br/>• Hardware Acceleration (✅ Working)<br/>• Neural Network Ops<br/>• Apple M1/M2/M3 Support<br/>• 2-3x Performance Boost"]
+        Metal["🚀 Metal GPU<br/>• Hardware Acceleration (✅ Working)<br/>• Neural Network Ops<br/>• Apple M1/M2/M3 Support"]
     end
     
     subgraph "Android Native Layer"
@@ -128,7 +131,7 @@ graph TB
     %% Status Indicators and Performance Metrics
     Performance["📊 Performance Metrics<br/>• Audio: 5-60 seconds<br/>• Processing: 2-3 seconds<br/>• Memory: ~200MB<br/>• File Size: 80KB-1MB"]
     
-    Status["✅ Current Status<br/>• iOS: Production Ready<br/>• macOS: Production Ready<br/>• Android: Audio Ready<br/>• Transcription: Working"]
+    Status["✅ Current Status<br/>• macOS: recording + transcription<br/>• iOS: recording, placeholder transcription<br/>• Android: recording, placeholder transcription"]
     
     %% Connect performance info
     Metal -.-> Performance
@@ -158,7 +161,7 @@ graph TB
 
 - **✅ Multi-Platform Integration**: Platform Channels + FFI + Platform Views
 - **✅ Production Memory Management**: Zero leaks with comprehensive cleanup
-- **✅ GPU Acceleration**: Metal backend for 2-3x performance boost
+- **✅ GPU Acceleration**: Metal backend through whisper.cpp defaults
 - **✅ Error Recovery**: Multi-path loading and graceful degradation
 - **✅ Clean Architecture**: Testable, maintainable, and scalable code organization
 
@@ -174,7 +177,6 @@ lib/
 │   ├── transcription/              # ✅ WORKING: AI services
 │   │   ├── transcription_service.dart   # Transcription interface
 │   │   ├── whisper_ffi_service.dart     # ✅ Working FFI implementation
-│   │   └── isolate_transcription_service.dart # Background processing
 │   ├── platform/
 │   │   └── platform_channels.dart  # Native method bridge
 │   ├── errors/

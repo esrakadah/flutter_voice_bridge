@@ -1,4 +1,8 @@
 # 🏗️ Visual Architecture Guide
+
+> **Snapshot of the July 2025 workshop version.** Class names and file trees below may be out of date; the
+> [root README](../../README.md) and the code are authoritative for platform support, versions and architecture.
+
 # Flutter Voice Bridge - Comprehensive System Diagrams
 
 **Last Updated**: 29 July 2025  
@@ -186,7 +190,7 @@ graph TB
     subgraph "macOS/iOS Native Layer"
         Swift["🍎 Swift Implementation<br/>• AVAudioRecorder<br/>• Audio Session Config<br/>• WAV Format (16kHz)<br/>• Permission Handling"]
         
-        Metal["🚀 Metal GPU<br/>• Hardware Acceleration (✅ Working)<br/>• Neural Network Ops<br/>• Apple M1/M2/M3 Support<br/>• 2-3x Performance Boost"]
+        Metal["🚀 Metal GPU<br/>• Hardware Acceleration (✅ Working)<br/>• Neural Network Ops<br/>• Apple M1/M2/M3 Support"]
     end
     
     subgraph "Android Native Layer"
