@@ -102,4 +102,31 @@ void main() {
     act: (cubit) => cubit.sendMessage(''),
     expect: () => <GemmaState>[],
   );
+
+  blocTest<GemmaCubit, GemmaState>(
+    'clearImage removes the selected image',
+    build: buildCubit,
+    act: (cubit) {
+      cubit.selectImage(Uint8List.fromList([1]));
+      cubit.clearImage();
+    },
+    verify: (cubit) => expect(cubit.state.selectedImage, isNull),
+  );
+
+  blocTest<GemmaCubit, GemmaState>(
+    'resetChat clears the conversation and initialises again',
+    build: () {
+      when(() => gemmaService.sendMessage(any())).thenAnswer((_) => Stream.value('Hi'));
+      return buildCubit();
+    },
+    act: (cubit) async {
+      await cubit.sendMessage('Hello');
+      await cubit.resetChat();
+    },
+    verify: (cubit) {
+      expect(cubit.state.messages, isEmpty);
+      expect(cubit.state.status, GemmaStatus.ready);
+      verify(() => gemmaService.initializeChat()).called(1);
+    },
+  );
 }

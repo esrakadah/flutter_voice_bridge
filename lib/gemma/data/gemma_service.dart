@@ -67,9 +67,10 @@ class GemmaService {
     // I will add a TODO and implement a basic deletion here for now.
     // Or better, let's just use the file API directly as we know the path.
     final path = await datasource.getFilePath();
-    final file = File(path);
-    if (file.existsSync()) {
-      await file.delete();
+    for (final file in [File(path), File('$path.part')]) {
+      if (file.existsSync()) {
+        await file.delete();
+      }
     }
 
     final prefs = await SharedPreferences.getInstance();

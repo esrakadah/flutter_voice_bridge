@@ -59,7 +59,9 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
             when (call.method) {
                 "startRecording" -> {
                     try {
-                        if (checkRecordAudioPermission()) {
+                        if (isRecording) {
+                            result.error("ALREADY_RECORDING", "Recording already in progress", null)
+                        } else if (checkRecordAudioPermission()) {
                             val filePath = startRecording()
                             result.success(filePath)
                         } else if (pendingRecordingResult != null) {

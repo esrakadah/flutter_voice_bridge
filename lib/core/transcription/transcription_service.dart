@@ -22,25 +22,23 @@ class WhisperTranscriptionService implements TranscriptionService {
   final WhisperFFIService _whisperFFI = WhisperFFIService();
   String? _modelPath;
 
-  /// Initialize the transcription service with Whisper model
+  /// The in-flight or finished initialisation. HomeCubit starts one without awaiting it, and a transcription
+  /// may ask again before it ends; both callers must share it, or the model is copied twice in parallel.
+  Future<void>? _initialization;
+
   @override
-  Future<void> initialize([String? modelPath]) async {
-    try {
-      developer.log('🔧 [Transcription] Initializing Whisper transcription service...', name: _logName);
+  Future<void> initialize([String? modelPath]) {
+    return _initialization ??= _initialize(modelPath).catchError((Object error) {
+      _initialization = null;
+      throw error;
+    });
+  }
 
-      // Use provided model path or extract from assets
-      _modelPath = modelPath ?? await WhisperFFIService.getDefaultModelPath();
-      developer.log('📂 [Transcription] Using model path: $_modelPath', name: _logName);
-
-      // Initialize FFI service
-      await _whisperFFI.initialize();
-
-      // Model is loaded lazily on first transcription
-      developer.log('✅ [Transcription] Service initialized successfully', name: _logName);
-    } catch (e) {
-      developer.log('❌ [Transcription] Initialization failed: $e', name: _logName, error: e);
-      rethrow;
-    }
+  Future<void> _initialize(String? modelPath) async {
+    developer.log('🔧 [Transcription] Initializing Whisper transcription service...', name: _logName);
+    _modelPath = modelPath ?? await WhisperFFIService.getDefaultModelPath();
+    await _whisperFFI.initialize();
+    developer.log('✅ [Transcription] Ready, model at $_modelPath (loaded on first use)', name: _logName);
   }
 
   /// Transcribe audio file to text using Whisper
@@ -126,6 +124,7 @@ class WhisperTranscriptionService implements TranscriptionService {
       developer.log('🧹 [Transcription] Disposing transcription service', name: _logName);
       await _whisperFFI.dispose();
       _modelPath = null;
+      _initialization = null;
       developer.log('✅ [Transcription] Service disposed', name: _logName);
     } catch (e) {
       developer.log('⚠️ [Transcription] Error during disposal: $e', name: _logName, error: e);

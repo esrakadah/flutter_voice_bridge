@@ -107,11 +107,12 @@ class GemmaDownloaderDataSource {
           continue;
         }
 
-        final file = File('${directory.path}/$filename');
-        if (file.existsSync()) {
-          await file.delete();
-          if (kDebugMode) {
-            print('Deleted old model: $filename');
+        for (final file in [File('${directory.path}/$filename'), File('${directory.path}/$filename.part')]) {
+          if (file.existsSync()) {
+            await file.delete();
+            if (kDebugMode) {
+              print('Deleted old model file: ${file.path}');
+            }
           }
         }
 
@@ -167,6 +168,11 @@ class GemmaDownloaderDataSource {
           fileSink = partialFile.openWrite();
         case HttpStatus.requestedRangeNotSatisfiable when resumeFrom > 0:
           await response.stream.drain<void>();
+          if (_totalFromContentRange(response.headers['content-range']) != resumeFrom) {
+            // The partial file is not a prefix of this model (corrupt, or the model changed): start over next time.
+            await partialFile.delete();
+            throw HttpException('Partial download does not match the remote model; deleted it', uri: request.url);
+          }
           await _completeDownload(partialFile, finalFile, prefs);
           onProgress(1);
           return;
@@ -199,6 +205,12 @@ class GemmaDownloaderDataSource {
     } finally {
       await fileSink?.close();
     }
+  }
+
+  /// Parses the total size from a `Content-Range: bytes */<total>` header, or null when absent.
+  static int? _totalFromContentRange(String? header) {
+    final total = header?.split('/').last.trim();
+    return total == null ? null : int.tryParse(total);
   }
 
   Future<void> _completeDownload(File partialFile, File finalFile, SharedPreferences prefs) async {

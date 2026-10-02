@@ -25,7 +25,9 @@ Future<HttpServer> serveModel(List<int> modelBytes, {required bool supportsRange
     if (supportsRange && range != null) {
       final start = int.parse(range.replaceFirst('bytes=', '').replaceFirst('-', ''));
       if (start >= modelBytes.length) {
-        response.statusCode = HttpStatus.requestedRangeNotSatisfiable;
+        response
+          ..statusCode = HttpStatus.requestedRangeNotSatisfiable
+          ..headers.set(HttpHeaders.contentRangeHeader, 'bytes */${modelBytes.length}');
       } else {
         response
           ..statusCode = HttpStatus.partialContent
@@ -96,5 +98,15 @@ void main() {
     await server.close();
 
     expect(file.readAsBytesSync(), modelBytes);
+  });
+
+  test('a 416 for a partial file larger than the model deletes it instead of keeping a corrupt model', () async {
+    final server = await serveModel(modelBytes, supportsRange: true);
+    final oversized = [...modelBytes, 1, 2, 3];
+    await expectLater(download(server, partial: oversized), throwsA(isA<HttpException>()));
+    await server.close();
+
+    expect(File('${documents.path}/model.task').existsSync(), isFalse);
+    expect(File('${documents.path}/model.task.part').existsSync(), isFalse);
   });
 }
