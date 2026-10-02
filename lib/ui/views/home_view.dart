@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../di.dart';
@@ -12,6 +15,9 @@ import 'animation_fullscreen_view.dart';
 import '../../core/audio/audio_converter.dart';
 import 'home/widgets/animation_controls_widget.dart';
 import 'home/widgets/recording_status_widget.dart';
+import '../../gemma/ui/gemma_chat_screen.dart';
+import '../components/devfest_app_bar.dart';
+import '../components/confetti_overlay.dart';
 
 /// 🎓 **WORKSHOP MODULE 1.1: Clean Architecture UI Layer**
 ///
@@ -58,85 +64,119 @@ class HomeViewContent extends StatefulWidget {
 
 class _HomeViewContentState extends State<HomeViewContent> {
   AudioVisualizationMode _currentMode = AudioVisualizationMode.waveform;
+  final ConfettiController _confettiController = ConfettiController();
+
+  /// Started on demand so a rebuild never spawns another ffmpeg process.
+  Future<String?>? _ffmpegVersionProbe;
+
+  /// Returns the ffmpeg version, or null when ffmpeg is not reachable.
+  Future<String?> _probeFfmpeg() async {
+    final isAvailable = await AudioConverter.isFFmpegAvailable();
+    if (!isAvailable) return null;
+    return AudioConverter.getFFmpegVersion();
+  }
 
   @override
   Widget build(BuildContext context) {
     // 🎨 REACTIVE UI PATTERN
     // BlocBuilder automatically rebuilds UI when HomeCubit emits new states
     // This creates a reactive programming model where UI is a function of state
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: Text(
-          'Voice Bridge AI',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          // Theme toggle button
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: ThemeToggleButton(themeCubit: context.read<ThemeCubit>(), size: 36),
-          ),
-        ],
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Theme.of(context).colorScheme.primary.withAlpha(26),
-                Theme.of(context).colorScheme.secondary.withAlpha(13),
+    final themeCubit = context.read<ThemeCubit>();
+    final isDevFestMode = themeCubit.isDevFestMode;
+
+    return ConfettiOverlay(
+      controller: _confettiController,
+      child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        appBar: isDevFestMode
+            ? DevFestAppBar(
+                themeCubit: themeCubit,
+                confettiController: _confettiController,
+                eventName: 'DevFest',
+                location: 'Berlin',
+                year: '2025',
+                flag: '🇩🇪',
+              )
+            : AppBar(
+                title: Text(
+                  'Voice Bridge AI',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                actions: [
+                  // Confetti button
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ConfettiButton(controller: _confettiController, size: 36),
+                  ),
+                  // Theme toggle button
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: ThemeToggleButton(themeCubit: themeCubit, size: 36),
+                  ),
+                ],
+                flexibleSpace: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Theme.of(context).colorScheme.primary.withAlpha(26),
+                        Theme.of(context).colorScheme.secondary.withAlpha(13),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+        body: BlocBuilder<HomeCubit, HomeState>(
+          // 🔄 REACTIVE UI BUILDER
+          // This builder function is called every time HomeCubit emits a new state
+          // The 'state' parameter contains the current application state
+          // UI rebuilds are optimized - only changed widgets are rebuilt
+          builder: (context, state) {
+            // 📋 CUSTOM SCROLL VIEW PATTERN
+            // Using CustomScrollView with Slivers provides better performance
+            // for complex scrollable layouts with multiple sections
+            return CustomScrollView(
+              slivers: [
+                // Hero section with recording interface
+                SliverToBoxAdapter(child: _buildHeroSection(context, state)),
+
+                // Current recording status
+                SliverToBoxAdapter(child: RecordingStatusWidget(state: state)),
+
+                // Transcription results
+                if (state.transcriptionText != null) SliverToBoxAdapter(child: _buildTranscriptionCard(context, state)),
+
+                // Transcription status (in progress or error)
+                if (state.isTranscribing) SliverToBoxAdapter(child: _buildTranscriptionProgressCard(context, state)),
+                if (state.transcriptionError != null)
+                  SliverToBoxAdapter(child: _buildTranscriptionErrorCard(context, state)),
+
+                // Recordings list header
+                SliverToBoxAdapter(child: _buildRecordingsHeader(context, state)),
+
+                // Recordings list
+                _buildRecordingsList(context, state),
+
+                // Gemma AI Chat (iOS and Web)
+                if (Platform.isIOS || kIsWeb) SliverToBoxAdapter(child: _buildGemmaChatCard(context)),
+
+                // Platform View demonstration
+                SliverToBoxAdapter(child: _buildPlatformViewDemo(context)),
+
+                // Process.run demo
+                SliverToBoxAdapter(child: _buildProcessRunDemo(context)),
+
+                // Bottom padding
+                const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
-            ),
-          ),
+            );
+          },
         ),
+        floatingActionButton: _buildFloatingActionButton(context),
       ),
-      body: BlocBuilder<HomeCubit, HomeState>(
-        // 🔄 REACTIVE UI BUILDER
-        // This builder function is called every time HomeCubit emits a new state
-        // The 'state' parameter contains the current application state
-        // UI rebuilds are optimized - only changed widgets are rebuilt
-        builder: (context, state) {
-          // 📋 CUSTOM SCROLL VIEW PATTERN
-          // Using CustomScrollView with Slivers provides better performance
-          // for complex scrollable layouts with multiple sections
-          return CustomScrollView(
-            slivers: [
-              // Hero section with recording interface
-              SliverToBoxAdapter(child: _buildHeroSection(context, state)),
-
-              // Current recording status
-              SliverToBoxAdapter(child: RecordingStatusWidget(state: state)),
-
-              // Transcription results
-              if (state.transcriptionText != null) SliverToBoxAdapter(child: _buildTranscriptionCard(context, state)),
-
-              // Transcription status (in progress or error)
-              if (state.isTranscribing) SliverToBoxAdapter(child: _buildTranscriptionProgressCard(context, state)),
-              if (state.transcriptionError != null)
-                SliverToBoxAdapter(child: _buildTranscriptionErrorCard(context, state)),
-
-              // Recordings list header
-              SliverToBoxAdapter(child: _buildRecordingsHeader(context, state)),
-
-              // Recordings list
-              _buildRecordingsList(context, state),
-
-              // Platform View demonstration
-              SliverToBoxAdapter(child: _buildPlatformViewDemo(context)),
-
-              // Process.run demo
-              SliverToBoxAdapter(child: _buildProcessRunDemo(context)),
-
-              // Bottom padding
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
-            ],
-          );
-        },
-      ),
-      floatingActionButton: _buildFloatingActionButton(context),
     );
   }
 
@@ -165,13 +205,13 @@ class _HomeViewContentState extends State<HomeViewContent> {
         children: [
           // App title and subtitle
           Text(
-            'AI Voice Memo',
+            'Flutter Voice Bridge',
             style: textTheme.displayMedium?.copyWith(fontWeight: FontWeight.w800, color: colorScheme.onSurface),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
-            'Record, transcribe, and extract insights',
+            'Record, transcribe, and extract insights. Enjoy the design elements.',
             style: textTheme.titleMedium?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.7)),
             textAlign: TextAlign.center,
           ),
@@ -185,8 +225,9 @@ class _HomeViewContentState extends State<HomeViewContent> {
               isRecording: isRecording,
               height: 80,
               primaryColor: colorScheme.primary,
-              secondaryColor: colorScheme.secondary,
-              tertiaryColor: colorScheme.tertiary,
+              secondaryColor: colorScheme.tertiary,
+              tertiaryColor: colorScheme.secondary,
+              quaternaryColor: colorScheme.error,
               mode: _currentMode,
               onTap: () => _navigateToFullscreen(context, colorScheme),
             ),
@@ -980,6 +1021,113 @@ class _HomeViewContentState extends State<HomeViewContent> {
     );
   }
 
+  /// 🤖 **Gemma AI Chat Card**
+  ///
+  /// Navigation card to access on-device AI chat powered by Gemma.
+  /// Only available on iOS platform.
+  Widget _buildGemmaChatCard(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+      child: Card(
+        elevation: 4,
+        shadowColor: colorScheme.primary.withAlpha(13),
+        child: InkWell(
+          onTap: () {
+            Navigator.of(context).push(MaterialPageRoute(builder: (context) => const GemmaChatScreen()));
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [colorScheme.tertiary, colorScheme.primary]),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 28),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Chat with Gemma AI',
+                            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'On-device AI assistant',
+                            style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.7)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios, color: colorScheme.primary, size: 20),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Features
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withAlpha(50),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colorScheme.outline.withAlpha(30)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '✨ Features:',
+                        style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.primary),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '• Natural conversations with AI\n'
+                        '• Image analysis with multimodal models\n'
+                        '• 100% offline & privacy-focused\n'
+                        '• Multiple model options available',
+                        style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.8)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Action button
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(MaterialPageRoute(builder: (context) => const GemmaChatScreen()));
+                    },
+                    icon: const Icon(Icons.chat),
+                    label: const Text('Start Chatting'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: colorScheme.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// 📺 **Module 3: Platform Views Integration**
   ///
   /// Demonstrates embedding native UI components directly within Flutter.
@@ -1109,67 +1257,69 @@ class _HomeViewContentState extends State<HomeViewContent> {
               ),
               const SizedBox(height: 16),
 
-              // FFmpeg availability check
-              FutureBuilder<bool>(
-                future: AudioConverter.isFFmpegAvailable(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Row(
-                      children: [
-                        SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                        SizedBox(width: 12),
-                        Text('Checking FFmpeg availability...'),
-                      ],
-                    );
-                  }
+              // FFmpeg availability check, run only when asked
+              if (_ffmpegVersionProbe == null)
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _ffmpegVersionProbe = _probeFfmpeg()),
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Run ffmpeg -version'),
+                )
+              else
+                FutureBuilder<String?>(
+                  future: _ffmpegVersionProbe,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Row(
+                        children: [
+                          SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                          SizedBox(width: 12),
+                          Text('Checking FFmpeg availability...'),
+                        ],
+                      );
+                    }
 
-                  final isAvailable = snapshot.data ?? false;
-                  final icon = isAvailable ? Icons.check_circle : Icons.error;
-                  final color = isAvailable ? Colors.green : Colors.orange;
-                  final message = isAvailable
-                      ? 'FFmpeg is available for audio processing'
-                      : 'FFmpeg not found - install for audio conversion features';
+                    final version = snapshot.data;
+                    final isAvailable = version != null;
+                    final icon = isAvailable ? Icons.check_circle : Icons.error;
+                    final color = isAvailable ? Colors.green : Colors.orange;
+                    final message = isAvailable
+                        ? 'FFmpeg is available for audio processing'
+                        : 'FFmpeg not found - install for audio conversion features';
 
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: color.withAlpha(20),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: color.withAlpha(50)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(icon, color: color, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                message,
-                                style: textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
-                              ),
-                              if (isAvailable) ...[
-                                const SizedBox(height: 4),
-                                FutureBuilder<String>(
-                                  future: AudioConverter.getFFmpegVersion(),
-                                  builder: (context, versionSnapshot) {
-                                    final version = versionSnapshot.data ?? 'Loading...';
-                                    return Text(
-                                      'Version: $version',
-                                      style: textTheme.bodySmall?.copyWith(color: color.withValues(alpha: 0.8)),
-                                    );
-                                  },
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: color.withAlpha(20),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: color.withAlpha(50)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(icon, color: color, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message,
+                                  style: textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
                                 ),
+                                if (isAvailable) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Version: $version',
+                                    style: textTheme.bodySmall?.copyWith(color: color.withValues(alpha: 0.8)),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
 
               const SizedBox(height: 16),
 
@@ -1213,8 +1363,9 @@ class _HomeViewContentState extends State<HomeViewContent> {
         builder: (context) => AnimationFullscreenView(
           initialMode: _currentMode,
           primaryColor: colorScheme.primary,
-          secondaryColor: colorScheme.secondary,
-          tertiaryColor: colorScheme.tertiary,
+          secondaryColor: colorScheme.tertiary,
+          tertiaryColor: colorScheme.secondary,
+          quaternaryColor: colorScheme.error,
         ),
       ),
     );

@@ -665,7 +665,7 @@ void setupDependencyInjection() {
 
 ## 📚 Additional Resources
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Detailed system architecture 
+- **[ARCHITECTURE.md](architecture.md)** - Detailed system architecture 
 - **[ai_integration.md](ai_integration.md)** - AI model integration guide
-- **[ANIMATION_GUIDE.md](ANIMATION_GUIDE.md)** - Animation system details
-- **[SETUP.md](SETUP.md)** - Complete setup instructions 
+- **[ANIMATION_GUIDE.md](animations.md)** - Animation system details
+- **[SETUP.md](setup.md)** - Complete setup instructions 

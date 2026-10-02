@@ -135,7 +135,7 @@ class HomeCubit extends Cubit<HomeState> {
       // Use typed error system for better error handling
       final voiceBridgeError = errors.ErrorHelpers.fromException(Exception(e.toString()));
       errors.ErrorHelpers.logError(voiceBridgeError, context: 'HomeCubit.startRecording');
-      
+
       emit(RecordingError(errorMessage: voiceBridgeError.userMessage));
     }
   }
@@ -179,14 +179,14 @@ class HomeCubit extends Cubit<HomeState> {
       // Optimistic update: Remove from list immediately
       final currentRecordings = List<VoiceMemo>.from(state.recordings);
       currentRecordings.removeWhere((memo) => memo.filePath == filePath);
-      
+
       // Emit updated state immediately
       emit(_copyCurrentState(recordings: currentRecordings));
 
       // Delete file via service asynchronously
       await _voiceMemoService.deleteRecording(filePath);
       developer.log('✅ [HomeCubit] Recording deleted successfully', name: 'VoiceBridge.Cubit');
-      
+
       // No need to reload recordings, we already updated the state
     } catch (e) {
       developer.log('❌ [HomeCubit] Error deleting recording: $e', name: 'VoiceBridge.Cubit', error: e);
@@ -313,7 +313,7 @@ class HomeCubit extends Cubit<HomeState> {
       // Use typed error system for better error handling
       final voiceBridgeError = errors.ErrorHelpers.fromException(Exception(e.toString()));
       errors.ErrorHelpers.logError(voiceBridgeError, context: 'HomeCubit.stopRecording');
-      
+
       emit(RecordingError(errorMessage: voiceBridgeError.userMessage));
     } finally {
       // Always stop timer, even if exceptions occurred

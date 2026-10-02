@@ -10,7 +10,7 @@ abstract class VoiceMemoService {
 
   /// List all recordings from file system
   Future<List<VoiceMemo>> listRecordings();
-  
+
   /// Delete a recording by file path
   Future<void> deleteRecording(String filePath);
 
@@ -124,7 +124,7 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
       if (await audioDir.exists()) {
         final List<FileSystemEntity> entities = audioDir.listSync();
         int deletedCount = 0;
-        
+
         for (final entity in entities) {
           if (entity is File && (entity.path.endsWith('.m4a') || entity.path.endsWith('.wav'))) {
             try {
@@ -135,7 +135,7 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
             }
           }
         }
-        
+
         developer.log('✅ [VoiceMemoService] Deleted $deletedCount recordings', name: 'VoiceBridge.Service');
       } else {
         developer.log('⚠️ [VoiceMemoService] Audio directory not found', name: 'VoiceBridge.Service');

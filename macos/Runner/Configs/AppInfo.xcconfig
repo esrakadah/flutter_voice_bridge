@@ -14,4 +14,4 @@ PRODUCT_BUNDLE_IDENTIFIER = com.example.flutterVoiceBridge
 PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
 
 // Set macOS deployment target to support all dependencies
-MACOSX_DEPLOYMENT_TARGET = 10.15
+MACOSX_DEPLOYMENT_TARGET = 13.3

@@ -4,8 +4,6 @@
 .dart_tool/
 .packages
 build/
-# If you're building an application, you may want to check-in your pubspec.lock
-pubspec.lock
 
 # Directory created by dartdoc
 # If you don't generate documentation locally you can remove this line.
@@ -32,7 +30,8 @@ doc/api/
 # These files are too large for GitHub (>100MB limit)
 # Download instructions in SETUP.md
 *.bin
-assets/models/
+assets/models/*
+!assets/models/.gitkeep
 android/app/src/main/assets/models/
 ios/Runner/Models/
 macos/Runner/Models/
@@ -93,3 +92,6 @@ Thumbs.db
 *~
 .tmp/
 .temp/
+
+# Whisper FFI build output (scripts/build_whisper.sh)
+native/whisper/build/

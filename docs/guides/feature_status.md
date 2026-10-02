@@ -14,7 +14,7 @@
 | **📱 Cross-Platform UI** | ✅ **COMPLETED** | Flutter with BLoC state management and custom audio visualizer |
 | **💾 Voice Memo Storage** | ✅ **COMPLETED** | Local file system with path_provider and structured audio directories |
 | **🔑 Keyword Extraction** | ✅ **COMPLETED** | Text processing service with stop-word filtering and keyword ranking |
-| **🎨 Immersive Audio Visualization** | ✅ **COMPLETED** | **NEW!** Fullscreen animation experience with 4 modes and dynamic controls |
+| **🎨 Immersive Audio Visualization** | ✅ **COMPLETED** | **NEW!** Fullscreen animation experience with 5 modes and dynamic controls |
 | **🎛️ Real-time Animation Controls** | ✅ **COMPLETED** | **NEW!** Dynamic size (50%-300%), speed (0.5x-2x), mode switching, play/pause |
 | **💾 Animation Persistence** | ✅ **COMPLETED** | **NEW!** SharedPreferences backend with cross-session settings continuity |
 | **⚡ Real-time Recording UI** | ✅ **COMPLETED** | BLoC state management with recording timer and visual feedback |
@@ -26,7 +26,7 @@
 | **🖼️ Fullscreen Animation View** | ✅ **COMPLETED** | Dedicated immersive page with tap-to-navigate from compact view |
 | **🎯 Dynamic Size Controls** | ✅ **COMPLETED** | ➖➕ buttons with real-time scaling (50%-300% in 25% increments) |
 | **⚡ Speed Adjustment** | ✅ **COMPLETED** | 4-speed presets (0.5x, 1x, 1.5x, 2x) with cycling button control |
-| **🎨 Mode Switching** | ✅ **COMPLETED** | 4 visualization modes: Waveform, Spectrum, Particles, Radial |
+| **🎨 Mode Switching** | ✅ **COMPLETED** | 5 visualization modes: Waveform, Spectrum, Particles, Radial, Hybrid |
 | **▶️ Play/Pause Control** | ✅ **COMPLETED** | Large primary button with synchronized animation state |
 | **💾 Settings Persistence** | ✅ **COMPLETED** | Auto-save all preferences (scale, speed, mode) with SharedPreferences |
 | **🎭 Animation Synchronization** | ✅ **COMPLETED** | Single master timeline eliminates frame drops and discontinuities |
@@ -56,7 +56,7 @@
 | **🎚️ Audio Quality Optimization** | ✅ **COMPLETED** | 16kHz sample rate optimized for speech recognition |
 | **📂 File Management** | ✅ **COMPLETED** | Structured audio directories with timestamp-based naming |
 | **🔊 Multi-format Playback** | ✅ **COMPLETED** | Supports WAV, M4A, and other common audio formats |
-| **🎨 Real-time Visualization** | ✅ **ENHANCED** | **NEW!** 4 animation modes with scale/speed control during recording |
+| **🎨 Real-time Visualization** | ✅ **ENHANCED** | **NEW!** 5 animation modes with scale/speed control during recording |
 
 ## 🤖 AI & Transcription Features
 
@@ -68,18 +68,16 @@
 | **⚡ Real-time Processing** | ✅ **COMPLETED** | Post-recording transcription with progress feedback |
 | **🌐 Offline Operation** | ✅ **COMPLETED** | Fully offline - no internet required for transcription |
 | **🎯 Language Support** | ✅ **COMPLETED** | English base model (easily extensible to other languages) |
-| **🚀 GPU Acceleration** | ✅ **WORKING** | Metal GPU support on Apple M1/M2/M3 for 2-3x faster inference |
+| **🚀 GPU Acceleration** | ✅ **WORKING** | Metal backend enabled by whisper.cpp defaults on Apple Silicon (macOS) |
 
 ## 📱 Platform Compatibility
 
 | Platform Feature | Implementation Status | How It Works |
 |---|---|---|
-| **🍎 iOS Support** | ✅ **PRODUCTION READY** | AVFoundation + Swift Platform Channels + WAV recording + Transcription + Fullscreen Animations |
+| **🍎 iOS Support** | ⚠️ **PARTIAL** | AVFoundation + Swift Platform Channels + WAV recording + Fullscreen Animations; transcription uses a mock service |
 | **💻 macOS Support** | ✅ **PRODUCTION READY** | AVFoundation + Swift Platform Channels + Metal GPU acceleration + Fullscreen Animations |
-| **🤖 Android Support** | ⚠️ **PARTIAL** | MediaRecorder + Kotlin Platform Channels + WAV recording + Fullscreen Animations (transcription ready) |
-| **🌐 Web Support** | ❌ **NOT PLANNED** | Not supported (FFI and native audio limitations) |
-| **🪟 Windows Support** | ❌ **NOT PLANNED** | Not implemented (could be added with native Windows audio APIs) |
-| **🐧 Linux Support** | ❌ **NOT PLANNED** | Not implemented (could be added with ALSA/PulseAudio) |
+| **🤖 Android Support** | ⚠️ **PARTIAL** | MediaRecorder + Kotlin Platform Channels + AAC (m4a) recording + Fullscreen Animations; transcription uses a mock service |
+| **🌐 Web, 🪟 Windows, 🐧 Linux** | ❌ **REMOVED** | Platform folders removed in v1.1.0; transcription depends on dart:ffi and a macOS build |
 
 ## 🔐 Security & Permissions
 
@@ -119,7 +117,7 @@
 ### ✅ **Fully Functional on iOS/macOS**
 - **Audio Recording**: High-quality 16kHz WAV format
 - **Speech Recognition**: Real-time offline transcription
-- **Immersive Animations**: Fullscreen experience with 4 visualization modes
+- **Immersive Animations**: Fullscreen experience with 5 visualization modes
 - **Dynamic Controls**: Real-time size (50%-300%) and speed (0.5x-2x) adjustment
 - **Smart Persistence**: All animation settings saved across app sessions
 - **GPU Acceleration**: Metal backend on Apple Silicon (M1/M2/M3)
@@ -184,7 +182,7 @@ Animation: Particles mode, 175% scale, 1.5x speed (all restored from preferences
 |-------------|---------------|----------|-------------|
 | **📏 Size Control** | 50% - 300% (25% steps) | Real-time scaling with bounds checking | ✅ Auto-saved |
 | **⚡ Speed Control** | 0.5x, 1x, 1.5x, 2x | Instant animation speed change | ✅ Auto-saved |
-| **🎨 Mode Control** | 4 modes (cycling) | Seamless visual transition | ✅ Auto-saved |
+| **🎨 Mode Control** | 5 modes (cycling) | Seamless visual transition | ✅ Auto-saved |
 | **▶️ Play/Pause** | Binary state | Animation freeze/resume | ✅ Auto-saved |
 
 ## 🔄 **Future Enhancements** (Not Yet Implemented)
@@ -192,7 +190,7 @@ Animation: Particles mode, 175% scale, 1.5x speed (all restored from preferences
 | Feature to Cover | Implementation Status | How It Works |
 |---|---|---|
 | **🔄 Android Transcription** | ❌ **PLANNED** | Native library integration for Android (build system ready) |
-| **🎨 Additional Animation Modes** | ❌ **PLANNED** | Hybrid, 3D visualizations, custom user-created modes |
+| **🎨 Additional Animation Modes** | ❌ **PLANNED** | 3D visualizations, custom user-created modes |
 | **🎛️ Advanced Animation Controls** | ❌ **PLANNED** | Color customization, particle count adjustment, waveform parameters |
 | **🌍 Multi-language Support** | ❌ **PLANNED** | Additional Whisper models for different languages |
 | **☁️ Cloud Backup** | ❌ **PLANNED** | Optional cloud storage integration for voice memos + animation preferences |
@@ -229,7 +227,7 @@ Animation: Particles mode, 175% scale, 1.5x speed (all restored from preferences
 ### 🎯 **Demo-Ready Status**
 The application is **fully ready for live demonstrations** with:
 - Working transcription on iOS/macOS
-- **NEW**: Stunning fullscreen animations with 4 visualization modes
+- **NEW**: Stunning fullscreen animations with 5 visualization modes
 - **NEW**: Real-time size and speed controls with instant feedback
 - **NEW**: Seamless settings persistence across app sessions
 - Professional UI/UX showcasing advanced Flutter development techniques

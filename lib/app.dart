@@ -13,11 +13,35 @@ class App extends StatelessWidget {
       create: (_) => getIt<ThemeCubit>(),
       child: BlocBuilder<ThemeCubit, ThemeState>(
         builder: (context, themeState) {
+          // Determine which theme to use based on app theme mode
+          ThemeData lightTheme;
+          ThemeData darkTheme;
+          ThemeMode flutterThemeMode;
+
+          if (themeState.themeMode == AppThemeMode.devfest) {
+            // DevFest mode uses Google Developer colors
+            lightTheme = AppTheme.getDevFestTheme();
+            darkTheme = AppTheme.getDevFestDarkTheme();
+            flutterThemeMode = ThemeMode.light; // Use light variant of DevFest theme
+          } else {
+            // Normal mode uses default themes
+            lightTheme = AppTheme.getLightTheme();
+            darkTheme = AppTheme.getDarkTheme();
+
+            // Convert AppThemeMode to ThemeMode
+            flutterThemeMode = switch (themeState.themeMode) {
+              AppThemeMode.light => ThemeMode.light,
+              AppThemeMode.dark => ThemeMode.dark,
+              AppThemeMode.system => ThemeMode.system,
+              AppThemeMode.devfest => ThemeMode.light,
+            };
+          }
+
           return MaterialApp(
             title: 'Flutter Voice Bridge',
-            theme: AppTheme.getLightTheme(),
-            darkTheme: AppTheme.getDarkTheme(),
-            themeMode: themeState.themeMode,
+            theme: lightTheme,
+            darkTheme: darkTheme,
+            themeMode: flutterThemeMode,
             home: const HomeView(),
             debugShowCheckedModeBanner: false,
           );
@@ -154,6 +178,90 @@ class AppTheme {
         linearTrackColor: Color(0x30000000),
       ),
       dividerColor: const Color(0x1F000000), // black with 12% opacity
+    );
+  }
+
+  /// DevFest themed mode - Google Developer colors
+  static ThemeData getDevFestTheme() {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: const Color(0xFFFAFAFA),
+      primaryColor: const Color(0xFF4285F4), // Google Blue
+      colorScheme: ColorScheme.light(
+        primary: const Color(0xFF4285F4), // Google Blue
+        onPrimary: Colors.white,
+        secondary: const Color(0xFF34A853), // Google Green
+        onSecondary: Colors.white,
+        tertiary: const Color(0xFFFBBC04), // Google Yellow
+        onTertiary: Colors.black87,
+        error: const Color(0xFFEA4335), // Google Red
+        onError: Colors.white,
+        surface: Colors.white,
+        onSurface: Colors.black87,
+      ),
+      textTheme: ThemeData.light().textTheme.copyWith(
+        displayLarge: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        bodyLarge: const TextStyle(color: Colors.black87),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        titleTextStyle: TextStyle(color: Color(0xFF4285F4), fontSize: 20, fontWeight: FontWeight.bold),
+        iconTheme: IconThemeData(color: Color(0xFF4285F4)),
+      ),
+      cardTheme: CardThemeData(
+        color: Colors.white,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: Color(0xFF34A853), // Google Green
+      ),
+      buttonTheme: ButtonThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.0)),
+        buttonColor: const Color(0xFF4285F4),
+      ),
+    );
+  }
+
+  /// DevFest dark themed mode - Google Developer colors (dark variant)
+  static ThemeData getDevFestDarkTheme() {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: const Color(0xFF1F1F1F),
+      primaryColor: const Color(0xFF8AB4F8), // Lighter Google Blue
+      colorScheme: ColorScheme.dark(
+        primary: const Color(0xFF8AB4F8), // Lighter Google Blue
+        onPrimary: Colors.black,
+        secondary: const Color(0xFF81C995), // Lighter Google Green
+        onSecondary: Colors.black,
+        tertiary: const Color(0xFFFDD663), // Lighter Google Yellow
+        onTertiary: Colors.black,
+        error: const Color(0xFFF28B82), // Lighter Google Red
+        onError: Colors.black,
+        surface: const Color(0xFF2D2D2D),
+        onSurface: Colors.white,
+      ),
+      textTheme: ThemeData.dark().textTheme.copyWith(
+        displayLarge: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        bodyLarge: const TextStyle(color: Colors.white70),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        titleTextStyle: TextStyle(color: Color(0xFF8AB4F8), fontSize: 20, fontWeight: FontWeight.bold),
+        iconTheme: IconThemeData(color: Color(0xFF8AB4F8)),
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFF2D2D2D),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: Color(0xFF81C995), // Lighter Google Green
+      ),
     );
   }
 }

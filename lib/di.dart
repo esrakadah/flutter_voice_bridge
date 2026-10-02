@@ -5,9 +5,13 @@ import 'package:get_it/get_it.dart';
 import 'core/audio/audio_service.dart';
 import 'core/audio/platform_audio_service.dart';
 import 'core/transcription/transcription_service.dart';
+import 'core/transcription/web_transcription_service.dart';
 import 'core/theme/theme_provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'data/services/voice_memo_service.dart';
 import 'ui/views/home/home_cubit.dart';
+import 'gemma/data/gemma_service.dart';
+import 'gemma/ui/gemma_cubit.dart';
 
 /// 🎓 **WORKSHOP MODULE 1.3: Dependency Injection Mastery**
 ///
@@ -51,17 +55,25 @@ class DependencyInjection {
     // File operations are stateless, so singleton is appropriate
     getIt.registerLazySingleton<VoiceMemoService>(() => VoiceMemoServiceImpl());
 
+    // 🧠 GEMMA AI SERVICE
+    // Manages the AI model and chat session. Singleton to keep the model loaded.
+    getIt.registerLazySingleton<GemmaService>(() => GemmaService());
+
     // 🤖 TRANSCRIPTION SERVICE - PLATFORM CONDITIONAL REGISTRATION
     // This demonstrates intelligent service selection based on platform capabilities
     // Shows how to handle platform-specific features gracefully
     getIt.registerLazySingleton<TranscriptionService>(() {
       // 🍎 APPLE PLATFORMS: Full Whisper.cpp FFI integration
-      // iOS and macOS have native library support with GPU acceleration
-      if (Platform.isMacOS || Platform.isIOS) {
+      // Currently only enabled for macOS as iOS requires signed dylibs and complex setup
+      if (kIsWeb) {
+        // 🌐 WEB PLATFORM: Mock service
+        // FFI is not supported on web, so we use a placeholder
+        return WebTranscriptionService();
+      } else if (Platform.isMacOS) {
         return WhisperTranscriptionService();
       } else {
         // 🤖 OTHER PLATFORMS: Mock service for development
-        // Android and other platforms use mock until native library is compiled
+        // Android and iOS use mock until native library is properly configured
         // This allows development to continue on all platforms
         return MockTranscriptionService();
       }
@@ -87,6 +99,13 @@ class DependencyInjection {
         transcriptionService: getIt<TranscriptionService>(), // 🤖 AI service
       ),
     );
+
+    // 💬 GEMMA CHAT CUBIT
+    // Manages the chat UI state. LazySingleton to preserve chat state across navigation.
+    // This prevents re-initialization when navigating back to the chat screen.
+    getIt.registerLazySingleton<GemmaCubit>(
+      () => GemmaCubit(gemmaService: getIt<GemmaService>())..initialize(),
+    );
   }
 
   /// 🧹 CLEANUP METHOD
@@ -108,12 +127,12 @@ class DependencyInjection {
 }
 
 /// 🎓 **LEARNING EXERCISE: Service Registration Types**
-/// 
+///
 /// **Question**: Why is HomeCubit registered as Factory while AudioService is Singleton?
-/// 
-/// **Answer**: 
+///
+/// **Answer**:
 /// - AudioService: Hardware interface, stateless, should be shared
 /// - HomeCubit: Contains UI state, should be unique per screen instance
-/// 
+///
 /// **Try This**: What would happen if we registered HomeCubit as Singleton?
 /// **Result**: State would be shared across all HomeView instances, causing UI bugs

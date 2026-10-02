@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'app.dart';
 import 'di.dart';
 
@@ -25,6 +26,15 @@ void main() async {
   // Required for: Platform channels, plugins, async operations in main()
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 📱 ORIENTATION SETUP
+  // Allow both portrait and landscape orientations
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+
   // 💉 DEPENDENCY INJECTION SETUP
   // Initialize all services before starting the UI
   // This ensures all dependencies are ready when widgets need them
@@ -45,17 +55,17 @@ void main() async {
 }
 
 /// 🎓 **LEARNING NOTES: Initialization Order**
-/// 
+///
 /// **Critical Sequence:**
 /// 1. WidgetsFlutterBinding.ensureInitialized() - Platform ready
-/// 2. DependencyInjection.init() - Services ready  
+/// 2. DependencyInjection.init() - Services ready
 /// 3. runApp(App()) - UI starts rendering
-/// 
+///
 /// **Why Async Main?**
 /// - Allows setup operations before UI renders
 /// - Prevents "service not found" errors
 /// - Ensures clean app startup state
-/// 
+///
 /// **Common Mistakes:**
 /// ❌ Calling platform channels before ensureInitialized()
 /// ❌ Starting UI before dependency injection

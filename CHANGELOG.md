@@ -5,7 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - 22 October 2025
+## [1.1.0] - Unreleased
+
+### Added
+- Experimental on-device Gemma chat on iOS (merged from `experimental/flutter-gemma`), with the DevFest Berlin
+  2025 talk material under `docs/talks/devfest-berlin-2025/`.
+- Delete all recordings.
+- CI workflow (format, analyze, test), issue templates, a home screen widget test and a macOS integration test.
+
+### Changed
+- whisper.cpp is pinned to v1.7.6 and built from a project-owned `native/whisper/CMakeLists.txt`; the build
+  script is re-runnable and no longer edits upstream files.
+- Minimum versions: Flutter 3.38, macOS 13.3, iOS 16.0. `pubspec.lock` is now committed.
+- `flutter_markdown` replaced by `flutter_markdown_plus`; flutter_lints 6; unused dependencies removed.
+- The Hugging Face token is read from `--dart-define=HF_TOKEN` instead of a source constant.
+- The ffmpeg `Process.run` demo runs on tap instead of on every rebuild, and is debug-only on macOS.
+
+### Removed
+- Linux, Windows and web platform folders.
+- `.github/README.md`, which GitHub showed instead of the root README.
+
+### Fixed
+- The macOS app did not build on current Xcode (deployment target 10.15).
+- The native library embedded absolute build paths and was copied into the iOS project, where it cannot load.
+- README and guides claimed iOS transcription, 4 visualization modes and a 2-3x GPU speedup; they now match
+  the code.
+
+## [1.0.1] - 2025-10-22
 
 ### Updated
 - All dependencies to latest versions
@@ -15,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All analyzer warnings and lint issues
 - Logging system using dart:developer
 
-## [1.0.0] - 29 July 2025 - Initial Release
+## [1.0.0] - 2025-07-29 - Initial Release
 
 ### ✨ Added
 - **Offline AI Transcription**: Speech-to-text using Whisper.cpp with Metal GPU acceleration
