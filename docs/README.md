@@ -76,7 +76,6 @@
 ### **📐 Design & Requirements**
 - **[🎨 UI Patterns](./requirements/ui_patterns.md)** - Component specifications and interface design
 - **[🎭 Design System](./design/design_system.md)** - Visual language and component library
-- **[🗺️ Implementation Roadmap](./development_paths/implementation_roadmap.md)** - Development timeline and phases
 
 ---
 
@@ -114,7 +113,7 @@ This documentation teaches:
 
 ### **🤖 AI Integration**
 - Offline speech recognition with Whisper.cpp
-- GPU acceleration setup (Metal/OpenGL)
+- GPU acceleration setup (Metal, macOS)
 - Memory management in FFI
 - C++ wrapper creation
 
@@ -133,7 +132,6 @@ Found something unclear? Help us improve:
 1. **Report Issues**: Use GitHub Issues for documentation bugs
 2. **Suggest Improvements**: What guides are missing?
 3. **Add Examples**: More code examples are always welcome
-4. **Update Diagrams**: Visual improvements in `visual_assets/`
 
 See **[Contributing Guidelines](../CONTRIBUTING.md)** for details.
 

@@ -5,6 +5,8 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.media.MediaRecorder
 import android.media.MediaPlayer
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.content.Context
 import android.content.pm.PackageManager
@@ -23,12 +25,17 @@ import android.graphics.Color
 import android.graphics.Typeface
 
 class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener {
-    private val CHANNEL = "voice.bridge/audio"
-    private val TAG = "FlutterVoiceBridge"
-    
-    // Permission handling
-    private val RECORD_AUDIO_PERMISSION_REQUEST_CODE = 1001
+    companion object {
+        /** Must match VoiceBridgeChannels.audio in lib/core/platform/voice_bridge_channels.dart. */
+        private const val CHANNEL = "voice.bridge/audio"
+        private const val TAG = "FlutterVoiceBridge"
+        private const val RECORD_AUDIO_PERMISSION_REQUEST_CODE = 1001
+        private const val SAMPLE_RATE_HZ = 16000
+    }
+
+    // Holds the Dart call while the permission dialog is open; a second start is rejected until it resolves.
     private var pendingRecordingResult: MethodChannel.Result? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
     
     // Recording related
     private var mediaRecorder: MediaRecorder? = null
@@ -52,9 +59,13 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
             when (call.method) {
                 "startRecording" -> {
                     try {
-                        if (checkRecordAudioPermission()) {
+                        if (isRecording) {
+                            result.error("ALREADY_RECORDING", "Recording already in progress", null)
+                        } else if (checkRecordAudioPermission()) {
                             val filePath = startRecording()
                             result.success(filePath)
+                        } else if (pendingRecordingResult != null) {
+                            result.error("ALREADY_PENDING", "Waiting for the microphone permission dialog", null)
                         } else {
                             // Request permission and store result callback
                             pendingRecordingResult = result
@@ -108,7 +119,7 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
             throw Exception("Recording already in progress")
         }
 
-        // Create audio file path (using WAV format for Whisper compatibility)
+        // AAC in an .m4a container; Whisper needs WAV, so Android uses the placeholder transcription for now.
         val audioDir = File(filesDir, "audio")
         if (!audioDir.exists()) {
             audioDir.mkdirs()
@@ -117,7 +128,6 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
         val fileName = "voice_memo_${System.currentTimeMillis()}.m4a"
         audioFilePath = File(audioDir, fileName).absolutePath
 
-        // Initialize MediaRecorder (WAV format for Whisper compatibility)
         mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(this)
         } else {
@@ -127,9 +137,9 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
 
         mediaRecorder?.apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
-            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)     // Use M4A format (will be converted by AudioConverterService)
-            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)        // AAC encoder for good quality
-            setAudioSamplingRate(16000)  // 16kHz optimal for speech recognition
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setAudioSamplingRate(SAMPLE_RATE_HZ)
             setAudioChannels(1)          // Mono for speech
             setOutputFile(audioFilePath)
             
@@ -137,7 +147,7 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
                 prepare()
                 start()
                 isRecording = true
-                Log.d(TAG, "✅ [Android] Recording started (will be converted to WAV for Whisper)")
+                Log.d(TAG, "✅ [Android] Recording started (AAC, .m4a)")
             } catch (e: IOException) {
                 throw Exception("Failed to start recording: ${e.message}")
             }
@@ -151,18 +161,20 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
             throw Exception("No recording in progress")
         }
 
-        mediaRecorder?.apply {
-            try {
-                stop()
-                release()
-            } catch (e: Exception) {
-                throw Exception("Failed to stop recording: ${e.message}")
-            }
+        val recorder = mediaRecorder
+        try {
+            // stop() throws when no audio arrived yet (a very short recording); the file is unusable then.
+            recorder?.stop()
+        } catch (e: RuntimeException) {
+            audioFilePath?.let { File(it).delete() }
+            throw Exception("Recording too short or failed: ${e.message}")
+        } finally {
+            // Always release, or every later start would be refused as ALREADY_RECORDING.
+            recorder?.release()
+            mediaRecorder = null
+            isRecording = false
         }
 
-        mediaRecorder = null
-        isRecording = false
-        
         return audioFilePath ?: throw Exception("Audio file path not available")
     }
 
@@ -191,14 +203,7 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
             Log.w(TAG, "⚠️ [Android] Could not get file attributes: ${e.message}")
         }
         
-        // Request audio focus
-        val audioFocusResult = audioManager?.requestAudioFocus(
-            null, 
-            AudioManager.STREAM_MUSIC, 
-            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
-        )
-        
-        if (audioFocusResult != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+        if (requestAudioFocus() != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             Log.e(TAG, "❌ [Android] Failed to gain audio focus")
             result.error("AUDIO_FOCUS_ERROR", "Failed to gain audio focus for playback", null)
             return
@@ -213,8 +218,7 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
                 setOnCompletionListener(this@MainActivity)
                 setOnErrorListener(this@MainActivity)
                 
-                // Configure for music playback
-                setAudioStreamType(AudioManager.STREAM_MUSIC)
+                setAudioAttributes(playbackAttributes())
                 
                 prepare()
                 start()
@@ -231,7 +235,7 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
             Log.e(TAG, "💥 [Android] Error creating media player: ${e.message}")
             
             // Release audio focus on error
-            audioManager?.abandonAudioFocus(null)
+            abandonAudioFocus()
             
             result.error("PLAYER_ERROR", "Failed to create audio player: ${e.message}", e.message)
         }
@@ -251,7 +255,7 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
         isPlaying = false
         
         // Release audio focus
-        audioManager?.abandonAudioFocus(null)
+        abandonAudioFocus()
         Log.d(TAG, "✅ [Android] Audio focus released")
     }
     
@@ -263,7 +267,7 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
         // Release the MediaPlayer and audio focus
         mediaPlayer?.release()
         mediaPlayer = null
-        audioManager?.abandonAudioFocus(null)
+        abandonAudioFocus()
         
         Log.d(TAG, "✅ [Android] MediaPlayer released and audio focus abandoned after completion")
     }
@@ -276,7 +280,7 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
         // Release the MediaPlayer and audio focus
         mediaPlayer?.release()
         mediaPlayer = null
-        audioManager?.abandonAudioFocus(null)
+        abandonAudioFocus()
         
         Log.d(TAG, "✅ [Android] MediaPlayer released and audio focus abandoned after error")
         
@@ -333,7 +337,53 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
                 } else {
                     Log.e(TAG, "❌ [Android] RECORD_AUDIO permission denied")
                     result?.error("PERMISSION_DENIED", "Microphone permission is required for audio recording", null)
-                            }
+                }
+            }
+        }
+    }
+
+    private fun playbackAttributes(): AudioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+        .build()
+
+    private fun requestAudioFocus(): Int? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                .setAudioAttributes(playbackAttributes())
+                .build()
+            audioFocusRequest = request
+            return audioManager?.requestAudioFocus(request)
+        }
+        @Suppress("DEPRECATION")
+        return audioManager?.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+    }
+
+    private fun abandonAudioFocus() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { audioManager?.abandonAudioFocusRequest(it) }
+            audioFocusRequest = null
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager?.abandonAudioFocus(null)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isRecording) {
+            try {
+                stopRecording()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error stopping recording on destroy: ${e.message}")
+            }
+        }
+        if (isPlaying || mediaPlayer != null) {
+            try {
+                stopPlayback()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error stopping playback on destroy: ${e.message}")
+            }
         }
     }
 }
@@ -391,29 +441,5 @@ class NativeTextView(context: Context, id: Int, creationParams: Any?) : Platform
 
     override fun dispose() {
         // Clean up any resources if needed
-    }
-}
-
-    override fun onDestroy() {
-        super.onDestroy()
-        
-        // Clean up recording
-        if (isRecording) {
-            try {
-                stopRecording()
-            } catch (e: Exception) {
-                Log.e(TAG, "Error stopping recording on destroy: ${e.message}")
-            }
-        }
-        
-        // Clean up playback
-        if (isPlaying || mediaPlayer != null) {
-            try {
-                stopPlayback()
-                Log.d(TAG, "✅ [Android] Playback cleaned up on destroy")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error stopping playback on destroy: ${e.message}")
-            }
-        }
     }
 }

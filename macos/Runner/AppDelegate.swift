@@ -28,7 +28,7 @@ class AppDelegate: FlutterAppDelegate {
         
         if isRecording {
             print("❌ [macOS] Recording already in progress")
-            result(FlutterError(code: "RECORDING_ERROR", message: "Recording already in progress", details: nil))
+            result(FlutterError(code: "ALREADY_RECORDING", message: "Recording already in progress", details: nil))
             return
         }
         

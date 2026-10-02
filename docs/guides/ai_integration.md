@@ -1,5 +1,8 @@
 # ✅ Whisper FFI Integration - Working Setup Guide
 
+> **Snapshot of the July 2025 workshop version.** Class names and file trees below may be out of date; the
+> [root README](../../README.md) and the code are authoritative for platform support, versions and architecture.
+
 This document explains the **fully working** Whisper.cpp integration with Dart FFI for offline speech-to-text transcription in the Flutter Voice Bridge app.
 
 ## 🎯 Current Status: working on macOS
@@ -41,8 +44,7 @@ mkdir build && cd build
 cmake ..
 make -j$(sysctl -n hw.ncpu)
 
-# Copy libraries
-./scripts/copy_native_libraries.sh
+# The macOS build phase "Copy Native Libraries" embeds native/whisper/build/lib/*.dylib
 ```
 
 ### 3. Verify Working Transcription
@@ -60,14 +62,14 @@ flutter run -d macos
 lib/core/transcription/
 ├── whisper_ffi_service.dart       # ✅ Working FFI bindings
 ├── transcription_service.dart     # ✅ High-level service interface
-└── isolate_transcription_service.dart  # ✅ Background processing
+└── (background work: WhisperFFIService runs native calls in Isolate.run)
 ```
 
 ### Key Components
 
 1. **WhisperFFIService**: Direct FFI interface with robust library loading
 2. **WhisperTranscriptionService**: Production-ready Dart service
-3. **IsolateTranscriptionService**: Background processing for large files
+3. **Isolate.run** inside WhisperFFIService: keeps transcription off the UI isolate
 4. **TranscriptionState**: Complete BLoC integration
 
 ### Working Service Interface
@@ -112,11 +114,9 @@ void whisper_ffi_free_string(char* str);
 
 | Platform | Library File | Location | Status |
 |----------|-------------|----------|---------|
-| iOS | `libwhisper_ffi.dylib` | `ios/Runner/` | ✅ Working |
-| macOS | `libwhisper_ffi.dylib` | `macos/Runner/` | ✅ Working |
-| Android | `libwhisper_ffi.so` | `android/app/src/main/jniLibs/` | 🔄 Ready |
-| Linux | `libwhisper_ffi.so` | `linux/` | 🔄 Ready |
-| Windows | `whisper_ffi.dll` | `windows/` | 🔄 Ready |
+| macOS | `libwhisper_ffi.dylib` | `native/whisper/build/lib/`, embedded by the Xcode build phase | ✅ Working |
+| iOS | not built | | ⚠️ placeholder transcription |
+| Android | not built | | ⚠️ placeholder transcription |
 
 ## 🎯 State Management Integration (Working)
 
@@ -279,8 +279,8 @@ Future<String> transcribeAudio(String audioFilePath) async {
 | Platform | Setup | Recording | Transcription | GPU | Status |
 |----------|-------|-----------|---------------|-----|---------|
 | **macOS** | ✅ Auto | ✅ Working | ✅ Working | ✅ Metal | **READY** |
-| **iOS** | ✅ Auto | ✅ Working | ✅ Working | ✅ Metal | **READY** |
-| **Android** | ✅ Ready | ✅ Working | 🔄 Build | 🔄 OpenGL | In Progress |
+| **iOS** | ✅ Auto | ✅ Working | ❌ Not built | ❌ None | Placeholder transcription |
+| **Android** | ✅ Ready | ✅ Working | ❌ Not built | ❌ None | Placeholder transcription |
 
 ## 🎯 Real-World Demo
 

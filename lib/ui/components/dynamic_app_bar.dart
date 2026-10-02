@@ -105,14 +105,10 @@ class DynamicAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
         ),
-
-        // Confetti button
         Padding(
           padding: const EdgeInsets.only(right: 8.0),
           child: ConfettiButton(controller: confettiController, size: 36),
         ),
-
-        // Theme toggle button
         Padding(
           padding: const EdgeInsets.only(right: 8.0),
           child: ThemeToggleButton(
@@ -122,8 +118,6 @@ class DynamicAppBar extends StatelessWidget implements PreferredSizeWidget {
             darkColor: const Color(0xFF8AB4F8), // Lighter Google Blue
           ),
         ),
-
-        // Settings button
         Padding(
           padding: const EdgeInsets.only(right: 16.0),
           child: IconButton(icon: const Icon(Icons.settings), onPressed: onSettingsPressed, tooltip: 'Settings'),

@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../domain/available_models.dart';
 import '../domain/download_model.dart';
 
 import 'gemma_constants.dart';
@@ -19,6 +20,8 @@ import 'gemma_constants.dart';
 /// - Managing model file lifecycle
 /// - Cleaning up old/unused models
 class GemmaDownloaderDataSource {
+  static const String _logName = 'VoiceBridge.GemmaDownload';
+
   final DownloadModel model;
 
   GemmaDownloaderDataSource({required this.model});
@@ -74,9 +77,7 @@ class GemmaDownloaderDataSource {
         }
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error checking model existence: $e');
-      }
+      developer.log('Error checking model existence: $e', name: _logName);
     }
 
     await prefs.setBool(_preferenceKey, false);
@@ -93,25 +94,23 @@ class GemmaDownloaderDataSource {
       final prefs = await SharedPreferences.getInstance();
 
       // Get currently selected model to avoid deleting it
-      final selectedFilename = prefs.getString('selected_gemma_model');
+      final selectedFilename = prefs.getString(GemmaConstants.prefsSelectedModelKey);
 
       // List of old/unused model files to potentially delete
       final oldModels = GemmaConstants.oldModels;
 
+      final offeredModels = AvailableModel.values.map((model) => model.filename).toSet();
       for (final filename in oldModels) {
-        // Skip if this is the currently selected model
-        if (filename == selectedFilename) {
-          if (kDebugMode) {
-            print('Skipping deletion of selected model: $filename');
-          }
+        // Never delete a model the app still offers, even if the retired list is edited carelessly.
+        if (filename == selectedFilename || offeredModels.contains(filename)) {
+          developer.log('Skipping deletion of selected model: $filename', name: _logName);
           continue;
         }
 
-        final file = File('${directory.path}/$filename');
-        if (file.existsSync()) {
-          await file.delete();
-          if (kDebugMode) {
-            print('Deleted old model: $filename');
+        for (final file in [File('${directory.path}/$filename'), File('${directory.path}/$filename.part')]) {
+          if (file.existsSync()) {
+            await file.delete();
+            developer.log('Deleted old model file: ${file.path}', name: _logName);
           }
         }
 
@@ -119,9 +118,7 @@ class GemmaDownloaderDataSource {
         await prefs.remove('${GemmaConstants.prefsModelDownloadedPrefix}$filename');
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error deleting old models: $e');
-      }
+      developer.log('Error deleting old models: $e', name: _logName);
     }
   }
 
@@ -135,70 +132,83 @@ class GemmaDownloaderDataSource {
   /// - [onProgress]: Callback function that receives download progress (0.0 to 1.0)
   ///
   /// Throws an exception if the download fails.
+  /// Downloads to `<model>.part` and renames it only when complete, so an interrupted download is resumed
+  /// rather than mistaken for a finished model.
+  ///
+  /// Resume rules: 206 appends to the partial file; 200 means the server ignored `Range`, so the file is
+  /// rewritten from the start; 416 means the partial file already holds every byte.
   Future<void> downloadModel({required String token, required Function(double) onProgress}) async {
-    http.StreamedResponse? response;
-    IOSink? fileSink;
     final prefs = await SharedPreferences.getInstance();
+    final finalFile = File(await getFilePath());
+    final partialFile = File('${finalFile.path}.part');
+    IOSink? fileSink;
 
     try {
-      final filePath = await getFilePath();
-      final file = File(filePath);
-
-      // Check for existing partial download
-      int downloadedBytes = 0;
-      if (file.existsSync()) {
-        downloadedBytes = await file.length();
-      }
-
+      final resumeFrom = partialFile.existsSync() ? await partialFile.length() : 0;
       final request = http.Request('GET', Uri.parse(model.modelUrl));
       if (token.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $token';
       }
-
-      // Resume download if partially downloaded
-      if (downloadedBytes > 0) {
-        request.headers['Range'] = 'bytes=$downloadedBytes-';
+      if (resumeFrom > 0) {
+        request.headers['Range'] = 'bytes=$resumeFrom-';
       }
 
-      response = await request.send();
-
-      // HTTP 200 (full content) or 206 (partial content) are both valid
-      if (response.statusCode == 200 || response.statusCode == 206) {
-        final contentLength = response.contentLength ?? 0;
-        final totalBytes = downloadedBytes + contentLength;
-        fileSink = file.openWrite(mode: FileMode.append);
-
-        int received = downloadedBytes;
-
-        await for (final chunk in response.stream) {
-          fileSink.add(chunk);
-          received += chunk.length;
-          onProgress(totalBytes > 0 ? received / totalBytes : 0.0);
-        }
-
-        await prefs.setBool(_preferenceKey, true);
-      } else {
-        await prefs.setBool(_preferenceKey, false);
-        if (kDebugMode) {
-          print('Failed to download model. Status code: ${response.statusCode}');
-          print('Headers: ${response.headers}');
-          try {
-            final errorBody = await response.stream.bytesToString();
-            print('Error body: $errorBody');
-          } catch (e) {
-            print('Could not read error body: $e');
+      final response = await request.send();
+      final int alreadyHave;
+      switch (response.statusCode) {
+        case HttpStatus.partialContent:
+          alreadyHave = resumeFrom;
+          fileSink = partialFile.openWrite(mode: FileMode.append);
+        case HttpStatus.ok:
+          alreadyHave = 0;
+          fileSink = partialFile.openWrite();
+        case HttpStatus.requestedRangeNotSatisfiable when resumeFrom > 0:
+          await response.stream.drain<void>();
+          if (_totalFromContentRange(response.headers['content-range']) != resumeFrom) {
+            // The partial file is not a prefix of this model (corrupt, or the model changed): start over next time.
+            await partialFile.delete();
+            throw HttpException('Partial download does not match the remote model; deleted it', uri: request.url);
           }
-        }
-        throw Exception('Failed to download the model. Status: ${response.statusCode}');
+          await _completeDownload(partialFile, finalFile, prefs);
+          onProgress(1);
+          return;
+        default:
+          await response.stream.drain<void>();
+          throw HttpException('Model download failed with status ${response.statusCode}', uri: request.url);
       }
-    } catch (e) {
+
+      final contentLength = response.contentLength;
+      final expectedTotal = contentLength == null ? null : alreadyHave + contentLength;
+      var received = alreadyHave;
+      await for (final chunk in response.stream) {
+        fileSink.add(chunk);
+        received += chunk.length;
+        onProgress(expectedTotal != null && expectedTotal > 0 ? received / expectedTotal : 0.0);
+      }
+      await fileSink.close();
+      fileSink = null;
+
+      if (expectedTotal != null && received != expectedTotal) {
+        throw HttpException('Model download ended early: $received of $expectedTotal bytes', uri: request.url);
+      }
+      await _completeDownload(partialFile, finalFile, prefs);
+    } catch (error) {
       await prefs.setBool(_preferenceKey, false);
-      if (kDebugMode) {
-        print('Error downloading model: $e');
-      }
+      developer.log('Error downloading model: $error', name: _logName);
       rethrow;
     } finally {
-      if (fileSink != null) await fileSink.close();
+      await fileSink?.close();
     }
+  }
+
+  /// Parses the total size from a `Content-Range: bytes */<total>` header, or null when absent.
+  static int? _totalFromContentRange(String? header) {
+    final total = header?.split('/').last.trim();
+    return total == null ? null : int.tryParse(total);
+  }
+
+  Future<void> _completeDownload(File partialFile, File finalFile, SharedPreferences prefs) async {
+    await partialFile.rename(finalFile.path);
+    await prefs.setBool(_preferenceKey, true);
   }
 }

@@ -121,7 +121,13 @@ class WhisperFFIService {
 
   /// Copies the bundled model to the cache once. The copy is written to a `.part` file and renamed, so a crash
   /// mid-copy can never leave a truncated model that later launches would reuse.
-  static Future<String> getDefaultModelPath() async {
+  static Future<String>? _modelPathInFlight;
+
+  static Future<String> getDefaultModelPath() {
+    return _modelPathInFlight ??= _extractModel().whenComplete(() => _modelPathInFlight = null);
+  }
+
+  static Future<String> _extractModel() async {
     final cacheDirectory = await getApplicationCacheDirectory();
     final modelPath = path.join(cacheDirectory.path, modelFileName);
     if (File(modelPath).existsSync()) return modelPath;

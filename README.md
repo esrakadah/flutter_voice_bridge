@@ -15,7 +15,7 @@
 
 ## ⚡ Quick Start (macOS)
 
-Requirements: macOS 13.3+, Xcode, Flutter 3.38+, `cmake` (`brew install cmake`).
+Requirements: macOS 13.3+, Xcode, Flutter 3.38+, CocoaPods and `cmake` (`brew install cocoapods cmake`).
 
 ```bash
 git clone https://github.com/esrakadah/flutter_voice_bridge.git
@@ -41,7 +41,7 @@ Optional: `brew install ffmpeg` for the `Process.run` demo card (debug builds on
 - **Platform Channels**: recording and playback through AVAudioRecorder (iOS, macOS) and MediaRecorder (Android)
 - **Dart FFI**: a small C wrapper around whisper.cpp, with explicit memory ownership on both sides
 - **Isolates**: each native transcription runs in `Isolate.run`, so the UI keeps animating while Whisper works
-- **Platform Views**: a native text view embedded in the Flutter tree
+- **Platform Views** (iOS, Android): a native text view embedded in the Flutter tree
 - **Process.run**: calling an external tool (ffmpeg) with an allowlist and graceful failure
 
 ### 🤖 Offline AI
@@ -143,7 +143,7 @@ flutter test                              # unit and widget tests, also run in C
 flutter test integration_test -d macos    # on-device smoke test, needs ./scripts/build_whisper.sh first
 ```
 
-Covered today: every public method of the home and Gemma cubits, event branding and its persistence, the home
+Covered today: every public method of the home and Gemma cubits, the Gemma model download's resume rules, event branding and its persistence, the home
 screen (empty state, record button, event app bar) and dependency registration. On a Mac with the native build,
 `test/core/transcription/whisper_ffi_service_test.dart` also transcribes whisper.cpp's sample clip through the
 real library and checks that the calling isolate stayed responsive; CI skips it.

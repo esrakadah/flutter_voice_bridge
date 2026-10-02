@@ -109,12 +109,10 @@ class _HomeViewContentState extends State<HomeViewContent> {
                     tooltip: 'Settings',
                     onPressed: () => _openSettings(context),
                   ),
-                  // Confetti button
                   Padding(
                     padding: const EdgeInsets.only(right: 8.0),
                     child: ConfettiButton(controller: _confettiController, size: 36),
                   ),
-                  // Theme toggle button
                   Padding(
                     padding: const EdgeInsets.only(right: 16.0),
                     child: ThemeToggleButton(themeCubit: themeCubit, size: 36),
@@ -624,7 +622,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
                   else
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: recording.filePath.isNotEmpty
+                        onPressed: recording.filePath.isNotEmpty && !state.isTranscribing
                             ? () => context.read<HomeCubit>().transcribeRecording(recording.filePath)
                             : null,
                         icon: const Icon(Icons.transcribe),

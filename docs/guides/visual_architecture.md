@@ -1,4 +1,8 @@
 # 🏗️ Visual Architecture Guide
+
+> **Snapshot of the July 2025 workshop version.** Class names and file trees below may be out of date; the
+> [root README](../../README.md) and the code are authoritative for platform support, versions and architecture.
+
 # Flutter Voice Bridge - Comprehensive System Diagrams
 
 **Last Updated**: 29 July 2025  
@@ -186,13 +190,12 @@ graph TB
     subgraph "macOS/iOS Native Layer"
         Swift["🍎 Swift Implementation<br/>• AVAudioRecorder<br/>• Audio Session Config<br/>• WAV Format (16kHz)<br/>• Permission Handling"]
         
-        Metal["🚀 Metal GPU<br/>• Hardware Acceleration (✅ Working)<br/>• Neural Network Ops<br/>• Apple M1/M2/M3 Support<br/>• 2-3x Performance Boost"]
+        Metal["🚀 Metal GPU<br/>• Hardware Acceleration (✅ Working)<br/>• Neural Network Ops<br/>• Apple M1/M2/M3 Support"]
     end
     
     subgraph "Android Native Layer"
         Kotlin["🤖 Android Kotlin<br/>• MediaRecorder<br/>• Audio Permissions<br/>• WAV Format<br/>• File Management"]
         
-        OpenGL["🎮 GPU Support<br/>• OpenGL/Vulkan<br/>• Compute Shaders<br/>• Performance Optimization"]
     end
     
     subgraph "AI Processing Core"
@@ -229,7 +232,6 @@ graph TB
     %% AI Model Connections
     Whisper --> Model
     Whisper --> Metal
-    Whisper --> OpenGL
     
     %% Data Flow
     BL --> Files
@@ -258,7 +260,7 @@ graph TB
     class UI,States ui
     class BL,DI business
     class PC,FFI platform
-    class Swift,Kotlin,Metal,OpenGL native
+    class Swift,Kotlin,Metal native
     class Whisper,Model,Memory ai
     class Files,Cache data
     class Performance,Status metrics
@@ -449,7 +451,7 @@ sequenceDiagram
 - **Architecture Overview** → `README.md` (simplified)
 - **Clean Architecture** → `implementation_patterns.md` (implementation details)
 - **Complete System** → `ARCHITECTURE.md` (comprehensive)
-- **UI Components** → `project_management/requirements/ui_patterns.md`
+- **UI Components** → `docs/requirements/ui_patterns.md`
 - **All Diagrams** → This file (`visual_architecture.md`)
 
 ### **Learning Path**

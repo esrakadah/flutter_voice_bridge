@@ -7,8 +7,9 @@ import AVFoundation
   private var audioRecorder: AVAudioRecorder?
   private var audioPlayer: AVAudioPlayer?
   private var audioFilePath: String?
-  private var isRecording = false
   private var isPlaying = false
+  /// Must match VoiceBridgeChannels.audio in lib/core/platform/voice_bridge_channels.dart.
+  private static let audioChannelName = "voice.bridge/audio"
   private var audioSession: AVAudioSession = AVAudioSession.sharedInstance()
   
   override func application(
@@ -16,7 +17,7 @@ import AVFoundation
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     let controller: FlutterViewController = window?.rootViewController as! FlutterViewController
-    let audioChannel = FlutterMethodChannel(name: "voice.bridge/audio",
+    let audioChannel = FlutterMethodChannel(name: AppDelegate.audioChannelName,
                                             binaryMessenger: controller.binaryMessenger)
     
     audioChannel.setMethodCallHandler { [weak self] (call, result) in
@@ -47,13 +48,25 @@ import AVFoundation
     let nativeTextViewFactory = NativeTextViewFactory()
     self.registrar(forPlugin: "NativeTextView")?.register(nativeTextViewFactory, withId: "native-text-view")
     
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(handleAudioSessionInterruption(_:)),
+      name: AVAudioSession.interruptionNotification,
+      object: audioSession
+    )
+
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
   
   private func startRecording(result: @escaping FlutterResult) {
     NSLog("🎤 [iOS] startRecording called")
-    
+
+    if audioRecorder?.isRecording == true {
+      result(FlutterError(code: "ALREADY_RECORDING", message: "Recording already in progress", details: nil))
+      return
+    }
+
     // Check and request microphone permission
     switch audioSession.recordPermission {
     case .granted:
@@ -148,6 +161,19 @@ import AVFoundation
     }
   }
   
+  /// A call or Siri interrupts the session. Stopping finalises the WAV header, and the recorder is kept so the
+  /// next stopRecording from Dart still returns the file.
+  @objc private func handleAudioSessionInterruption(_ notification: Notification) {
+    guard
+      let rawType = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+      AVAudioSession.InterruptionType(rawValue: rawType) == .began,
+      let recorder = audioRecorder,
+      recorder.isRecording
+    else { return }
+    NSLog("⚠️ [iOS] Audio session interrupted, finalising the recording")
+    recorder.stop()
+  }
+
   private func stopRecording(result: @escaping FlutterResult) {
     NSLog("⏹️ [iOS] stopRecording called")
     

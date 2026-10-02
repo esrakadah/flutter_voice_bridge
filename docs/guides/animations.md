@@ -1,5 +1,8 @@
 # 🎨 Animation System Guide
 
+> **Snapshot of the July 2025 workshop version.** Class names and file trees below may be out of date; the
+> [root README](../../README.md) and the code are authoritative for platform support, versions and architecture.
+
 > **Flutter Voice Bridge - Immersive Animation Experience**  
 > **Version**: 1.1.0 | **Last Updated**: 29 July 2025
 

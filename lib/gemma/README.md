@@ -18,13 +18,17 @@ This module integrates Google's Gemma AI models for on-device inference in the F
 ```
 lib/gemma/
 ├── data/
-│   └── gemma_downloader_datasource.dart  # Handles model downloads
+│   ├── gemma_constants.dart              # Token (--dart-define), prefs keys, retired models
+│   ├── gemma_downloader_datasource.dart  # Resumable downloads (.part, Range)
+│   └── gemma_service.dart                # Model selection, download, chat session
 ├── domain/
 │   ├── available_models.dart             # Model definitions
 │   └── download_model.dart               # Download model
 └── ui/
     ├── gemma_chat_screen.dart            # Main chat interface
-    └── gemma_settings_screen.dart        # Model management
+    ├── gemma_cubit.dart                  # Chat state and streaming replies
+    ├── gemma_settings_screen.dart        # Model management
+    └── gemma_state.dart                  # Immutable chat state
 ```
 
 ## 🚀 Setup
@@ -99,7 +103,7 @@ For models with image support (Gemma 3N E2B):
 
 ### Inference
 - Uses `flutter_gemma` package v0.9.0
-- Runs on device using TFLite
+- Runs on device through MediaPipe LLM inference (`.task` models)
 - Streaming responses for better UX
 - Configurable max tokens (2048)
 
@@ -147,7 +151,7 @@ For models with image support (Gemma 3N E2B):
 ### Model Not Loading
 - Restart the app
 - Delete and re-download the model
-- Check iOS version (requires 14.0+)
+- Check iOS version (requires 16.0+)
 - Verify model file isn't corrupted
 
 ### Out of Memory

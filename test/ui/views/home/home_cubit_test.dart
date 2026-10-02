@@ -173,13 +173,75 @@ void main() {
     blocTest<HomeCubit, HomeState>(
       'reports a failure to stop as a recording error',
       build: () {
+        when(() => audioService.startRecording()).thenAnswer((_) async => '/recordings/new.wav');
         when(() => audioService.stopRecording()).thenThrow(Exception('no active recording'));
         return buildCubit();
       },
-      act: (cubit) => cubit.stopRecording(),
+      act: (cubit) async {
+        await cubit.startRecording();
+        await cubit.stopRecording();
+      },
       verify: (cubit) => expect(cubit.state.recordingPhase, RecordingPhase.failed),
     );
+
+    blocTest<HomeCubit, HomeState>(
+      'stop without an active recording does nothing',
+      build: buildCubit,
+      act: (cubit) => cubit.stopRecording(),
+      verify: (_) => verifyNever(() => audioService.stopRecording()),
+    );
   });
+
+  group('double taps', () {
+    blocTest<HomeCubit, HomeState>(
+      'a second start while the first is in flight never reaches the recorder',
+      build: () {
+        when(() => audioService.startRecording()).thenAnswer((_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          return '/recordings/new.wav';
+        });
+        return buildCubit();
+      },
+      act: (cubit) => Future.wait([cubit.startRecording(), cubit.startRecording()]),
+      verify: (cubit) {
+        verify(() => audioService.startRecording()).called(1);
+        expect(cubit.state.recordingPhase, RecordingPhase.recording);
+        expect(cubit.state.recordingError, isNull);
+      },
+    );
+
+    blocTest<HomeCubit, HomeState>(
+      'ALREADY_RECORDING from the platform shows the recording so it can be stopped',
+      build: () {
+        when(() => audioService.startRecording()).thenThrow(
+          RecordingFailure.fromPlatformException(PlatformException(code: 'ALREADY_RECORDING')),
+        );
+        return buildCubit();
+      },
+      act: (cubit) => cubit.startRecording(),
+      verify: (cubit) {
+        expect(cubit.state.recordingPhase, RecordingPhase.recording);
+        expect(cubit.state.recordingError, isNull);
+      },
+    );
+  });
+
+  blocTest<HomeCubit, HomeState>(
+    'a new recording clears the previous transcript',
+    build: () {
+      when(() => transcriptionService.transcribeAudio(any())).thenAnswer((_) async => 'old text');
+      when(() => audioService.startRecording()).thenAnswer((_) async => '/recordings/new.wav');
+      return buildCubit();
+    },
+    act: (cubit) async {
+      await cubit.transcribeRecording('/recordings/a.wav');
+      await cubit.startRecording();
+    },
+    verify: (cubit) {
+      expect(cubit.state.transcriptionText, isNull);
+      expect(cubit.state.keywords, isEmpty);
+    },
+  );
 
   group('transcribeRecording', () {
     blocTest<HomeCubit, HomeState>(
@@ -253,6 +315,64 @@ void main() {
         await cubit.retryLastTranscription();
       },
       verify: (_) => verify(() => transcriptionService.transcribeAudio(existingMemo.filePath)).called(1),
+    );
+  });
+
+  group('stale and retried transcriptions', () {
+    blocTest<HomeCubit, HomeState>(
+      'a slower earlier transcription does not overwrite the newer one',
+      build: () {
+        when(() => transcriptionService.transcribeAudio('/recordings/a.wav')).thenAnswer((_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          return 'text of A';
+        });
+        when(() => transcriptionService.transcribeAudio('/recordings/b.wav')).thenAnswer((_) async => 'text of B');
+        return buildCubit();
+      },
+      act: (cubit) => Future.wait([
+        cubit.transcribeRecording('/recordings/a.wav'),
+        cubit.transcribeRecording('/recordings/b.wav'),
+      ]),
+      verify: (cubit) {
+        expect(cubit.state.transcriptionText, 'text of B');
+        expect(cubit.state.transcriptionFilePath, '/recordings/b.wav');
+      },
+    );
+
+    blocTest<HomeCubit, HomeState>(
+      'retry transcribes the file that failed, not the newest recording',
+      build: () {
+        var attempts = 0;
+        when(() => transcriptionService.transcribeAudio(any())).thenAnswer((_) async {
+          attempts++;
+          if (attempts == 1) throw Exception('model busy');
+          return 'second try';
+        });
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        await cubit.transcribeRecording('/recordings/older.wav');
+        await cubit.retryLastTranscription();
+      },
+      verify: (_) => verify(() => transcriptionService.transcribeAudio('/recordings/older.wav')).called(2),
+    );
+
+    blocTest<HomeCubit, HomeState>(
+      'deleting the transcribed file clears its transcript and retry target',
+      build: () {
+        when(() => transcriptionService.transcribeAudio(any())).thenAnswer((_) async => 'text');
+        when(() => voiceMemoService.deleteRecording(any())).thenAnswer((_) async {});
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await cubit.transcribeRecording(existingMemo.filePath);
+        await cubit.deleteRecording(existingMemo.filePath);
+      },
+      verify: (cubit) {
+        expect(cubit.state.transcriptionText, isNull);
+        expect(cubit.state.transcriptionFilePath, isNull);
+      },
     );
   });
 

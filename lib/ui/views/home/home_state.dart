@@ -26,6 +26,7 @@ class HomeState extends Equatable {
     this.isLoadingRecordings = false,
     this.recordingsError,
     this.transcribingFilePath,
+    this.transcriptionFilePath,
     this.transcriptionText,
     this.transcriptionError,
     this.keywords = const [],
@@ -47,6 +48,9 @@ class HomeState extends Equatable {
 
   /// Set while a transcription runs; the file being transcribed.
   final String? transcribingFilePath;
+
+  /// The file the shown transcript or transcription error belongs to; retry uses it.
+  final String? transcriptionFilePath;
   final String? transcriptionText;
   final String? transcriptionError;
   final List<String> keywords;
@@ -65,6 +69,7 @@ class HomeState extends Equatable {
     bool? isLoadingRecordings,
     ValueGetter<String?>? recordingsError,
     ValueGetter<String?>? transcribingFilePath,
+    ValueGetter<String?>? transcriptionFilePath,
     ValueGetter<String?>? transcriptionText,
     ValueGetter<String?>? transcriptionError,
     List<String>? keywords,
@@ -80,6 +85,7 @@ class HomeState extends Equatable {
       isLoadingRecordings: isLoadingRecordings ?? this.isLoadingRecordings,
       recordingsError: recordingsError != null ? recordingsError() : this.recordingsError,
       transcribingFilePath: transcribingFilePath != null ? transcribingFilePath() : this.transcribingFilePath,
+      transcriptionFilePath: transcriptionFilePath != null ? transcriptionFilePath() : this.transcriptionFilePath,
       transcriptionText: transcriptionText != null ? transcriptionText() : this.transcriptionText,
       transcriptionError: transcriptionError != null ? transcriptionError() : this.transcriptionError,
       keywords: keywords ?? this.keywords,
@@ -98,6 +104,7 @@ class HomeState extends Equatable {
     isLoadingRecordings,
     recordingsError,
     transcribingFilePath,
+    transcriptionFilePath,
     transcriptionText,
     transcriptionError,
     keywords,

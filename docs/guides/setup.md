@@ -1,5 +1,8 @@
 # Flutter Voice Bridge - Setup Guide
 
+> **Snapshot of the July 2025 workshop version.** Class names and file trees below may be out of date; the
+> [root README](../../README.md) and the code are authoritative for platform support, versions and architecture.
+
 This guide helps you set up the Flutter Voice Bridge project locally with all required dependencies and working transcription capabilities.
 
 > 🎯 **Goal**: Get you from zero to working AI transcription in under 10 minutes!
@@ -49,7 +52,7 @@ flutter pub get
 # 3. Build native Whisper library (includes model download)
 ./scripts/build_whisper.sh
 
-# 4. Run on macOS/iOS for full transcription features
+# 4. Run on macOS for real transcription (iOS and Android use a placeholder)
 flutter run -d macos    # Recommended - full GPU acceleration
 flutter run -d ios      # iOS Simulator
 flutter run -d android  # Android - audio recording only
@@ -89,8 +92,7 @@ cd macos && pod install && cd ..
 # Build native libraries (if not done already)
 ./scripts/build_whisper.sh
 
-# Copy libraries to app bundle
-./scripts/copy_native_libraries.sh
+# No copy step: the macOS build phase embeds the libraries
 ```
 
 ### Android Setup
