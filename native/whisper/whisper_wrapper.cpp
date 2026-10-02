@@ -45,6 +45,8 @@ constexpr uint16_t kExpectedChannels = 1;
 constexpr uint16_t kExpectedBitsPerSample = 16;
 constexpr uint32_t kExpectedSampleRate = 16000;
 constexpr float kInt16Scale = 32768.0f;
+// Midpoint of the measured gap between speech (at most 0.45) and silence (at least 0.91).
+constexpr float kDropSegmentNoSpeechProbability = 0.7f;
 
 }  // namespace
 
@@ -181,9 +183,10 @@ char* whisper_ffi_transcribe(whisper_context* ctx, const char* audio_path) {
         std::string result_text = "";
         for (int i = 0; i < n_segments; ++i) {
             // whisper.cpp keeps a confident hallucination ("you") even when the window is almost surely silence,
-            // because it also requires a low log-probability. Measured: silence 0.91-0.94, speech 0.01-0.15.
+            // because it also requires a low log-probability. The probability is per 30-second window. Measured with
+            // base.en: silence 0.91-0.94; speech 0.01-0.45, the top being one word padded with 25 s of silence.
             const float no_speech_prob = whisper_full_get_segment_no_speech_prob(ctx, i);
-            if (no_speech_prob > wparams.no_speech_thold) {
+            if (no_speech_prob > kDropSegmentNoSpeechProbability) {
                 std::cerr << "🔇 Dropping a segment with no-speech probability " << no_speech_prob << std::endl;
                 continue;
             }
