@@ -16,6 +16,8 @@ WHISPER_CPP_DIR="$NATIVE_DIR/whisper.cpp"
 BUILD_DIR="$NATIVE_DIR/build"
 MODEL_DIR="$PROJECT_ROOT/assets/models"
 MODEL_FILE="ggml-$MODEL_NAME.bin"
+# Exact size of ggml-base.en.bin; a smaller file is an interrupted download or an HTTP error page.
+MODEL_BYTES=147964211
 
 log_info() { echo "ℹ️  [Whisper Build] $1"; }
 log_success() { echo "✅ [Whisper Build] $1"; }
@@ -74,15 +76,34 @@ build_library() {
     log_success "Built $BUILD_DIR/lib/libwhisper_ffi.dylib"
 }
 
+model_is_complete() {
+    [[ -f "$1" ]] && [[ "$(stat -f%z "$1")" == "$MODEL_BYTES" ]]
+}
+
 download_model() {
     mkdir -p "$MODEL_DIR"
-    if [[ -s "$MODEL_DIR/$MODEL_FILE" ]]; then
-        log_info "Model already present: $MODEL_DIR/$MODEL_FILE"
+    local model_path="$MODEL_DIR/$MODEL_FILE"
+    if model_is_complete "$model_path"; then
+        log_info "Model already present: $model_path"
         return
     fi
+    if [[ -e "$model_path" ]]; then
+        log_info "Replacing an incomplete model file ($(stat -f%z "$model_path") of $MODEL_BYTES bytes)"
+        rm -f "$model_path"
+    fi
+
     log_info "Downloading $MODEL_FILE (~147 MB)"
-    bash "$WHISPER_CPP_DIR/models/download-ggml-model.sh" "$MODEL_NAME" "$MODEL_DIR"
-    log_success "Model saved to $MODEL_DIR/$MODEL_FILE"
+    local download_dir
+    download_dir="$(mktemp -d)"
+    bash "$WHISPER_CPP_DIR/models/download-ggml-model.sh" "$MODEL_NAME" "$download_dir"
+    if ! model_is_complete "$download_dir/$MODEL_FILE"; then
+        rm -rf "$download_dir"
+        log_error "Downloaded model has the wrong size (expected $MODEL_BYTES bytes). Run the script again."
+        exit 1
+    fi
+    mv "$download_dir/$MODEL_FILE" "$model_path"
+    rm -rf "$download_dir"
+    log_success "Model saved to $model_path"
 }
 
 main() {
