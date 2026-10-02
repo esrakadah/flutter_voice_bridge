@@ -236,12 +236,14 @@ class HomeCubit extends Cubit<HomeState> {
       }
 
       final keywords = await _extractKeywordsOrEmpty(transcribedText);
+      final savedMemo = await _saveTranscriptionOrNull(audioFilePath, transcribedText, keywords);
       if (!isStillCurrent()) return;
       emit(
         state.copyWith(
           transcribingFilePath: () => null,
           transcriptionText: () => transcribedText,
           keywords: keywords,
+          recordings: savedMemo == null ? null : _withUpdatedMemo(savedMemo),
         ),
       );
     } catch (error) {
@@ -268,6 +270,20 @@ class HomeCubit extends Cubit<HomeState> {
     }
     await transcribeRecording(path);
   }
+
+  /// A failed save must not hide a transcript the user can already read.
+  Future<VoiceMemo?> _saveTranscriptionOrNull(String filePath, String text, List<String> keywords) async {
+    try {
+      return await _voiceMemoService.saveTranscription(filePath, text: text, keywords: keywords);
+    } catch (error) {
+      developer.log('⚠️ [HomeCubit] Could not save the transcription: $error', name: _logName);
+      return null;
+    }
+  }
+
+  List<VoiceMemo> _withUpdatedMemo(VoiceMemo memo) => [
+    for (final recording in state.recordings) recording.filePath == memo.filePath ? memo : recording,
+  ];
 
   Future<List<String>> _extractKeywordsOrEmpty(String text) async {
     try {
@@ -318,7 +334,7 @@ class HomeCubit extends Cubit<HomeState> {
       final voiceMemo = VoiceMemo(
         id: createdAt.millisecondsSinceEpoch.toString(),
         filePath: filePath,
-        title: 'Voice Memo ${createdAt.day}/${createdAt.month}',
+        title: VoiceMemo.defaultTitle(createdAt),
         keywords: const <String>[],
         createdAt: createdAt,
         durationSeconds: state.recordingDuration.inSeconds,

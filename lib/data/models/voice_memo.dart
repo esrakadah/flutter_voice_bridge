@@ -29,6 +29,14 @@ class VoiceMemo {
   });
 
   // Factory constructor for creating from JSON
+  /// The title shown for a recording made at [createdAt], for example "Voice Memo, Oct 2, 14:05".
+  static String defaultTitle(DateTime createdAt) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final hour = createdAt.hour.toString().padLeft(2, '0');
+    final minute = createdAt.minute.toString().padLeft(2, '0');
+    return 'Voice Memo, ${months[createdAt.month - 1]} ${createdAt.day}, $hour:$minute';
+  }
+
   factory VoiceMemo.fromJson(Map<String, dynamic> json) {
     return VoiceMemo(
       id: json['id'] as String,
