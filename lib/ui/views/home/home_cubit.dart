@@ -175,6 +175,9 @@ class HomeCubit extends Cubit<HomeState> {
         recordingPhase: next.isRecording ? null : RecordingPhase.idle,
       );
     }
+    if (next.transcribingFilePath == filePath) {
+      next = next.copyWith(transcribingFilePath: () => null);
+    }
     if (next.transcriptionFilePath == filePath) {
       next = next.copyWith(
         transcriptionFilePath: () => null,
@@ -237,7 +240,11 @@ class HomeCubit extends Cubit<HomeState> {
 
       final keywords = await _extractKeywordsOrEmpty(transcribedText);
       final savedMemo = await _saveTranscriptionOrNull(audioFilePath, transcribedText, keywords);
-      if (!isStillCurrent()) return;
+      if (!isStillCurrent()) {
+        // A newer transcription owns the transcript card, but this recording's tile should still show its text.
+        if (savedMemo != null) emit(state.copyWith(recordings: _withUpdatedMemo(savedMemo)));
+        return;
+      }
       emit(
         state.copyWith(
           transcribingFilePath: () => null,

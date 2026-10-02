@@ -29,6 +29,8 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
 
   static const String _logName = 'VoiceBridge.Service';
   static const String _sidecarExtension = '.json';
+  static const String _partialExtension = '.part';
+  static const int _uint32Bytes = 4;
   static const List<String> _audioExtensions = ['.m4a', '.wav'];
   static const int _wavHeaderBytes = 44;
   static const int _wavByteRateOffset = 28;
@@ -48,6 +50,10 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
 
   @override
   Future<VoiceMemo> saveTranscription(String filePath, {required String text, required List<String> keywords}) async {
+    // The recording may have been deleted while it was being transcribed; never write its words back.
+    if (!File(filePath).existsSync()) {
+      throw StateError('Recording no longer exists: $filePath');
+    }
     final existing = await _readSidecar(filePath) ?? await _memoFromAudioFile(File(filePath));
     final updated = existing.copyWith(
       transcription: text,
@@ -83,7 +89,11 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
 
   @override
   Future<void> deleteRecording(String filePath) async {
-    for (final file in [File(filePath), _sidecarFor(filePath)]) {
+    for (final file in [
+      File(filePath),
+      _sidecarFor(filePath),
+      File('${_sidecarFor(filePath).path}$_partialExtension'),
+    ]) {
       if (file.existsSync()) await file.delete();
     }
   }
@@ -93,7 +103,9 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
     final audioDir = await _audioDirectory();
     if (!audioDir.existsSync()) return;
     for (final file in audioDir.listSync().whereType<File>()) {
-      if (_isAudio(file.path) || file.path.endsWith(_sidecarExtension)) {
+      if (_isAudio(file.path) ||
+          file.path.endsWith(_sidecarExtension) ||
+          file.path.endsWith('$_sidecarExtension$_partialExtension')) {
         try {
           await file.delete();
         } catch (error) {
@@ -107,7 +119,7 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
 
   Future<void> _writeSidecar(VoiceMemo memo) async {
     final sidecar = _sidecarFor(memo.filePath);
-    final partial = File('${sidecar.path}.part');
+    final partial = File('${sidecar.path}$_partialExtension');
     await partial.writeAsString(jsonEncode(memo.toJson()));
     await partial.rename(sidecar.path);
   }
@@ -151,8 +163,8 @@ class VoiceMemoServiceImpl implements VoiceMemoService {
     final handle = file.openSync();
     try {
       handle.setPositionSync(_wavByteRateOffset);
-      final bytes = handle.readSync(4);
-      if (bytes.length < 4) return 0;
+      final bytes = handle.readSync(_uint32Bytes);
+      if (bytes.length < _uint32Bytes) return 0;
       final byteRate = ByteData.sublistView(bytes).getUint32(0, Endian.little);
       return byteRate == 0 ? 0 : (fileSize - _wavHeaderBytes) ~/ byteRate;
     } finally {

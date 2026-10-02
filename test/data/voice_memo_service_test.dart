@@ -113,4 +113,15 @@ void main() {
     expect(listed, hasLength(1));
     expect(listed.single.isTranscribed, isFalse);
   });
+
+  test('saving a transcript for a deleted recording throws and writes nothing', () async {
+    final file = writeWav('voice_memo_1.wav', seconds: 1);
+    file.deleteSync();
+
+    await expectLater(
+      serviceAt(documents).saveTranscription(file.path, text: 'private words', keywords: const []),
+      throwsA(isA<StateError>()),
+    );
+    expect(audio.listSync(), isEmpty);
+  });
 }

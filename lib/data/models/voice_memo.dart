@@ -28,7 +28,6 @@ class VoiceMemo {
     required this.status,
   });
 
-  // Factory constructor for creating from JSON
   /// The title shown for a recording made at [createdAt], for example "Voice Memo, Oct 2, 14:05".
   static String defaultTitle(DateTime createdAt) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -37,6 +36,7 @@ class VoiceMemo {
     return 'Voice Memo, ${months[createdAt.month - 1]} ${createdAt.day}, $hour:$minute';
   }
 
+  // Factory constructor for creating from JSON
   factory VoiceMemo.fromJson(Map<String, dynamic> json) {
     return VoiceMemo(
       id: json['id'] as String,
@@ -104,14 +104,46 @@ class VoiceMemo {
     return 'VoiceMemo(id: $id, title: $title, status: $status)';
   }
 
+  /// Value equality over every field, so a state that only gains a transcript is a new state.
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is VoiceMemo && other.id == id;
+    return other is VoiceMemo &&
+        other.id == id &&
+        other.filePath == filePath &&
+        other.title == title &&
+        other.transcription == transcription &&
+        _sameKeywords(other.keywords, keywords) &&
+        other.createdAt == createdAt &&
+        other.lastModified == lastModified &&
+        other.durationSeconds == durationSeconds &&
+        other.fileSizeBytes == fileSizeBytes &&
+        other.isTranscribed == isTranscribed &&
+        other.status == status;
+  }
+
+  static bool _sameKeywords(List<String> first, List<String> second) {
+    if (first.length != second.length) return false;
+    for (var index = 0; index < first.length; index++) {
+      if (first[index] != second[index]) return false;
+    }
+    return true;
   }
 
   @override
-  int get hashCode => id.hashCode;
+  int get hashCode => Object.hash(
+    id,
+    filePath,
+    title,
+    transcription,
+    Object.hashAll(keywords),
+    createdAt,
+    lastModified,
+    durationSeconds,
+    fileSizeBytes,
+    isTranscribed,
+    status,
+  );
 }
 
 // Enum for voice memo status

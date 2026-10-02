@@ -505,4 +505,54 @@ void main() {
     act: (cubit) => cubit.transcribeRecording(existingMemo.filePath),
     verify: (cubit) => expect(cubit.state.transcriptionText, 'text'),
   );
+
+  blocTest<HomeCubit, HomeState>(
+    'a transcription that finishes after a newer one still marks its own recording as transcribed',
+    build: () {
+      final second = memo('/recordings/second.wav');
+      when(() => voiceMemoService.listRecordings()).thenAnswer((_) async => [existingMemo, second]);
+      when(() => transcriptionService.transcribeAudio(existingMemo.filePath)).thenAnswer((_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        return 'first text';
+      });
+      when(() => transcriptionService.transcribeAudio(second.filePath)).thenAnswer((_) async => 'second text');
+      return buildCubit();
+    },
+    act: (cubit) async {
+      await Future<void>.delayed(Duration.zero);
+      await Future.wait([
+        cubit.transcribeRecording(existingMemo.filePath),
+        cubit.transcribeRecording('/recordings/second.wav'),
+      ]);
+    },
+    verify: (cubit) {
+      expect(cubit.state.transcriptionText, 'second text');
+      final first = cubit.state.recordings.firstWhere((recording) => recording.filePath == existingMemo.filePath);
+      expect(first.isTranscribed, isTrue);
+      expect(first.transcription, 'first text');
+    },
+  );
+
+  blocTest<HomeCubit, HomeState>(
+    'deleting a recording mid-transcription ends the progress and drops its result',
+    build: () {
+      when(() => voiceMemoService.deleteRecording(any())).thenAnswer((_) async {});
+      when(() => transcriptionService.transcribeAudio(any())).thenAnswer((_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        return 'late text';
+      });
+      return buildCubit();
+    },
+    act: (cubit) async {
+      await Future<void>.delayed(Duration.zero);
+      final transcription = cubit.transcribeRecording(existingMemo.filePath);
+      await cubit.deleteRecording(existingMemo.filePath);
+      expect(cubit.state.isTranscribing, isFalse);
+      await transcription;
+    },
+    verify: (cubit) {
+      expect(cubit.state.transcriptionText, isNull);
+      expect(cubit.state.recordings, isEmpty);
+    },
+  );
 }
