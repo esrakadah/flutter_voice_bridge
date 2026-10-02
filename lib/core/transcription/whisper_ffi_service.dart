@@ -119,7 +119,9 @@ class WhisperFFIService {
     return transcription.replaceAll(_nonSpeechMarker, ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
-  static final RegExp _nonSpeechMarker = RegExp(r'\[[A-Z_ ]+\]');
+  /// A bracketed group standing alone between spaces, such as `[BLANK_AUDIO]` or `[ Silence ]`; brackets inside
+  /// a word (`list[index]`) are left alone.
+  static final RegExp _nonSpeechMarker = RegExp(r'(?<=^|\s)\[[^\]\[]*\](?=\s|$)');
 
   Future<T> _serialised<T>(Future<T> Function() call) {
     final result = _pendingCall.then((_) => call());

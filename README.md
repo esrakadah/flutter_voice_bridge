@@ -118,9 +118,6 @@ Minimum versions: macOS 13.3 (needed by whisper.cpp's BLAS backend), iOS 16.0 (n
 iOS and Android use a placeholder transcription service: shipping the native library there needs a signed
 framework (iOS) and an NDK build (Android), which this project does not do yet.
 
-**Known limitation:** like other Whisper models, `base.en` sometimes "hears" a short word such as "you" in
-silence, so a silent recording can show that word instead of a "no speech" message.
-
 ### Gemma chat (experimental)
 
 The Gemma screen downloads a model on first use (300 MB to 3.1 GB, picked in its settings screen). Some

@@ -36,6 +36,68 @@ void main() {
     timeout: const Timeout(Duration(minutes: 2)),
   );
 
+  test(
+    'three seconds of silence transcribe to empty text, not a hallucinated word',
+    () async {
+      final service = WhisperFFIService();
+      await service.initialize();
+      await service.initializeModel(modelPath);
+      const sampleRate = 16000;
+      const seconds = 3;
+      final dataBytes = sampleRate * 2 * seconds;
+      final silenceDirectory = Directory.systemTemp.createTempSync('silence');
+      addTearDown(() => silenceDirectory.deleteSync(recursive: true));
+      final silence = File('${silenceDirectory.path}/silence.wav')
+        ..writeAsBytesSync([
+          ..._wavHeader(channels: 1, dataBytes: dataBytes).buffer.asUint8List(),
+          ...List.filled(dataBytes, 0),
+        ]);
+
+      expect(await service.transcribeAudio(silence.path), isEmpty);
+
+      await service.dispose();
+    },
+    skip: skipReason,
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
+
+  test(
+    'one short, quiet word padded by silence is still transcribed',
+    () async {
+      final service = WhisperFFIService();
+      await service.initialize();
+      await service.initializeModel(modelPath);
+      const sampleRate = 16000;
+      const startSeconds = 1.0;
+      const lengthSeconds = 1.3;
+      const quietScale = 0.08;
+      const trailingSilenceSeconds = 25;
+      const headerBytes = 44;
+      final jfk = File(samplePath).readAsBytesSync();
+      final samples = ByteData.sublistView(jfk, headerBytes);
+      final start = (startSeconds * sampleRate).round();
+      final length = (lengthSeconds * sampleRate).round();
+      final total = length + trailingSilenceSeconds * sampleRate;
+      final pcm = ByteData(total * 2);
+      for (var index = 0; index < length; index++) {
+        final sample = samples.getInt16((start + index) * 2, Endian.little);
+        pcm.setInt16(index * 2, (sample * quietScale).round(), Endian.little);
+      }
+      final directory = Directory.systemTemp.createTempSync('quiet_word');
+      addTearDown(() => directory.deleteSync(recursive: true));
+      final clip = File('${directory.path}/quiet_word.wav')
+        ..writeAsBytesSync([
+          ..._wavHeader(channels: 1, dataBytes: total * 2).buffer.asUint8List(),
+          ...pcm.buffer.asUint8List(),
+        ]);
+
+      expect(await service.transcribeAudio(clip.path), isNotEmpty);
+      await service.dispose();
+    },
+    skip: skipReason,
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
+
   group('malformed WAV files fail cleanly instead of reading out of bounds', () {
     final service = WhisperFFIService();
     late Directory scratch;
@@ -87,6 +149,13 @@ void main() {
   });
 
   group('stripNonSpeechMarkers', () {
+    test('removes the mixed-case marker whisper.cpp writes before speech that follows silence', () {
+      expect(
+        WhisperFFIService.stripNonSpeechMarkers('[ Silence ] And so my fellow Americans'),
+        'And so my fellow Americans',
+      );
+    });
+
     test('turns a marker-only result into empty text', () {
       expect(WhisperFFIService.stripNonSpeechMarkers(' [BLANK_AUDIO]\n'), isEmpty);
       expect(WhisperFFIService.stripNonSpeechMarkers('[MUSIC] [NOISE]'), isEmpty);
