@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - Unreleased
 
 ### Added
+- Transcripts, keywords and durations are saved next to each recording (`<audio>.json`) and survive a restart;
+  the recordings list shows them. Older recordings without the file get their duration from the WAV header.
 - Experimental on-device Gemma chat on iOS (merged from `experimental/flutter-gemma`), with the DevFest Berlin
   2025 talk material under `docs/talks/devfest-berlin-2025/`.
 - Delete all recordings.

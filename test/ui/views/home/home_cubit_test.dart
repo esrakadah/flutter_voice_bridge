@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -48,6 +50,19 @@ void main() {
     when(() => transcriptionService.extractKeywords(any())).thenAnswer((_) async => const ['hello']);
     when(() => voiceMemoService.listRecordings()).thenAnswer((_) async => [existingMemo]);
     when(() => voiceMemoService.saveVoiceMemo(any())).thenAnswer((_) async => '/recordings/new.wav');
+    when(
+      () => voiceMemoService.saveTranscription(
+        any(),
+        text: any(named: 'text'),
+        keywords: any(named: 'keywords'),
+      ),
+    ).thenAnswer((invocation) async {
+      final path = invocation.positionalArguments.first as String;
+      return memo(path).copyWith(
+        transcription: invocation.namedArguments[#text] as String,
+        isTranscribed: true,
+      );
+    });
     when(() => audioService.hasPermission()).thenAnswer((_) async => true);
   });
 
@@ -166,7 +181,7 @@ void main() {
         expect(cubit.state.isTranscribing, isFalse);
         final saved = verify(() => voiceMemoService.saveVoiceMemo(captureAny())).captured.single as VoiceMemo;
         expect(saved.createdAt, DateTime(2026, 10, 2, 12));
-        expect(saved.title, 'Voice Memo 2/10');
+        expect(saved.title, 'Voice Memo, Oct 2, 12:00');
       },
     );
 
@@ -454,4 +469,90 @@ void main() {
     await cubit.close();
     verifyNever(() => transcriptionService.dispose());
   });
+
+  blocTest<HomeCubit, HomeState>(
+    'a finished transcription is saved and shown on its recording',
+    build: () {
+      when(() => transcriptionService.transcribeAudio(any())).thenAnswer((_) async => 'saved text');
+      return buildCubit();
+    },
+    act: (cubit) async {
+      await Future<void>.delayed(Duration.zero);
+      await cubit.transcribeRecording(existingMemo.filePath);
+    },
+    verify: (cubit) {
+      verify(
+        () => voiceMemoService.saveTranscription(existingMemo.filePath, text: 'saved text', keywords: ['hello']),
+      ).called(1);
+      expect(cubit.state.recordings.single.transcription, 'saved text');
+      expect(cubit.state.recordings.single.isTranscribed, isTrue);
+    },
+  );
+
+  blocTest<HomeCubit, HomeState>(
+    'a failed save still shows the transcript',
+    build: () {
+      when(() => transcriptionService.transcribeAudio(any())).thenAnswer((_) async => 'text');
+      when(
+        () => voiceMemoService.saveTranscription(
+          any(),
+          text: any(named: 'text'),
+          keywords: any(named: 'keywords'),
+        ),
+      ).thenThrow(const FileSystemException('read-only'));
+      return buildCubit();
+    },
+    act: (cubit) => cubit.transcribeRecording(existingMemo.filePath),
+    verify: (cubit) => expect(cubit.state.transcriptionText, 'text'),
+  );
+
+  blocTest<HomeCubit, HomeState>(
+    'a transcription that finishes after a newer one still marks its own recording as transcribed',
+    build: () {
+      final second = memo('/recordings/second.wav');
+      when(() => voiceMemoService.listRecordings()).thenAnswer((_) async => [existingMemo, second]);
+      when(() => transcriptionService.transcribeAudio(existingMemo.filePath)).thenAnswer((_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        return 'first text';
+      });
+      when(() => transcriptionService.transcribeAudio(second.filePath)).thenAnswer((_) async => 'second text');
+      return buildCubit();
+    },
+    act: (cubit) async {
+      await Future<void>.delayed(Duration.zero);
+      await Future.wait([
+        cubit.transcribeRecording(existingMemo.filePath),
+        cubit.transcribeRecording('/recordings/second.wav'),
+      ]);
+    },
+    verify: (cubit) {
+      expect(cubit.state.transcriptionText, 'second text');
+      final first = cubit.state.recordings.firstWhere((recording) => recording.filePath == existingMemo.filePath);
+      expect(first.isTranscribed, isTrue);
+      expect(first.transcription, 'first text');
+    },
+  );
+
+  blocTest<HomeCubit, HomeState>(
+    'deleting a recording mid-transcription ends the progress and drops its result',
+    build: () {
+      when(() => voiceMemoService.deleteRecording(any())).thenAnswer((_) async {});
+      when(() => transcriptionService.transcribeAudio(any())).thenAnswer((_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        return 'late text';
+      });
+      return buildCubit();
+    },
+    act: (cubit) async {
+      await Future<void>.delayed(Duration.zero);
+      final transcription = cubit.transcribeRecording(existingMemo.filePath);
+      await cubit.deleteRecording(existingMemo.filePath);
+      expect(cubit.state.isTranscribing, isFalse);
+      await transcription;
+    },
+    verify: (cubit) {
+      expect(cubit.state.transcriptionText, isNull);
+      expect(cubit.state.recordings, isEmpty);
+    },
+  );
 }

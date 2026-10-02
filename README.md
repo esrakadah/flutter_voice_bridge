@@ -29,7 +29,8 @@ flutter pub get
 flutter run -d macos
 ```
 
-**Try it**: tap record, speak for a few seconds, tap stop. The transcript appears in the app.
+**Try it**: tap record, speak for a few seconds, tap stop. The transcript appears in the app and is saved with
+the recording, so it is still there after a restart.
 
 Optional: `brew install ffmpeg` for the `Process.run` demo card (debug builds only, see below).
 
