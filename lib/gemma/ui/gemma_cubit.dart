@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 
 import '../data/gemma_service.dart';
+import '../domain/available_models.dart';
 import 'gemma_state.dart';
 
 class GemmaCubit extends Cubit<GemmaState> {
@@ -13,7 +14,11 @@ class GemmaCubit extends Cubit<GemmaState> {
 
   final GemmaService _gemmaService;
 
+  /// The model the current chat runs on; settings changes reload only when it differs.
+  AvailableModel? _activeModel;
+
   Future<void> initialize() async {
+    if (state.status == GemmaStatus.loading) return;
     emit(
       state.copyWith(
         status: GemmaStatus.loading,
@@ -34,6 +39,7 @@ class GemmaCubit extends Cubit<GemmaState> {
 
       emit(state.copyWith(loadingMessage: 'Loading model...', downloadProgress: () => null));
       await _gemmaService.initializeChat();
+      _activeModel = selectedModel;
       emit(state.copyWith(status: GemmaStatus.ready, modelSupportsImages: selectedModel.supportsImages));
     } catch (error) {
       emit(state.copyWith(status: GemmaStatus.error, errorMessage: () => error.toString()));
@@ -81,6 +87,15 @@ class GemmaCubit extends Cubit<GemmaState> {
   Future<void> resetChat() async {
     emit(const GemmaState());
     await initialize();
+  }
+
+  /// Called when the settings screen closes: keeps the conversation unless the selected model changed.
+  Future<void> reloadIfModelChanged() async {
+    if (state.isAwaitingResponse || state.status == GemmaStatus.loading) return;
+    final selectedModel = await _gemmaService.getSelectedModel();
+    if (selectedModel != _activeModel || state.status == GemmaStatus.error) {
+      await resetChat();
+    }
   }
 
   /// A reply can still be streaming when the chat screen's owner closes the cubit; drop those late updates.

@@ -37,29 +37,34 @@ class ConfettiParticle {
     this.alpha = 1.0,
   });
 
-  /// Update particle position with physics (gravity, air resistance)
-  void update(double dt) {
-    // Apply gravity
-    velocityY += 980 * dt; // 980 pixels/s² (like real gravity)
+  static const double _gravityPixelsPerSecondSquared = 980;
 
-    // Apply air resistance
-    velocityX *= 0.99;
-    velocityY *= 0.99;
+  /// Share of velocity kept after one second of air resistance (0.99 per frame at 60 fps), so the motion is
+  /// the same on 60 Hz and 120 Hz displays.
+  static const double _velocityKeptPerSecond = 0.547;
 
-    // Update position
+  /// Particles start fading once they pass this share of the screen height.
+  static const double _fadeStartScreenShare = 0.5;
+  static const double _fadeOutPerSecond = 0.5;
+
+  bool isDead = false;
+
+  /// Advances the particle by [dt] seconds on a screen [screenHeight] logical pixels tall.
+  void update(double dt, {required double screenHeight}) {
+    velocityY += _gravityPixelsPerSecondSquared * dt;
+    final drag = pow(_velocityKeptPerSecond, dt).toDouble();
+    velocityX *= drag;
+    velocityY *= drag;
+
     x += velocityX * dt;
     y += velocityY * dt;
-
-    // Update rotation
     rotation += rotationSpeed * dt;
 
-    // Fade out near the end
-    if (y > 500) {
-      alpha = max(0, alpha - dt * 0.5);
+    if (y > screenHeight * _fadeStartScreenShare) {
+      alpha = max(0, alpha - dt * _fadeOutPerSecond);
     }
+    isDead = y > screenHeight || alpha <= 0;
   }
-
-  bool get isDead => y > 1000 || alpha <= 0;
 }
 
 enum ConfettiShape {
@@ -295,11 +300,12 @@ class _ConfettiOverlayState extends State<ConfettiOverlay> with SingleTickerProv
     _lastElapsed = elapsed;
 
     if (!mounted) return;
+    final screenHeight = MediaQuery.sizeOf(context).height;
 
     setState(() {
       // Update all particles
       for (final particle in _particles) {
-        particle.update(dt);
+        particle.update(dt, screenHeight: screenHeight);
       }
 
       // Remove dead particles

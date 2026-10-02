@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,6 +20,8 @@ import 'gemma_constants.dart';
 /// - Managing model file lifecycle
 /// - Cleaning up old/unused models
 class GemmaDownloaderDataSource {
+  static const String _logName = 'VoiceBridge.GemmaDownload';
+
   final DownloadModel model;
 
   GemmaDownloaderDataSource({required this.model});
@@ -75,9 +77,7 @@ class GemmaDownloaderDataSource {
         }
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error checking model existence: $e');
-      }
+      developer.log('Error checking model existence: $e', name: _logName);
     }
 
     await prefs.setBool(_preferenceKey, false);
@@ -94,7 +94,7 @@ class GemmaDownloaderDataSource {
       final prefs = await SharedPreferences.getInstance();
 
       // Get currently selected model to avoid deleting it
-      final selectedFilename = prefs.getString('selected_gemma_model');
+      final selectedFilename = prefs.getString(GemmaConstants.prefsSelectedModelKey);
 
       // List of old/unused model files to potentially delete
       final oldModels = GemmaConstants.oldModels;
@@ -103,18 +103,14 @@ class GemmaDownloaderDataSource {
       for (final filename in oldModels) {
         // Never delete a model the app still offers, even if the retired list is edited carelessly.
         if (filename == selectedFilename || offeredModels.contains(filename)) {
-          if (kDebugMode) {
-            print('Skipping deletion of selected model: $filename');
-          }
+          developer.log('Skipping deletion of selected model: $filename', name: _logName);
           continue;
         }
 
         for (final file in [File('${directory.path}/$filename'), File('${directory.path}/$filename.part')]) {
           if (file.existsSync()) {
             await file.delete();
-            if (kDebugMode) {
-              print('Deleted old model file: ${file.path}');
-            }
+            developer.log('Deleted old model file: ${file.path}', name: _logName);
           }
         }
 
@@ -122,9 +118,7 @@ class GemmaDownloaderDataSource {
         await prefs.remove('${GemmaConstants.prefsModelDownloadedPrefix}$filename');
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error deleting old models: $e');
-      }
+      developer.log('Error deleting old models: $e', name: _logName);
     }
   }
 
@@ -200,9 +194,7 @@ class GemmaDownloaderDataSource {
       await _completeDownload(partialFile, finalFile, prefs);
     } catch (error) {
       await prefs.setBool(_preferenceKey, false);
-      if (kDebugMode) {
-        print('Error downloading model: $error');
-      }
+      developer.log('Error downloading model: $error', name: _logName);
       rethrow;
     } finally {
       await fileSink?.close();

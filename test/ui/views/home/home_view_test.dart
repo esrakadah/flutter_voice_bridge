@@ -70,4 +70,15 @@ void main() {
     expect(find.text('2026'), findsOneWidget);
     expect(find.text('🇹🇷'), findsOneWidget);
   });
+
+  testWidgets('a playback error shows even after a completed recording', (tester) async {
+    when(() => homeCubit.state).thenReturn(
+      const HomeState(recordingPhase: RecordingPhase.completed, playbackError: 'Audio file not found'),
+    );
+    await pumpHome(tester);
+
+    expect(find.text('Recording completed'), findsOneWidget);
+    expect(find.text('Playback Error'), findsOneWidget);
+    expect(find.text('Audio file not found'), findsOneWidget);
+  });
 }

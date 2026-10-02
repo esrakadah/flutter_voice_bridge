@@ -186,9 +186,9 @@ char* whisper_ffi_transcribe(whisper_context* ctx, const char* audio_path) {
             }
         }
 
+        // An empty string (not a placeholder sentence) lets Dart show "no speech detected" as an error.
         if (result_text.empty()) {
             std::cerr << "⚠️  Warning: Transcription completed but no text extracted" << std::endl;
-            result_text = "[No speech detected in audio]";
         }
 
         std::cerr << "✅ Transcription completed successfully" << std::endl;

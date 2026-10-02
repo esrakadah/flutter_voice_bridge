@@ -161,18 +161,20 @@ class MainActivity: FlutterActivity(), MediaPlayer.OnCompletionListener, MediaPl
             throw Exception("No recording in progress")
         }
 
-        mediaRecorder?.apply {
-            try {
-                stop()
-                release()
-            } catch (e: Exception) {
-                throw Exception("Failed to stop recording: ${e.message}")
-            }
+        val recorder = mediaRecorder
+        try {
+            // stop() throws when no audio arrived yet (a very short recording); the file is unusable then.
+            recorder?.stop()
+        } catch (e: RuntimeException) {
+            audioFilePath?.let { File(it).delete() }
+            throw Exception("Recording too short or failed: ${e.message}")
+        } finally {
+            // Always release, or every later start would be refused as ALREADY_RECORDING.
+            recorder?.release()
+            mediaRecorder = null
+            isRecording = false
         }
 
-        mediaRecorder = null
-        isRecording = false
-        
         return audioFilePath ?: throw Exception("Audio file path not available")
     }
 

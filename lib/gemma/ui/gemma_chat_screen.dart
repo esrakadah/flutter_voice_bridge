@@ -67,6 +67,10 @@ class _GemmaChatViewState extends State<_GemmaChatView> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    final isBusy = context.select(
+      (GemmaCubit cubit) => cubit.state.isAwaitingResponse || cubit.state.status == GemmaStatus.loading,
+    );
+
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
@@ -78,12 +82,18 @@ class _GemmaChatViewState extends State<_GemmaChatView> {
             padding: const EdgeInsets.only(right: 16.0),
             child: IconButton(
               icon: const Icon(Icons.settings_outlined),
-              onPressed: () async {
-                await Navigator.push(context, MaterialPageRoute(builder: (context) => const GemmaSettingsScreen()));
-                if (context.mounted) {
-                  context.read<GemmaCubit>().resetChat();
-                }
-              },
+              // Settings can switch or delete the model, so it is locked while a reply streams or a model loads.
+              onPressed: isBusy
+                  ? null
+                  : () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const GemmaSettingsScreen()),
+                      );
+                      if (context.mounted) {
+                        await context.read<GemmaCubit>().reloadIfModelChanged();
+                      }
+                    },
               tooltip: 'Model Settings',
             ),
           ),

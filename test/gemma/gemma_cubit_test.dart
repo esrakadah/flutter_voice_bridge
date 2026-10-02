@@ -129,4 +129,44 @@ void main() {
       verify(() => gemmaService.initializeChat()).called(1);
     },
   );
+
+  blocTest<GemmaCubit, GemmaState>(
+    'coming back from settings without a model change keeps the conversation',
+    build: () {
+      when(() => gemmaService.sendMessage(any())).thenAnswer((_) => Stream.value('Hi'));
+      return buildCubit();
+    },
+    act: (cubit) async {
+      await cubit.initialize();
+      await cubit.sendMessage('Hello');
+      await cubit.reloadIfModelChanged();
+    },
+    verify: (cubit) {
+      expect(cubit.state.messages, hasLength(2));
+      verify(() => gemmaService.initializeChat()).called(1);
+    },
+  );
+
+  blocTest<GemmaCubit, GemmaState>(
+    'a different selected model reloads the chat',
+    build: buildCubit,
+    act: (cubit) async {
+      await cubit.initialize();
+      when(() => gemmaService.getSelectedModel()).thenAnswer((_) async => AvailableModel.gemma270m);
+      await cubit.reloadIfModelChanged();
+    },
+    verify: (_) => verify(() => gemmaService.initializeChat()).called(2),
+  );
+
+  blocTest<GemmaCubit, GemmaState>(
+    'initialize does not start twice while loading',
+    build: () {
+      when(
+        () => gemmaService.initializeChat(),
+      ).thenAnswer((_) => Future<void>.delayed(const Duration(milliseconds: 10)));
+      return buildCubit();
+    },
+    act: (cubit) => Future.wait([cubit.initialize(), cubit.initialize()]),
+    verify: (_) => verify(() => gemmaService.initializeChat()).called(1),
+  );
 }

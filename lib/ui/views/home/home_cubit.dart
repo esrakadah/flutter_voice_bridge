@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/audio/audio_service.dart';
 import '../../../core/errors/voice_bridge_error.dart';
+import '../../../core/platform/voice_bridge_channels.dart';
 import '../../../core/transcription/transcription_service.dart';
 import '../../../data/models/voice_memo.dart';
 import '../../../data/services/voice_memo_service.dart';
@@ -52,6 +53,7 @@ class HomeCubit extends Cubit<HomeState> {
   final DateTime Function() _clock;
 
   Timer? _recordingTimer;
+  bool _isRecorderBusy = false;
 
   Future<void> _initializeTranscriptionService() async {
     try {
@@ -63,38 +65,63 @@ class HomeCubit extends Cubit<HomeState> {
   }
 
   Future<void> startRecording() async {
+    // A second tap while the first start is still in flight must not reach the recorder.
+    if (_isRecorderBusy || state.isRecording) return;
+    _isRecorderBusy = true;
     try {
       final hasPermission = await _audioService.hasPermission();
       if (!hasPermission) {
         await _audioService.requestPermission();
       }
-
       await _audioService.startRecording();
-      emit(
-        state.copyWith(
-          recordingPhase: RecordingPhase.recording,
-          recordingDuration: Duration.zero,
-          recordingError: () => null,
-        ),
-      );
-      _startRecordingTimer();
+      _enterRecordingPhase();
+    } on RecordingFailure catch (failure) {
+      if (failure.platformCode == VoiceBridgeErrorCodes.alreadyRecording) {
+        // The native recorder is running (for example after a hot restart): show it so it can be stopped.
+        _enterRecordingPhase();
+      } else {
+        _emitRecordingFailure(failure, context: 'HomeCubit.startRecording');
+      }
     } catch (error) {
       _emitRecordingFailure(error, context: 'HomeCubit.startRecording');
+    } finally {
+      _isRecorderBusy = false;
     }
   }
 
+  void _enterRecordingPhase() {
+    emit(
+      state.copyWith(
+        recordingPhase: RecordingPhase.recording,
+        recordingDuration: Duration.zero,
+        recordingError: () => null,
+        transcriptionText: () => null,
+        transcriptionError: () => null,
+        transcriptionFilePath: () => null,
+        keywords: const [],
+      ),
+    );
+    _startRecordingTimer();
+  }
+
   Future<void> stopRecording() async {
+    if (_isRecorderBusy || !state.isRecording) return;
+    _isRecorderBusy = true;
     _stopRecordingTimer();
     try {
       final finalPath = await _audioService.stopRecording();
       await _createVoiceMemo(finalPath);
       emit(state.copyWith(recordingPhase: RecordingPhase.completed, lastRecordingPath: () => finalPath));
-
-      await loadRecordings();
-      await transcribeRecording(finalPath);
     } catch (error) {
       _emitRecordingFailure(error, context: 'HomeCubit.stopRecording');
+      return;
+    } finally {
+      _isRecorderBusy = false;
     }
+
+    await loadRecordings();
+    final finalPath = state.lastRecordingPath;
+    if (finalPath != null) await transcribeRecording(finalPath);
   }
 
   Future<void> loadRecordings() async {
@@ -110,7 +137,7 @@ class HomeCubit extends Cubit<HomeState> {
 
   Future<void> deleteRecording(String filePath) async {
     final remaining = state.recordings.where((memo) => memo.filePath != filePath).toList();
-    emit(state.copyWith(recordings: remaining));
+    emit(_forgetFile(state.copyWith(recordings: remaining), filePath));
     try {
       await _voiceMemoService.deleteRecording(filePath);
     } catch (error) {
@@ -120,7 +147,17 @@ class HomeCubit extends Cubit<HomeState> {
   }
 
   Future<void> deleteAllRecordings() async {
-    emit(state.copyWith(recordings: const []));
+    emit(
+      state.copyWith(
+        recordings: const [],
+        recordingPhase: state.isRecording ? null : RecordingPhase.idle,
+        lastRecordingPath: () => null,
+        transcriptionFilePath: () => null,
+        transcriptionText: () => null,
+        transcriptionError: () => null,
+        keywords: const [],
+      ),
+    );
     try {
       await _voiceMemoService.deleteAllRecordings();
     } catch (error) {
@@ -129,8 +166,34 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
+  /// Drops every reference to a deleted file, so retry and the status card never point at it.
+  HomeState _forgetFile(HomeState current, String filePath) {
+    var next = current;
+    if (next.lastRecordingPath == filePath) {
+      next = next.copyWith(
+        lastRecordingPath: () => null,
+        recordingPhase: next.isRecording ? null : RecordingPhase.idle,
+      );
+    }
+    if (next.transcriptionFilePath == filePath) {
+      next = next.copyWith(
+        transcriptionFilePath: () => null,
+        transcriptionText: () => null,
+        transcriptionError: () => null,
+        keywords: const [],
+      );
+    }
+    return next;
+  }
+
   Future<void> playRecording(String filePath) async {
-    emit(state.copyWith(playingFilePath: () => filePath, playbackError: () => null));
+    emit(
+      state.copyWith(
+        playingFilePath: () => filePath,
+        playbackError: () => null,
+        recordingPhase: state.isRecording ? null : RecordingPhase.idle,
+      ),
+    );
     try {
       await _audioService.playRecording(filePath);
       emit(state.copyWith(playingFilePath: () => null));
@@ -149,11 +212,15 @@ class HomeCubit extends Cubit<HomeState> {
     emit(
       state.copyWith(
         transcribingFilePath: () => audioFilePath,
+        transcriptionFilePath: () => audioFilePath,
         transcriptionText: () => null,
         transcriptionError: () => null,
         keywords: const [],
       ),
     );
+
+    // A newer transcription may start while this one waits; only the latest one may update the screen.
+    bool isStillCurrent() => state.transcribingFilePath == audioFilePath;
 
     try {
       if (!await _transcriptionService.isInitialized()) {
@@ -163,12 +230,13 @@ class HomeCubit extends Cubit<HomeState> {
       final transcribedText = await _transcriptionService.transcribeAudio(audioFilePath);
       if (transcribedText.isEmpty) {
         throw const TranscriptionFailure(
-          details: 'Empty result: silent audio, unsupported format or a model problem',
+          details: 'No speech detected (silent audio, unsupported format or a model problem)',
           type: TranscriptionErrorType.processingFailed,
         );
       }
 
       final keywords = await _extractKeywordsOrEmpty(transcribedText);
+      if (!isStillCurrent()) return;
       emit(
         state.copyWith(
           transcribingFilePath: () => null,
@@ -178,6 +246,7 @@ class HomeCubit extends Cubit<HomeState> {
       );
     } catch (error) {
       developer.log('❌ [HomeCubit] Transcription failed: $error', name: _logName, error: error);
+      if (!isStillCurrent()) return;
       emit(
         state.copyWith(
           transcribingFilePath: () => null,
@@ -187,9 +256,12 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
-  /// Retries the most recent recording, or the newest file in the list after a restart.
+  /// Retries the file whose transcription is on screen, else the last recording, else the newest file.
   Future<void> retryLastTranscription() async {
-    final path = state.lastRecordingPath ?? (state.recordings.isNotEmpty ? state.recordings.first.filePath : null);
+    final path =
+        state.transcriptionFilePath ??
+        state.lastRecordingPath ??
+        (state.recordings.isNotEmpty ? state.recordings.first.filePath : null);
     if (path == null) {
       emit(state.copyWith(transcriptionError: () => 'No recording available to transcribe'));
       return;

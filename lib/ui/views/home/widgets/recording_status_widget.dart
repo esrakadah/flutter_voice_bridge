@@ -12,20 +12,32 @@ class RecordingStatusWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasStatus = state.recordingPhase != RecordingPhase.idle || state.playbackError != null;
-    if (!hasStatus) {
+    final playbackError = state.playbackError;
+    final sections = [
+      ?_buildPhaseContent(context),
+      if (playbackError != null) _buildErrorRow(context, 'Playback Error', playbackError),
+    ];
+    if (sections.isEmpty) {
       return const SizedBox.shrink();
     }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
       child: Card(
-        child: Padding(padding: const EdgeInsets.all(20), child: _buildStatusContent(context)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 16,
+            children: sections,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildStatusContent(BuildContext context) {
+  /// The recorder's phase (recording, completed, failed), or null while idle.
+  Widget? _buildPhaseContent(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -83,34 +95,39 @@ class RecordingStatusWidget extends StatelessWidget {
       );
     }
 
-    final errorMessage = state.recordingPhase == RecordingPhase.failed ? state.recordingError : state.playbackError;
-    if (errorMessage != null) {
-      final errorTitle = state.recordingPhase == RecordingPhase.failed ? 'Recording Error' : 'Playback Error';
-      return Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: colorScheme.error.withAlpha(26), borderRadius: BorderRadius.circular(8)),
-            child: Icon(Icons.error, color: colorScheme.error, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  errorTitle,
-                  style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.error),
-                ),
-                Text(errorMessage, style: textTheme.bodyMedium),
-              ],
-            ),
-          ),
-        ],
-      );
+    final recordingError = state.recordingError;
+    if (state.recordingPhase == RecordingPhase.failed && recordingError != null) {
+      return _buildErrorRow(context, 'Recording Error', recordingError);
     }
 
-    return const SizedBox.shrink();
+    return null;
+  }
+
+  Widget _buildErrorRow(BuildContext context, String title, String message) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: colorScheme.error.withAlpha(26), borderRadius: BorderRadius.circular(8)),
+          child: Icon(Icons.error, color: colorScheme.error, size: 24),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.error),
+              ),
+              Text(message, style: textTheme.bodyMedium),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   /// Formats duration as MM:SS

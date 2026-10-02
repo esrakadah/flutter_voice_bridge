@@ -25,7 +25,9 @@ void main() {
     expect(find.byIcon(Icons.mic_rounded), findsWidgets);
   });
 
-  testWidgets('macOS: the bundled library and model transcribe on a background isolate', (tester) async {
+  testWidgets('macOS: the bundled library transcribes on a background isolate without the old placeholder', (
+    tester,
+  ) async {
     final service = WhisperFFIService();
     await service.initialize();
     await service.initializeModel(await WhisperFFIService.getDefaultModelPath());
@@ -34,7 +36,8 @@ void main() {
     await silence.writeAsBytes(_silentWav(sampleRate: 16000, seconds: 1));
     final transcription = await service.transcribeAudio(silence.path);
 
-    expect(transcription, isA<String>());
+    // Whisper may hallucinate a short word ("you") on silence; what must never come back is the old placeholder.
+    expect(transcription, isNot(contains('No speech detected')));
     await service.dispose();
   }, skip: !Platform.isMacOS);
 }

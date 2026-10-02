@@ -24,7 +24,10 @@ class RecordingFailure extends VoiceBridgeError {
   final String details;
   final RecordingErrorType type;
 
-  const RecordingFailure({required this.details, required this.type});
+  /// The native error code when the failure came from a platform channel, for example `ALREADY_RECORDING`.
+  final String? platformCode;
+
+  const RecordingFailure({required this.details, required this.type, this.platformCode});
 
   /// Maps the error codes sent by the native recorders (iOS, macOS, Android) to a typed failure.
   factory RecordingFailure.fromPlatformException(PlatformException exception) {
@@ -41,7 +44,7 @@ class RecordingFailure extends VoiceBridgeError {
       VoiceBridgeErrorCodes.instanceError => RecordingErrorType.hardwareFailure,
       _ => RecordingErrorType.unknown,
     };
-    return RecordingFailure(details: details, type: type);
+    return RecordingFailure(details: details, type: type, platformCode: exception.code);
   }
 
   @override

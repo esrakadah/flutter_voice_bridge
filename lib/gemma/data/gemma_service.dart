@@ -44,13 +44,28 @@ class GemmaService {
   }
 
   // Download a model with progress updates
-  Future<void> downloadModel(AvailableModel model, Function(double) onProgress) async {
-    if (kIsWeb) return;
+  /// One download per model: the chat and the settings screen can both ask for the same model, and two
+  /// downloads appending to one `.part` file would corrupt it. Every caller shares the download and its progress.
+  final Map<AvailableModel, Future<void>> _downloads = {};
+  final Map<AvailableModel, List<void Function(double)>> _progressListeners = {};
 
-    final datasource = GemmaDownloaderDataSource(model: model.toDownloadModel());
-    await datasource.downloadModel(
+  Future<void> downloadModel(AvailableModel model, void Function(double) onProgress) {
+    if (kIsWeb) return Future<void>.value();
+    _progressListeners.putIfAbsent(model, () => []).add(onProgress);
+    return _downloads[model] ??= _download(model).whenComplete(() {
+      _downloads.remove(model);
+      _progressListeners.remove(model);
+    });
+  }
+
+  Future<void> _download(AvailableModel model) {
+    return GemmaDownloaderDataSource(model: model.toDownloadModel()).downloadModel(
       token: GemmaConstants.huggingFaceAccessToken,
-      onProgress: onProgress,
+      onProgress: (progress) {
+        for (final listener in List.of(_progressListeners[model] ?? const <void Function(double)>[])) {
+          listener(progress);
+        }
+      },
     );
   }
 
@@ -98,7 +113,7 @@ class GemmaService {
       _inferenceModel = await gemma.createModel(
         modelType: ModelType.gemmaIt,
         supportImage: supportsImages,
-        maxTokens: 2048,
+        maxTokens: GemmaConstants.maxTokens,
       );
 
       _chat = await _inferenceModel!.createChat(supportImage: supportsImages);
