@@ -85,6 +85,21 @@ void main() {
     final service = WhisperFFIService();
     expect(() => service.transcribeAudio(samplePath), throwsA(isA<StateError>()));
   });
+
+  group('stripNonSpeechMarkers', () {
+    test('turns a marker-only result into empty text', () {
+      expect(WhisperFFIService.stripNonSpeechMarkers(' [BLANK_AUDIO]\n'), isEmpty);
+      expect(WhisperFFIService.stripNonSpeechMarkers('[MUSIC] [NOISE]'), isEmpty);
+    });
+
+    test('keeps the words around a marker', () {
+      expect(WhisperFFIService.stripNonSpeechMarkers('Hello [BLANK_AUDIO] world.'), 'Hello world.');
+    });
+
+    test('leaves ordinary brackets the speaker said alone', () {
+      expect(WhisperFFIService.stripNonSpeechMarkers('Use list[index] here'), 'Use list[index] here');
+    });
+  });
 }
 
 ByteData _wavHeader({required int channels, required int dataBytes}) {

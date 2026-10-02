@@ -291,7 +291,12 @@ class HomeCubit extends Cubit<HomeState> {
 
   String _userMessageFor(Object error) => _failureFor(error).userMessage;
 
-  String _detailsFor(Object error) => error is VoiceBridgeError ? error.message : error.toString();
+  /// The reason without a "Transcription failed:" prefix, which the caller adds once.
+  String _detailsFor(Object error) => switch (error) {
+    TranscriptionFailure(:final details) => details,
+    VoiceBridgeError(:final message) => message,
+    _ => error.toString(),
+  };
 
   void _startRecordingTimer() {
     _recordingTimer?.cancel();

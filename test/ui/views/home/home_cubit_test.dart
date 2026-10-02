@@ -275,7 +275,8 @@ void main() {
       act: (cubit) => cubit.transcribeRecording('/recordings/a.wav'),
       verify: (cubit) {
         expect(cubit.state.transcriptionText, isNull);
-        expect(cubit.state.transcriptionError, startsWith('Transcription failed'));
+        expect(cubit.state.transcriptionError, startsWith('Transcription failed: No speech detected'));
+        expect('Transcription failed'.allMatches(cubit.state.transcriptionError ?? '').length, 1);
       },
     );
 

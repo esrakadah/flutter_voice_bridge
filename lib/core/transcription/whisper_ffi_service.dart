@@ -100,7 +100,7 @@ class WhisperFFIService {
       throw StateError('whisper_ffi_transcribe returned null for $audioFilePath');
     }
     developer.log('✅ [WhisperFFI] Transcribed ${transcription.length} characters', name: _logName);
-    return transcription.trim();
+    return stripNonSpeechMarkers(transcription);
   }
 
   /// Frees the native model context; waits for any running transcription first.
@@ -112,6 +112,14 @@ class WhisperFFIService {
     await _serialised(() async => _freeModel(libraryPath, contextAddress));
     developer.log('🧹 [WhisperFFI] Model context freed', name: _logName);
   }
+
+  /// Whisper writes annotations such as `[BLANK_AUDIO]` or `[MUSIC]` for audio without speech; they are not
+  /// words the user said. Removing them lets silence reach the "no speech" path instead of showing a marker.
+  static String stripNonSpeechMarkers(String transcription) {
+    return transcription.replaceAll(_nonSpeechMarker, ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  static final RegExp _nonSpeechMarker = RegExp(r'\[[A-Z_ ]+\]');
 
   Future<T> _serialised<T>(Future<T> Function() call) {
     final result = _pendingCall.then((_) => call());
