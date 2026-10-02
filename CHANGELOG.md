@@ -26,9 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Linux, Windows and web platform folders.
 - `.github/README.md`, which GitHub showed instead of the root README.
+- The unused `cupertino_icons` dependency, a stray ffmpeg-kit podspec, and two 2025 docs that described
+  things that never existed (a prompt list posing as a roadmap, an index of asset folders).
 
 ### Fixed
-- The macOS app did not build on current Xcode (deployment target 10.15).
+- The macOS app did not build on current Xcode (deployment target 10.15), and the Android app did not build on
+  Flutter 3.44 (Gradle 8.14, AGP 8.11.1, Kotlin 2.2.20 and NDK 28.2 now).
 - The native library embedded absolute build paths and was copied into the iOS project, where it cannot load.
 - README claimed iOS transcription, 4 visualization modes and a 2-3x GPU speedup; it now matches the code. The
   guides' platform, version and speed claims are corrected; otherwise they still describe the July 2025 version.
@@ -37,7 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when leaving a screen mid-task.
 - Gemma: send errors were invisible, the error snackbar repeated, model downloads could corrupt on resume.
 - Native: the WAV reader trusted header sizes; Android's activity braces were wrong; iOS allowed a second
-  recording to replace the first.
+  recording to replace the first; a failed Android stop locked the recorder; silence came back as the sentence
+  "[No speech detected in audio]".
+- A double tap on record could leave a recording nobody could stop; a slower transcription could overwrite a
+  newer one; retry transcribed the newest file instead of the one that failed.
+- Gemma's cleanup deleted models the user could still select, and two downloads of one model could corrupt it.
+- `scripts/build_whisper.sh` accepted a truncated model download; it now checks the exact size.
 
 ## [1.0.1] - 2025-10-22
 

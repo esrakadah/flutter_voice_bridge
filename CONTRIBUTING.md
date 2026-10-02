@@ -1,6 +1,6 @@
 # 🤝 Contributing to Flutter Voice Bridge
 
-Thank you for your interest in contributing! This project serves both as a production app and an educational resource for the Flutter community.
+Thank you for your interest in contributing! This project is an educational app and a learning resource for the Flutter community.
 
 ## 🎯 Ways to Contribute
 
@@ -86,13 +86,13 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 ```bash
 feat: add new animation mode for particles
 fix: resolve memory leak in FFI service
-docs: improve setup instructions for Windows
+docs: clarify the whisper.cpp build step
 test: add unit tests for transcription service
 ```
 
 ### **Platform Considerations**
 - **iOS/macOS**: Test on both simulator and device
-- **Android**: Test on different API levels (21+)
+- **Android**: Test on different API levels (24+, Flutter's current minimum)
 - **Native Code**: Ensure memory safety in FFI/Platform Channels
 - **Performance**: Profile memory usage and rendering performance
 
@@ -128,7 +128,7 @@ Add screenshots or videos of new features
 ```
 
 ### **Review Process**
-1. **Automated Checks**: CI/CD runs tests and builds
+1. **Automated Checks**: CI checks formatting, runs `flutter analyze` and the unit and widget tests
 2. **Code Review**: Maintainers review code quality
 3. **Platform Testing**: Test on multiple platforms
 4. **Documentation**: Verify docs are complete
@@ -146,8 +146,7 @@ lib/
 ├── data/                   # Data layer (models, services)
 ├── ui/                     # Presentation layer
 │   ├── views/             # Pages/screens
-│   ├── components/        # Reusable UI components
-│   └── widgets/           # Atomic UI elements
+│   └── components/        # Reusable UI components
 ├── di.dart                # Dependency injection setup
 └── main.dart              # App entry point
 
@@ -188,9 +187,8 @@ ios/, macos/, android/     # Platform-specific code
 
 ### **Platform Priorities**
 1. **macOS**: Primary development platform, full features
-2. **iOS**: Production target, high priority
-3. **Android**: Important but transcription pending
-4. **Web**: Future consideration
+2. **iOS**: recording works; transcription is a placeholder until the native library is built for iOS
+3. **Android**: recording works; transcription is a placeholder
 
 ## 🔒 Security Guidelines
 
@@ -221,8 +219,7 @@ ios/, macos/, android/     # Platform-specific code
 ## 🎉 Recognition
 
 Contributors will be:
-- Listed in our README acknowledgments
-- Mentioned in release notes
+- Credited in the CHANGELOG
 - Given GitHub repository permissions (for regular contributors)
 - Invited to be maintainers (for significant contributors)
 

@@ -196,7 +196,6 @@ graph TB
     subgraph "Android Native Layer"
         Kotlin["🤖 Android Kotlin<br/>• MediaRecorder<br/>• Audio Permissions<br/>• WAV Format<br/>• File Management"]
         
-        OpenGL["🎮 GPU Support<br/>• OpenGL/Vulkan<br/>• Compute Shaders<br/>• Performance Optimization"]
     end
     
     subgraph "AI Processing Core"
@@ -233,7 +232,6 @@ graph TB
     %% AI Model Connections
     Whisper --> Model
     Whisper --> Metal
-    Whisper --> OpenGL
     
     %% Data Flow
     BL --> Files
@@ -262,7 +260,7 @@ graph TB
     class UI,States ui
     class BL,DI business
     class PC,FFI platform
-    class Swift,Kotlin,Metal,OpenGL native
+    class Swift,Kotlin,Metal native
     class Whisper,Model,Memory ai
     class Files,Cache data
     class Performance,Status metrics
@@ -453,7 +451,7 @@ sequenceDiagram
 - **Architecture Overview** → `README.md` (simplified)
 - **Clean Architecture** → `implementation_patterns.md` (implementation details)
 - **Complete System** → `ARCHITECTURE.md` (comprehensive)
-- **UI Components** → `project_management/requirements/ui_patterns.md`
+- **UI Components** → `docs/requirements/ui_patterns.md`
 - **All Diagrams** → This file (`visual_architecture.md`)
 
 ### **Learning Path**

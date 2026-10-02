@@ -52,7 +52,7 @@ flutter pub get
 # 3. Build native Whisper library (includes model download)
 ./scripts/build_whisper.sh
 
-# 4. Run on macOS/iOS for full transcription features
+# 4. Run on macOS for real transcription (iOS and Android use a placeholder)
 flutter run -d macos    # Recommended - full GPU acceleration
 flutter run -d ios      # iOS Simulator
 flutter run -d android  # Android - audio recording only

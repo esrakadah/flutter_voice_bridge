@@ -279,8 +279,8 @@ Future<String> transcribeAudio(String audioFilePath) async {
 | Platform | Setup | Recording | Transcription | GPU | Status |
 |----------|-------|-----------|---------------|-----|---------|
 | **macOS** | ✅ Auto | ✅ Working | ✅ Working | ✅ Metal | **READY** |
-| **iOS** | ✅ Auto | ✅ Working | ✅ Working | ✅ Metal | **READY** |
-| **Android** | ✅ Ready | ✅ Working | 🔄 Build | 🔄 OpenGL | In Progress |
+| **iOS** | ✅ Auto | ✅ Working | ❌ Not built | ❌ None | Placeholder transcription |
+| **Android** | ✅ Ready | ✅ Working | ❌ Not built | ❌ None | Placeholder transcription |
 
 ## 🎯 Real-World Demo
 

@@ -85,7 +85,6 @@ graph TB
     subgraph "Android Native Layer"
         Kotlin["🤖 Android Kotlin<br/>• MediaRecorder<br/>• Audio Permissions<br/>• WAV Format<br/>• File Management"]
         
-        OpenGL["🎮 GPU Support<br/>• OpenGL/Vulkan<br/>• Compute Shaders<br/>• Performance Optimization"]
     end
     
     subgraph "AI Processing Core"
@@ -122,7 +121,6 @@ graph TB
     %% AI Model Connections
     Whisper --> Model
     Whisper --> Metal
-    Whisper --> OpenGL
     
     %% Data Flow
     BL --> Files
@@ -151,7 +149,7 @@ graph TB
     class UI,States ui
     class BL,DI business
     class PC,FFI platform
-    class Swift,Metal,Kotlin,OpenGL native
+    class Swift,Metal,Kotlin native
     class Whisper,Model,Memory ai
     class Files,Cache data
     class Performance,Status metrics
@@ -1186,7 +1184,7 @@ class AudioProcessingPipeline {
 - **UI/UX**: Professional interface with real-time audio visualization
 
 **⚠️ PLATFORM COMPATIBILITY**:
-- **iOS/macOS**: ✅ **100% Functional** - Recording, playback, and transcription working
+- **macOS**: recording, playback and transcription working; **iOS**: recording and playback, placeholder transcription
 - **Android**: ✅ **Recording & Playback** | ⚠️ **Transcription needs M4A→WAV conversion**
 
 **🚀 PERFORMANCE OPTIMIZATIONS**:
