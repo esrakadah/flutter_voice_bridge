@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../../../components/native_text_view.dart';
 
+/// 📺 **Module 3: Platform Views Integration**
+///
+/// Demonstrates embedding native UI components directly within Flutter.
+/// This shows how Platform Views bridge Flutter's widget tree with
+/// native platform UI components.
+///
 /// Demo card embedding a native text view.
 class PlatformViewDemoCard extends StatelessWidget {
   const PlatformViewDemoCard({super.key});
 
-  /// 📺 **Module 3: Platform Views Integration**
-  ///
-  /// Demonstrates embedding native UI components directly within Flutter.
-  /// This shows how Platform Views bridge Flutter's widget tree with
-  /// native platform UI components.
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;

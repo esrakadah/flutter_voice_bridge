@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/audio/audio_converter.dart';
 
+/// 🔧 **Module 5: Process.run Integration Demo**
+///
+/// Demonstrates external tool integration for specialized processing
+///
 /// Demo card that runs `ffmpeg -version` through Process.run when tapped.
 class ProcessRunDemoCard extends StatefulWidget {
   const ProcessRunDemoCard({super.key});
@@ -21,9 +25,6 @@ class _ProcessRunDemoCardState extends State<ProcessRunDemoCard> {
     return AudioConverter.getFFmpegVersion();
   }
 
-  /// 🔧 **Module 5: Process.run Integration Demo**
-  ///
-  /// Demonstrates external tool integration for specialized processing
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;

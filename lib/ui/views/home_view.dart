@@ -149,7 +149,7 @@ class _HomeViewContentState extends State<HomeViewContent> {
                 if (state.transcriptionText != null) SliverToBoxAdapter(child: TranscriptionCard(state: state)),
 
                 // Transcription status (in progress or error)
-                if (state.isTranscribing) SliverToBoxAdapter(child: TranscriptionProgressCard(state: state)),
+                if (state.isTranscribing) const SliverToBoxAdapter(child: TranscriptionProgressCard()),
                 if (state.transcriptionError != null) SliverToBoxAdapter(child: TranscriptionErrorCard(state: state)),
 
                 // Recordings list header

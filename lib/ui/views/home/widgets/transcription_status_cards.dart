@@ -6,9 +6,7 @@ import '../home_state.dart';
 
 /// Shown while a transcription runs.
 class TranscriptionProgressCard extends StatelessWidget {
-  const TranscriptionProgressCard({super.key, required this.state});
-
-  final HomeState state;
+  const TranscriptionProgressCard({super.key});
 
   @override
   Widget build(BuildContext context) {

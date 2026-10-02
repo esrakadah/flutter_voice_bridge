@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../../../gemma/ui/gemma_chat_screen.dart';
 
+/// 🤖 **Gemma AI Chat Card**
+///
+/// Navigation card to access on-device AI chat powered by Gemma.
+/// Only available on iOS platform.
+///
 /// Entry card for the experimental Gemma chat (iOS).
 class GemmaChatCard extends StatelessWidget {
   const GemmaChatCard({super.key});
 
-  /// 🤖 **Gemma AI Chat Card**
-  ///
-  /// Navigation card to access on-device AI chat powered by Gemma.
-  /// Only available on iOS platform.
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
